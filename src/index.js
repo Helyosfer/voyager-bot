@@ -48,11 +48,16 @@ for (const dosya of fs.readdirSync(komutKlasoru).filter((d) => d.endsWith('.js')
 
 client.once(Events.ClientReady, (c) => {
   console.log(`Bot hazır: ${c.user.tag} · ${c.guilds.cache.size} sunucuda`);
+  for (const sunucu of c.guilds.cache.values()) console.log(`  · ${sunucu.name} (${sunucu.id}) · ${sunucu.memberCount} üye`);
   hatirlatici.hepsiniYukle(client);
   firsatlar.baslat(client);
   yayin.baslat(client);
   console.log(`Mesaj içeriği günlüğü: ${mesajIcerigi.length ? 'açık' : 'kapalı'}`);
 });
+
+// Botun eklendiği ve çıkarıldığı sunucular kayıtlarda görünsün
+client.on(Events.GuildCreate, (sunucu) => console.log(`Sunucuya eklendi: ${sunucu.name} (${sunucu.id}) · ${sunucu.memberCount} üye`));
+client.on(Events.GuildDelete, (sunucu) => console.log(`Sunucudan çıkarıldı: ${sunucu.name} (${sunucu.id})`));
 
 // Dinleyici olmazsa bağlantı hatası botu çökertir
 client.on(Events.Error, (hata) => console.error('Discord bağlantı hatası:', hata));
