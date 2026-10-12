@@ -6,6 +6,7 @@ Moderasyon ve yardımcı araçlar içeren özel Discord botu (Node.js + discord.
 
 | Komut | Ne yapar | Gereken yetki |
 |---|---|---|
+| `/yardim` | Tüm komutları ve ne işe yaradıklarını listeler | Herkes |
 | `/ping` | Bot çalışıyor mu kontrol eder | Herkes |
 | `/ban` | Kullanıcıyı yasaklar | Üyeleri Yasakla |
 | `/unban` | Kullanıcının yasağını kaldırır | Üyeleri Yasakla |
@@ -14,8 +15,36 @@ Moderasyon ve yardımcı araçlar içeren özel Discord botu (Node.js + discord.
 | `/temizle` | Kanaldaki son 1-100 mesajı siler | Mesajları Yönet |
 | `/ayarla` | Log kanalı, hoş geldin kanalı, oto rol (`sifirla` ile kaldırılır) | Sunucuyu Yönet |
 | `/hatirlat` | Belirtilen süre sonra hatırlatma yapar (kişi başı en fazla 5) | Herkes |
+| `/oyun` | Bedava oyun ve indirim bildirimlerini ayarlar (Steam, Epic, GOG) | Sunucuyu Yönet |
 
 Ayrıca: yeni üyeye hoş geldin mesajı ve otomatik rol.
+
+### Oyun fırsatları
+
+Bot 30 dakikada bir bedava oyunları ve mağaza indirimlerini kontrol eder, yeni çıkanları seçtiğin kanala gönderir.
+
+| Ne | Kaynak | Fiyat |
+|---|---|---|
+| Bedava oyunlar | [GamerPower](https://www.gamerpower.com) | |
+| Steam indirimleri | Steam'in öne çıkan indirimleri | Türkiye bölgesi (dolar) |
+| Epic Games indirimleri | Epic mağaza vitrinindeki indirimli oyunlar | Türkiye bölgesi (TL) |
+| GOG indirimleri | GOG'da en çok ilgi gören 15 indirim | Türkiye bölgesi (dolar) |
+
+| Komut | Ne yapar |
+|---|---|
+| `/oyun kanal` | Kanalı seçer ve bildirimleri başlatır |
+| `/oyun bedava` | Bedava oyunları açar/kapatır; mağaza seçer (varsayılan: Steam, Epic ve GOG) |
+| `/oyun indirim` | İndirimleri açar/kapatır; mağaza (varsayılan: Steam, Epic ve GOG) ve en az indirim oranını (varsayılan: %50) belirler |
+| `/oyun rol` | Fırsat geldiğinde etiketlenecek rol |
+| `/oyun simdi` | Şu an yayında olan fırsatları hemen gönderir |
+| `/oyun goster` | Ayarları gösterir |
+| `/oyun kapat` | Bildirimleri kapatır |
+
+Kanal ilk seçildiğinde o an yayında olanlar gönderilmez, yalnızca sonradan çıkanlar bildirilir.
+
+Popüler oyunlar (Steam'de en az 20.000 incelemesi olanlar) resimli büyük bir kartla, diğerleri toplu bir
+listede gösterilir. Aynı oyun birden fazla mağazada indirimdeyse tek kayıtta birleştirilir. Eşik
+`src/firsatlar.js` içindeki `POPULER_ESIK` değeridir.
 
 ## Kurulum
 
