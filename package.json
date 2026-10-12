@@ -1,0 +1,17 @@
+{
+  "name": "voyager-bot",
+  "version": "1.0.0",
+  "description": "Moderasyon ve yardımcı araçlar içeren özel Discord botu",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "komutlar": "node src/komutlari-yukle.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "discord.js": "^14.18.0",
+    "dotenv": "^16.4.5"
+  }
+}
