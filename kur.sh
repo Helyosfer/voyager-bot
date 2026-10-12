@@ -35,6 +35,10 @@ fi
 
 mkdir -p "$HEDEF"
 if [[ "$KAYNAK" != "$HEDEF" ]]; then
+  if [[ ! -d "$KAYNAK/src" || ! -f "$KAYNAK/package.json" ]]; then
+    echo "$KAYNAK içinde src/ veya package.json yok. Dosyaların hepsi gönderildi mi?"
+    exit 1
+  fi
   # Eski src'yi sil: yoksa kaynakta silinen komut dosyaları sunucuda kalır ve yüklenmeye devam eder
   rm -rf "$HEDEF/src"
   cp -r "$KAYNAK/package.json" "$KAYNAK/.env.example" "$KAYNAK/src" "$HEDEF/"
