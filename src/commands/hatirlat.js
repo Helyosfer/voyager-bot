@@ -21,13 +21,19 @@ module.exports = {
     const mesaj = interaction.options.getString('mesaj', true);
     const zaman = Date.now() + dakika * 60_000;
 
-    hatirlatici.ekle(interaction.client, {
+    const eklendi = hatirlatici.ekle(interaction.client, {
       id: interaction.id,
       kullaniciId: interaction.user.id,
       kanalId: interaction.channelId,
       zaman,
       mesaj,
     });
+    if (!eklendi) {
+      return interaction.reply({
+        content: `❌ Aynı anda en fazla ${hatirlatici.KISI_BASI_SINIR} hatırlatıcın olabilir. Biri bitince yenisini kurabilirsin.`,
+        flags: MessageFlags.Ephemeral,
+      });
+    }
 
     // <t:...:R> Discord'da "5 dakika içinde" gibi canlı bir sayaç gösterir
     await interaction.reply({
