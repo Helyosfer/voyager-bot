@@ -1,5 +1,6 @@
 const { SlashCommandBuilder, PermissionFlagsBits, InteractionContextType, MessageFlags } = require('discord.js');
 const { logGonder } = require('../yardimci');
+const { temizlemeBildir } = require('../gunluk');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -16,6 +17,7 @@ module.exports = {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     // true: Discord 14 günden eski mesajların toplu silinmesine izin vermez, onları atla
+    temizlemeBildir(interaction.channelId);
     const silinen = await interaction.channel.bulkDelete(adet, true);
     await interaction.editReply(`🧹 ${silinen.size} mesaj silindi.`);
     await logGonder(interaction.guild, {

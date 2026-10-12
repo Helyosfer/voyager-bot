@@ -1,5 +1,5 @@
 const { EmbedBuilder, PermissionFlagsBits } = require('discord.js');
-const { ayarlariGetir } = require('./depo');
+const { gunlukGonder } = require('./gunluk');
 
 // Komutu kullanan kişi bu üyeye işlem yapabilir mi? Yapamazsa sebebini döndürür.
 function mudahaleEngeli(interaction, uye) {
@@ -27,18 +27,13 @@ function yazabilirMi(kanal, ekIzinler = []) {
 // Moderasyon işlemini log kanalına yazar (ayarlanmışsa).
 // hedef ve sebep isteğe bağlıdır (ör. /temizle'de ikisi de yok).
 async function logGonder(guild, { baslik, renk, hedef, yetkili, sebep, ek }) {
-  const { logKanali } = ayarlariGetir(guild.id);
-  if (!logKanali) return;
-  const kanal = await guild.channels.fetch(logKanali).catch(() => null);
-  if (!kanal?.isTextBased()) return;
-
-  const embed = new EmbedBuilder().setTitle(baslik).setColor(renk).setTimestamp();
+  const embed = new EmbedBuilder().setTitle(baslik).setColor(renk);
   if (hedef) embed.addFields({ name: 'Kullanıcı', value: `${hedef} (${hedef.id})` });
   embed.addFields({ name: 'Yetkili', value: `${yetkili}` });
   if (sebep) embed.addFields({ name: 'Sebep', value: sebep });
   if (ek) embed.addFields(ek);
 
-  await kanal.send({ embeds: [embed] }).catch(() => {});
+  await gunlukGonder(guild, 'moderasyon', embed);
 }
 
 module.exports = { mudahaleEngeli, logGonder, yazabilirMi };
