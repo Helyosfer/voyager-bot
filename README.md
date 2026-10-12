@@ -15,9 +15,26 @@ Moderasyon ve yardımcı araçlar içeren özel Discord botu (Node.js + discord.
 | `/temizle` | Kanaldaki son 1-100 mesajı siler | Mesajları Yönet |
 | `/ayarla` | Log kanalı ve kategorileri, hoş geldin kanalı, oto rol (`sifirla` ile kaldırılır) | Sunucuyu Yönet |
 | `/hatirlat` | Belirtilen süre sonra hatırlatma yapar (kişi başı en fazla 5) | Herkes |
+| `/koruma` | Otomatik spam koruması ve ağır küfür filtresi | Sunucuyu Yönet |
+| `/yayin` | Canlı yayın bildirimlerini ayarlar (Twitch, Kick, YouTube) | Sunucuyu Yönet |
 | `/oyun` | Bedava oyun ve indirim bildirimlerini ayarlar (Steam, Epic, GOG) | Sunucuyu Yönet |
 
 Ayrıca: yeni üyeye hoş geldin mesajı ve otomatik rol.
+
+### Otomatik koruma
+
+`/koruma` ile sunucu başına açılır; ikisi de varsayılan olarak kapalıdır. Mesajları Yönet yetkisi olanlar ve botlar muaftır.
+
+| Komut | Ne yapar |
+|---|---|
+| `/koruma spam` | 30 saniyede 3 farklı kanala yazan, aynı içeriği 4 kez tekrarlayan ya da yetkisiz `@everyone` ile bağlantı/dosya gönderen üyenin mesajlarını siler ve üyeyi susturur (varsayılan 60 dakika) |
+| `/koruma kufur` | Ağır küfür içeren mesajları siler; istenirse yazanı susturur |
+| `/koruma kelime-ekle` / `kelime-cikar` | Sunucuya özel yasaklı kelime listesi |
+| `/koruma goster` | Ayarları gösterir |
+
+Spam koruması özellikle ele geçirilmiş hesapların bütün kanallara aynı görselleri atmasını hedefler; bu yüzden
+üyeyi banlamaz, susturur. Küfür filtresi yalnızca ağır küfürleri yakalar ve masum kelimelere takılmamak için
+bilerek dardır ("amk", "aq" gibi kısaltmalar hazır listede yoktur). Küfür filtresi için Message Content Intent gerekir.
 
 ### Sunucu günlüğü
 
@@ -36,6 +53,54 @@ tek tek açılıp kapatılır; hepsi varsayılan olarak açıktır.
 - Silinen/düzenlenen mesajların **içeriği** varsayılan olarak yazılmaz. Açmak için önce Developer Portal > Bot >
   **Message Content Intent**'i aç, sonra `.env` dosyasına `MESAJ_ICERIGI=1` yazıp botu yeniden başlat.
   Sıra önemli: intent açılmadan `MESAJ_ICERIGI=1` yapılırsa bot bağlanamaz.
+
+### Canlı yayın bildirimleri
+
+Seçilen yayıncılar yayına geçince bot seçilen kanala haber verir. Yalnızca **Sunucuyu Yönet** yetkisi olanlar ayarlar.
+
+| Komut | Ne yapar |
+|---|---|
+| `/yayin kanal` | Bildirim kanalını seçer |
+| `/yayin ekle` | Platform ve kanal adı (ya da adresi) ile yayıncı ekler |
+| `/yayin cikar` | Yayıncıyı çıkarır |
+| `/yayin liste` | Takip edilenleri ve ayarları gösterir |
+| `/yayin rol` | Yayın başlayınca etiketlenecek rol |
+| `/yayin test` | Kanala örnek bir bildirim gönderir |
+| `/yayin kapat` | Bildirimleri kapatır |
+
+| Platform | Hız | Gereken |
+|---|---|---|
+| Twitch | Anında (Twitch haber verir) | Twitch geliştirici uygulaması + botun dışarıdan ulaşılan adresi |
+| Kick | Anında (Kick haber verir) | Kick geliştirici uygulaması + botun dışarıdan ulaşılan adresi |
+| YouTube | 1-3 dakika (dakikada bir kontrol) | YouTube Data API anahtarı |
+
+Anahtarlar `.env` dosyasına yazılır (`.env.example` içinde açıklamalı). Bir platformun anahtarı yoksa yalnızca
+o platform kapalı kalır.
+
+Twitch ve Kick için bot `127.0.0.1:8788` üzerinde küçük bir HTTP sunucusu açar; bunu web sunucunla dışarı
+açman gerekir. Caddy örneği:
+
+```
+voyager.ornek.com {
+	reverse_proxy 127.0.0.1:8788
+}
+```
+
+`.env` içinde `YAYIN_ADRESI=https://voyager.ornek.com` olur; Kick uygulamasının webhook adresi
+`https://voyager.ornek.com/kick` olarak girilir. Gelen her istek imzasıyla doğrulanır.
+
+### Tanıtım sayfası
+
+Bot, yayın webhook'ları için açtığı HTTP sunucusunun ana adresinde tek sayfalık bir tanıtım sitesi de verir
+(`src/site/`): başlık, özellikler ve "Sunucuna ekle" düğmesi. Düğmenin linki `bot` kapsamını ve gereken izinleri
+açıkça taşır, Developer Portal'daki varsayılan kurulum ayarlarına bağlı değildir. Arka planda NASA'nın
+[helyosfer animasyonu](https://svs.gsfc.nasa.gov/20363) oynar (kaynak: NASA's Goddard Space Flight Center
+Conceptual Image Lab); dosya NASA'nın sunucusundan yüklenir.
+
+### Bot sahibi komutları
+
+`/sunucular liste` ve `/sunucular ayril` yalnızca `.env` içindeki `GUILD_IDS` sunucularına yüklenir ve yalnızca
+uygulamanın sahibi kullanabilir: botun bulunduğu sunucuları gösterir, istenen sunucudan çıkarır.
 
 ### Oyun fırsatları
 
@@ -82,16 +147,17 @@ listede gösterilir. Aynı oyun birden fazla mağazada indirimdeyse tek kayıtta
    View Channels, Send Messages, Embed Links, Read Message History.
 6. Oluşan davet linkini tarayıcıda aç ve botu sunucuya ekle.
 
-### 3. Sunucu ID'sini al
+### 3. .env dosyasını hazırla
 
-Discord → Ayarlar → Gelişmiş → **Geliştirici Modu**'nu aç. Sonra sunucu adına sağ tıkla →
-**Sunucu ID'sini Kopyala** → `.env` içinde `GUILD_IDS`. (İki sunucu varsa virgülle ayır.)
+`.env.example` dosyasını kopyalayıp adını `.env` yap; `DISCORD_TOKEN` ve `CLIENT_ID` değerlerini doldur.
+Komutlar genel yüklenir: bot hangi sunucuya eklenirse orada kendiliğinden görünür, sunucu ID'si gerekmez.
 
-### 4. .env dosyasını hazırla
+### Botu başka sunuculara açmak
 
-`.env.example` dosyasını kopyalayıp adını `.env` yap ve üç değeri doldur.
+Developer Portal → Bot → **Public Bot** açıksa davet linkine sahip herkes botu kendi sunucusuna ekleyebilir.
+Her sunucunun ayarları, yayıncı listesi ve günlüğü ayrıdır. Bot 100 sunucuyu geçerse Discord doğrulama ister.
 
-### 5. Çalıştır
+### 4. Çalıştır
 
 ```bash
 npm install
@@ -109,7 +175,7 @@ Terminalde `Bot hazır: ...` yazısını görünce Discord'da `/ping` yaz.
 
 `npm run komutlar` sadece komut eklediğinde veya komutun adını/seçeneklerini değiştirdiğinde gerekir.
 
-### 6. Sunucuda ilk ayarlar
+### 5. Sunucuda ilk ayarlar
 
 - Sunucu Ayarları → Roller: **botun rolünü**, yöneteceği rollerin üstüne sürükle.
   (Bot, kendi rolünden yüksek kişilere işlem yapamaz ve yüksek rolleri veremez.)

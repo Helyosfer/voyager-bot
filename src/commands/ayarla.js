@@ -3,6 +3,7 @@ const {
   PermissionFlagsBits,
   InteractionContextType,
   ChannelType,
+  EmbedBuilder,
   MessageFlags,
 } = require('discord.js');
 const { ayarlariGetir, ayarKaydet } = require('../depo');
@@ -133,14 +134,22 @@ module.exports = {
       }
     } else {
       const a = ayarlariGetir(sunucuId);
-      mesaj = [
-        `**Log kanalı:** ${a.logKanali ? `<#${a.logKanali}>` : 'ayarlanmadı'}`,
-        `**Hoş geldin kanalı:** ${a.hosgeldinKanali ? `<#${a.hosgeldinKanali}>` : 'ayarlanmadı'}`,
-        `**Oto rol:** ${a.otoRol ? `<@&${a.otoRol}>` : 'ayarlanmadı'}`,
-        '',
-        '**Log kategorileri**',
-        ...Object.entries(KATEGORILER).map(([k, ad]) => `${kategoriAcik(a, k) ? '🟢' : '⚫'} ${ad}`),
-      ].join('\n');
+      const embed = new EmbedBuilder()
+        .setTitle('⚙️ Sunucu ayarları')
+        .setColor(0x5865f2)
+        .addFields(
+          { name: 'Log kanalı', value: a.logKanali ? `<#${a.logKanali}>` : 'Ayarlanmadı', inline: true },
+          { name: 'Hoş geldin kanalı', value: a.hosgeldinKanali ? `<#${a.hosgeldinKanali}>` : 'Ayarlanmadı', inline: true },
+          { name: 'Oto rol', value: a.otoRol ? `<@&${a.otoRol}>` : 'Ayarlanmadı', inline: true },
+          {
+            name: 'Log kategorileri',
+            value: Object.entries(KATEGORILER)
+              .map(([k, ad]) => `${kategoriAcik(a, k) ? '🟢' : '⚫'} ${ad}`)
+              .join('\n'),
+          },
+        )
+        .setFooter({ text: 'Diğer ayarlar: /oyun goster · /yayin liste' });
+      return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
     }
 
     await interaction.reply({ content: mesaj, flags: MessageFlags.Ephemeral });
