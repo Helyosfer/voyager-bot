@@ -7,6 +7,7 @@ const {
 } = require('discord.js');
 const { ayarlariGetir, ayarKaydet } = require('../depo');
 const { yazabilirMi } = require('../yardimci');
+const { KATEGORILER, kategoriAcik } = require('../gunluk');
 
 // /ayarla sifirla seçenekleri: görünen ad -> depodaki anahtar
 const AYARLAR = {
@@ -57,6 +58,28 @@ module.exports = {
             ),
         ),
     )
+    .addSubcommand((s) =>
+      s
+        .setName('log-kategori')
+        .setDescription('Log kanalına hangi tür olayların yazılacağını seçer')
+        .addStringOption((o) =>
+          o
+            .setName('kategori')
+            .setDescription('Olay türü')
+            .setRequired(true)
+            .addChoices(
+              { name: 'Hepsi', value: 'hepsi' },
+              ...Object.entries(KATEGORILER).map(([value, name]) => ({ name, value })),
+            ),
+        )
+        .addStringOption((o) =>
+          o
+            .setName('durum')
+            .setDescription('Açık mı kapalı mı?')
+            .setRequired(true)
+            .addChoices({ name: 'Açık', value: 'acik' }, { name: 'Kapalı', value: 'kapali' }),
+        ),
+    )
     .addSubcommand((s) => s.setName('goster').setDescription('Mevcut ayarları gösterir'))
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
     .setContexts(InteractionContextType.Guild),
@@ -82,6 +105,18 @@ module.exports = {
         ayarKaydet(sunucuId, 'hosgeldinKanali', kanal.id);
         mesaj = `✅ Hoş geldin kanalı ${kanal} olarak ayarlandı.`;
       }
+    } else if (alt === 'log-kategori') {
+      const kategori = interaction.options.getString('kategori', true);
+      const acik = interaction.options.getString('durum', true) === 'acik';
+      const secilenler = kategori === 'hepsi' ? Object.keys(KATEGORILER) : [kategori];
+      const kategoriler = { ...ayarlariGetir(sunucuId).logKategorileri };
+      for (const k of secilenler) kategoriler[k] = acik;
+      ayarKaydet(sunucuId, 'logKategorileri', kategoriler);
+      const ad = kategori === 'hepsi' ? 'Tüm kategoriler' : KATEGORILER[kategori];
+      mesaj = `✅ ${ad}: ${acik ? 'açık' : 'kapalı'}.`;
+      if (acik && !ayarlariGetir(sunucuId).logKanali) {
+        mesaj += ' Kayıtların yazılması için `/ayarla log-kanali` ile bir kanal seç.';
+      }
     } else if (alt === 'sifirla') {
       const ayar = interaction.options.getString('ayar', true);
       ayarKaydet(sunucuId, AYARLAR[ayar], null);
@@ -102,6 +137,9 @@ module.exports = {
         `**Log kanalı:** ${a.logKanali ? `<#${a.logKanali}>` : 'ayarlanmadı'}`,
         `**Hoş geldin kanalı:** ${a.hosgeldinKanali ? `<#${a.hosgeldinKanali}>` : 'ayarlanmadı'}`,
         `**Oto rol:** ${a.otoRol ? `<@&${a.otoRol}>` : 'ayarlanmadı'}`,
+        '',
+        '**Log kategorileri**',
+        ...Object.entries(KATEGORILER).map(([k, ad]) => `${kategoriAcik(a, k) ? '🟢' : '⚫'} ${ad}`),
       ].join('\n');
     }
 
