@@ -6,6 +6,8 @@ const { ayarlariGetir } = require('./depo');
 const hatirlatici = require('./hatirlatici');
 const firsatlar = require('./firsatlar');
 const gunluk = require('./gunluk');
+const yayin = require('./yayin');
+const koruma = require('./koruma');
 
 if (!process.env.DISCORD_TOKEN) {
   console.error('DISCORD_TOKEN bulunamadı. .env dosyasını oluşturup doldurdun mu?');
@@ -45,9 +47,10 @@ for (const dosya of fs.readdirSync(komutKlasoru).filter((d) => d.endsWith('.js')
 }
 
 client.once(Events.ClientReady, (c) => {
-  console.log(`Bot hazır: ${c.user.tag}`);
+  console.log(`Bot hazır: ${c.user.tag} · ${c.guilds.cache.size} sunucuda`);
   hatirlatici.hepsiniYukle(client);
   firsatlar.baslat(client);
+  yayin.baslat(client);
   console.log(`Mesaj içeriği günlüğü: ${mesajIcerigi.length ? 'açık' : 'kapalı'}`);
 });
 
@@ -70,6 +73,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 });
 
 gunluk.baslat(client);
+koruma.baslat(client);
 
 // Yeni üye: hoş geldin mesajı + otomatik rol
 client.on(Events.GuildMemberAdd, async (uye) => {
