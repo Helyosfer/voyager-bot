@@ -4,6 +4,7 @@ const path = require('node:path');
 const { Client, Collection, Events, GatewayIntentBits, MessageFlags } = require('discord.js');
 const { ayarlariGetir } = require('./depo');
 const hatirlatici = require('./hatirlatici');
+const firsatlar = require('./firsatlar');
 
 if (!process.env.DISCORD_TOKEN) {
   console.error('DISCORD_TOKEN bulunamadı. .env dosyasını oluşturup doldurdun mu?');
@@ -30,6 +31,7 @@ for (const dosya of fs.readdirSync(komutKlasoru).filter((d) => d.endsWith('.js')
 client.once(Events.ClientReady, (c) => {
   console.log(`Bot hazır: ${c.user.tag}`);
   hatirlatici.hepsiniYukle(client);
+  firsatlar.baslat(client);
 });
 
 // Dinleyici olmazsa bağlantı hatası botu çökertir

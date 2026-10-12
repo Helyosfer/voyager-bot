@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 const { ayarlariGetir } = require('./depo');
 
 // Komutu kullanan kişi bu üyeye işlem yapabilir mi? Yapamazsa sebebini döndürür.
@@ -18,6 +18,12 @@ function mudahaleEngeli(interaction, uye) {
   return null;
 }
 
+// Bot bu kanala yazabiliyor mu? Yazamıyorsa mesajlar sessizce kaybolur, o yüzden baştan söyle.
+function yazabilirMi(kanal, ekIzinler = []) {
+  const izinler = kanal.permissionsFor(kanal.guild.members.me);
+  return izinler?.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, ...ekIzinler]) ?? false;
+}
+
 // Moderasyon işlemini log kanalına yazar (ayarlanmışsa).
 // hedef ve sebep isteğe bağlıdır (ör. /temizle'de ikisi de yok).
 async function logGonder(guild, { baslik, renk, hedef, yetkili, sebep, ek }) {
@@ -35,4 +41,4 @@ async function logGonder(guild, { baslik, renk, hedef, yetkili, sebep, ek }) {
   await kanal.send({ embeds: [embed] }).catch(() => {});
 }
 
-module.exports = { mudahaleEngeli, logGonder };
+module.exports = { mudahaleEngeli, logGonder, yazabilirMi };
