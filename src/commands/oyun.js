@@ -3,6 +3,7 @@ const {
   PermissionFlagsBits,
   InteractionContextType,
   ChannelType,
+  EmbedBuilder,
   MessageFlags,
 } = require('discord.js');
 const { ayarlariGetir, ayarKaydet } = require('../depo');
@@ -149,13 +150,25 @@ module.exports = {
     }
 
     // goster
-    return cevapla(
-      [
-        `**Kanal:** ${ayar.kanal ? `<#${ayar.kanal}>` : 'ayarlanmadı (bildirimler kapalı)'}`,
-        `**Bedava oyunlar:** ${ayar.bedava ? `açık · ${firsatlar.MAGAZALAR[ayar.magaza].ad}` : 'kapalı'}`,
-        `**İndirimler:** ${ayar.indirim ? `açık · ${firsatlar.INDIRIM_SECENEKLERI[ayar.indirimMagaza].ad} · en az %${ayar.yuzde}` : 'kapalı'}`,
-        `**Etiketlenecek rol:** ${ayar.rol ? `<@&${ayar.rol}>` : 'yok'}`,
-      ].join('\n'),
-    );
+    const durum = (acik, ayrinti) => (acik ? `🟢 Açık\n${ayrinti}` : '⚫ Kapalı');
+    const embed = new EmbedBuilder()
+      .setTitle('🎮 Oyun fırsatları')
+      .setColor(0x5865f2)
+      .setDescription(
+        [
+          `**Kanal:** ${ayar.kanal ? `<#${ayar.kanal}>` : 'ayarlanmadı (bildirimler kapalı)'}`,
+          `**Etiketlenecek rol:** ${ayar.rol ? `<@&${ayar.rol}>` : 'yok'}`,
+        ].join('\n'),
+      )
+      .addFields(
+        { name: '🎁 Bedava oyunlar', value: durum(ayar.bedava, firsatlar.MAGAZALAR[ayar.magaza].ad), inline: true },
+        {
+          name: '🏷️ İndirimler',
+          value: durum(ayar.indirim, `${firsatlar.INDIRIM_SECENEKLERI[ayar.indirimMagaza].ad}\nEn az %${ayar.yuzde}`),
+          inline: true,
+        },
+      )
+      .setFooter({ text: 'Mevcut fırsatları görmek için /oyun simdi' });
+    return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
   },
 };
