@@ -8,10 +8,11 @@ Moderasyon ve yardımcı araçlar içeren özel Discord botu (Node.js + discord.
 |---|---|---|
 | `/ping` | Bot çalışıyor mu kontrol eder | Herkes |
 | `/ban` | Kullanıcıyı yasaklar | Üyeleri Yasakla |
+| `/unban` | Kullanıcının yasağını kaldırır | Üyeleri Yasakla |
 | `/kick` | Üyeyi atar | Üyeleri At |
 | `/sustur` | Üyeyi belirli dakika susturur (0 = kaldır) | Üyelere Zaman Aşımı Uygula |
 | `/temizle` | Kanaldaki son 1-100 mesajı siler | Mesajları Yönet |
-| `/ayarla` | Log kanalı, hoş geldin kanalı, oto rol | Sunucuyu Yönet |
+| `/ayarla` | Log kanalı, hoş geldin kanalı, oto rol (`sifirla` ile kaldırılır) | Sunucuyu Yönet |
 | `/hatirlat` | Belirtilen süre sonra hatırlatma yapar (kişi başı en fazla 5) | Herkes |
 
 Ayrıca: yeni üyeye hoş geldin mesajı ve otomatik rol.

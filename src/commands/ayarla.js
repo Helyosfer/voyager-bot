@@ -7,6 +7,19 @@ const {
 } = require('discord.js');
 const { ayarlariGetir, ayarKaydet } = require('../depo');
 
+// /ayarla sifirla seçenekleri: görünen ad -> depodaki anahtar
+const AYARLAR = {
+  'log-kanali': 'logKanali',
+  'hosgeldin-kanali': 'hosgeldinKanali',
+  'oto-rol': 'otoRol',
+};
+
+// Bot bu kanala yazabiliyor mu? Yazamıyorsa mesajlar sessizce kaybolur, o yüzden baştan söyle.
+function yazabilirMi(interaction, kanal, ekIzinler = []) {
+  const izinler = kanal.permissionsFor(interaction.guild.members.me);
+  return izinler?.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, ...ekIzinler]) ?? false;
+}
+
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('ayarla')
@@ -33,6 +46,22 @@ module.exports = {
         .setDescription('Yeni üyelere otomatik verilecek rol')
         .addRoleOption((o) => o.setName('rol').setDescription('Verilecek rol').setRequired(true)),
     )
+    .addSubcommand((s) =>
+      s
+        .setName('sifirla')
+        .setDescription('Bir ayarı kaldırır')
+        .addStringOption((o) =>
+          o
+            .setName('ayar')
+            .setDescription('Kaldırılacak ayar')
+            .setRequired(true)
+            .addChoices(
+              { name: 'Log kanalı', value: 'log-kanali' },
+              { name: 'Hoş geldin kanalı', value: 'hosgeldin-kanali' },
+              { name: 'Oto rol', value: 'oto-rol' },
+            ),
+        ),
+    )
     .addSubcommand((s) => s.setName('goster').setDescription('Mevcut ayarları gösterir'))
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
     .setContexts(InteractionContextType.Guild),
@@ -44,12 +73,24 @@ module.exports = {
 
     if (alt === 'log-kanali') {
       const kanal = interaction.options.getChannel('kanal', true);
-      ayarKaydet(sunucuId, 'logKanali', kanal.id);
-      mesaj = `✅ Log kanalı ${kanal} olarak ayarlandı.`;
+      if (!yazabilirMi(interaction, kanal, [PermissionFlagsBits.EmbedLinks])) {
+        mesaj = `❌ ${kanal} kanalına yazamıyorum. Bana orada Kanalı Görüntüle, Mesaj Gönder ve Bağlantı Yerleştir izinlerini ver.`;
+      } else {
+        ayarKaydet(sunucuId, 'logKanali', kanal.id);
+        mesaj = `✅ Log kanalı ${kanal} olarak ayarlandı.`;
+      }
     } else if (alt === 'hosgeldin-kanali') {
       const kanal = interaction.options.getChannel('kanal', true);
-      ayarKaydet(sunucuId, 'hosgeldinKanali', kanal.id);
-      mesaj = `✅ Hoş geldin kanalı ${kanal} olarak ayarlandı.`;
+      if (!yazabilirMi(interaction, kanal)) {
+        mesaj = `❌ ${kanal} kanalına yazamıyorum. Bana orada Kanalı Görüntüle ve Mesaj Gönder izinlerini ver.`;
+      } else {
+        ayarKaydet(sunucuId, 'hosgeldinKanali', kanal.id);
+        mesaj = `✅ Hoş geldin kanalı ${kanal} olarak ayarlandı.`;
+      }
+    } else if (alt === 'sifirla') {
+      const ayar = interaction.options.getString('ayar', true);
+      ayarKaydet(sunucuId, AYARLAR[ayar], null);
+      mesaj = `✅ ${ayar} ayarı kaldırıldı.`;
     } else if (alt === 'oto-rol') {
       const rol = interaction.options.getRole('rol', true);
       if (rol.managed || rol.id === interaction.guild.id) {

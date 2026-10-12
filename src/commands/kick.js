@@ -19,8 +19,10 @@ module.exports = {
     const engel = mudahaleEngeli(interaction, uye);
     if (engel) return interaction.reply({ content: `❌ ${engel}`, flags: MessageFlags.Ephemeral });
 
+    // Discord 3 saniye içinde cevap bekler; işlem uzarsa "yanıt vermedi" demesin
+    await interaction.deferReply();
     await uye.kick(`${interaction.user.tag}: ${sebep}`);
-    await interaction.reply(`👢 **${hedef.tag}** sunucudan atıldı. Sebep: ${sebep}`);
+    await interaction.editReply(`👢 **${hedef.tag}** sunucudan atıldı. Sebep: ${sebep}`);
     await logGonder(interaction.guild, {
       baslik: 'Üye atıldı',
       renk: 0xfee75c,

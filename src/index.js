@@ -32,6 +32,9 @@ client.once(Events.ClientReady, (c) => {
   hatirlatici.hepsiniYukle(client);
 });
 
+// Dinleyici olmazsa bağlantı hatası botu çökertir
+client.on(Events.Error, (hata) => console.error('Discord bağlantı hatası:', hata));
+
 client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
   const komut = client.komutlar.get(interaction.commandName);
