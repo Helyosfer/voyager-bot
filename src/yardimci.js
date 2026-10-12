@@ -19,21 +19,17 @@ function mudahaleEngeli(interaction, uye) {
 }
 
 // Moderasyon işlemini log kanalına yazar (ayarlanmışsa).
+// hedef ve sebep isteğe bağlıdır (ör. /temizle'de ikisi de yok).
 async function logGonder(guild, { baslik, renk, hedef, yetkili, sebep, ek }) {
   const { logKanali } = ayarlariGetir(guild.id);
   if (!logKanali) return;
   const kanal = await guild.channels.fetch(logKanali).catch(() => null);
   if (!kanal?.isTextBased()) return;
 
-  const embed = new EmbedBuilder()
-    .setTitle(baslik)
-    .setColor(renk)
-    .addFields(
-      { name: 'Kullanıcı', value: `${hedef} (${hedef.id})` },
-      { name: 'Yetkili', value: `${yetkili}` },
-      { name: 'Sebep', value: sebep },
-    )
-    .setTimestamp();
+  const embed = new EmbedBuilder().setTitle(baslik).setColor(renk).setTimestamp();
+  if (hedef) embed.addFields({ name: 'Kullanıcı', value: `${hedef} (${hedef.id})` });
+  embed.addFields({ name: 'Yetkili', value: `${yetkili}` });
+  if (sebep) embed.addFields({ name: 'Sebep', value: sebep });
   if (ek) embed.addFields(ek);
 
   await kanal.send({ embeds: [embed] }).catch(() => {});

@@ -14,6 +14,9 @@ const client = new Client({
   // GuildMembers: yeni üye geldiğinde haber almak için gerekli.
   // Developer Portal > Bot > "Server Members Intent" açık olmalı.
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers],
+  // Sebep gibi kullanıcının yazdığı metinlerdeki @everyone ve rol etiketleri
+  // bildirim göndermesin; sadece kullanıcı etiketleri çalışır.
+  allowedMentions: { parse: ['users'] },
 });
 
 // commands/ klasöründeki her dosya bir komut
@@ -28,6 +31,9 @@ client.once(Events.ClientReady, (c) => {
   console.log(`Bot hazır: ${c.user.tag}`);
   hatirlatici.hepsiniYukle(client);
 });
+
+// Dinleyici olmazsa bağlantı hatası botu çökertir
+client.on(Events.Error, (hata) => console.error('Discord bağlantı hatası:', hata));
 
 client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isChatInputCommand()) return;

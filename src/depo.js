@@ -6,16 +6,33 @@ const path = require('node:path');
 const KLASOR = path.join(__dirname, '..', 'data');
 
 function oku(ad, varsayilan) {
+  const dosya = path.join(KLASOR, `${ad}.json`);
+  let icerik;
   try {
-    return JSON.parse(fs.readFileSync(path.join(KLASOR, `${ad}.json`), 'utf8'));
+    icerik = fs.readFileSync(dosya, 'utf8');
+  } catch (hata) {
+    if (hata.code === 'ENOENT') return varsayilan; // Henüz hiç kaydedilmemiş
+    throw hata;
+  }
+
+  try {
+    return JSON.parse(icerik);
   } catch {
+    // Bozuk dosyayı kenara al; yoksa bir sonraki kayıt üstüne yazıp içindekileri yok eder
+    const yedek = `${dosya}.bozuk-${Date.now()}`;
+    fs.renameSync(dosya, yedek);
+    console.error(`${ad}.json okunamadı, varsayılan değerlerle devam ediliyor. Bozuk dosya: ${yedek}`);
     return varsayilan;
   }
 }
 
 function yaz(ad, veri) {
   fs.mkdirSync(KLASOR, { recursive: true });
-  fs.writeFileSync(path.join(KLASOR, `${ad}.json`), JSON.stringify(veri, null, 2));
+  // Önce geçici dosyaya yaz, sonra yerine taşı: yazma yarıda kesilirse eski dosya sağlam kalır
+  const dosya = path.join(KLASOR, `${ad}.json`);
+  const gecici = `${dosya}.tmp`;
+  fs.writeFileSync(gecici, JSON.stringify(veri, null, 2));
+  fs.renameSync(gecici, dosya);
 }
 
 // Sunucu başına ayarlar: { [sunucuId]: { logKanali, hosgeldinKanali, otoRol } }

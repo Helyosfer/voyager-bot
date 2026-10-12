@@ -1,4 +1,5 @@
 const { SlashCommandBuilder, PermissionFlagsBits, InteractionContextType, MessageFlags } = require('discord.js');
+const { logGonder } = require('../yardimci');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -17,5 +18,14 @@ module.exports = {
     // true: Discord 14 günden eski mesajların toplu silinmesine izin vermez, onları atla
     const silinen = await interaction.channel.bulkDelete(adet, true);
     await interaction.editReply(`🧹 ${silinen.size} mesaj silindi.`);
+    await logGonder(interaction.guild, {
+      baslik: 'Mesajlar silindi',
+      renk: 0x5865f2,
+      yetkili: interaction.user,
+      ek: [
+        { name: 'Kanal', value: `${interaction.channel}` },
+        { name: 'Adet', value: `${silinen.size} mesaj` },
+      ],
+    });
   },
 };
