@@ -12,7 +12,7 @@ Moderasyon ve yardımcı araçlar içeren özel Discord botu (Node.js + discord.
 | `/sustur` | Üyeyi belirli dakika susturur (0 = kaldır) | Üyelere Zaman Aşımı Uygula |
 | `/temizle` | Kanaldaki son 1-100 mesajı siler | Mesajları Yönet |
 | `/ayarla` | Log kanalı, hoş geldin kanalı, oto rol | Sunucuyu Yönet |
-| `/hatirlat` | Belirtilen süre sonra hatırlatma yapar | Herkes |
+| `/hatirlat` | Belirtilen süre sonra hatırlatma yapar (kişi başı en fazla 5) | Herkes |
 
 Ayrıca: yeni üyeye hoş geldin mesajı ve otomatik rol.
 

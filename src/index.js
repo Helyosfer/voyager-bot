@@ -14,6 +14,9 @@ const client = new Client({
   // GuildMembers: yeni üye geldiğinde haber almak için gerekli.
   // Developer Portal > Bot > "Server Members Intent" açık olmalı.
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers],
+  // Sebep gibi kullanıcının yazdığı metinlerdeki @everyone ve rol etiketleri
+  // bildirim göndermesin; sadece kullanıcı etiketleri çalışır.
+  allowedMentions: { parse: ['users'] },
 });
 
 // commands/ klasöründeki her dosya bir komut
