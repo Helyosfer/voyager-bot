@@ -35,6 +35,8 @@ fi
 
 mkdir -p "$HEDEF"
 if [[ "$KAYNAK" != "$HEDEF" ]]; then
+  # Eski src'yi sil: yoksa kaynakta silinen komut dosyaları sunucuda kalır ve yüklenmeye devam eder
+  rm -rf "$HEDEF/src"
   cp -r "$KAYNAK/package.json" "$KAYNAK/.env.example" "$KAYNAK/src" "$HEDEF/"
 fi
 

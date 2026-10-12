@@ -31,8 +31,10 @@ module.exports = {
       return interaction.reply({ content: '❌ Bu üyeyi susturamıyorum (yönetici olabilir).', flags: MessageFlags.Ephemeral });
     }
 
+    // Discord 3 saniye içinde cevap bekler; işlem uzarsa "yanıt vermedi" demesin
+    await interaction.deferReply();
     await uye.timeout(dakika === 0 ? null : dakika * 60_000, `${interaction.user.tag}: ${sebep}`);
-    await interaction.reply(
+    await interaction.editReply(
       dakika === 0
         ? `🔊 **${hedef.tag}** artık susturulmuş değil.`
         : `🔇 **${hedef.tag}** ${dakika} dakika susturuldu. Sebep: ${sebep}`,
