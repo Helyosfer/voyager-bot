@@ -1,3 +1,5 @@
 node_modules/
 .env
 data/
+vps/.hedef
+.claude/settings.local.json
