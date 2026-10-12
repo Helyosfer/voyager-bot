@@ -13,11 +13,29 @@ Moderasyon ve yardımcı araçlar içeren özel Discord botu (Node.js + discord.
 | `/kick` | Üyeyi atar | Üyeleri At |
 | `/sustur` | Üyeyi belirli dakika susturur (0 = kaldır) | Üyelere Zaman Aşımı Uygula |
 | `/temizle` | Kanaldaki son 1-100 mesajı siler | Mesajları Yönet |
-| `/ayarla` | Log kanalı, hoş geldin kanalı, oto rol (`sifirla` ile kaldırılır) | Sunucuyu Yönet |
+| `/ayarla` | Log kanalı ve kategorileri, hoş geldin kanalı, oto rol (`sifirla` ile kaldırılır) | Sunucuyu Yönet |
 | `/hatirlat` | Belirtilen süre sonra hatırlatma yapar (kişi başı en fazla 5) | Herkes |
 | `/oyun` | Bedava oyun ve indirim bildirimlerini ayarlar (Steam, Epic, GOG) | Sunucuyu Yönet |
 
 Ayrıca: yeni üyeye hoş geldin mesajı ve otomatik rol.
+
+### Sunucu günlüğü
+
+`/ayarla log-kanali` ile seçilen kanala sunucuda olan biten yazılır. Kategoriler `/ayarla log-kategori` ile
+tek tek açılıp kapatılır; hepsi varsayılan olarak açıktır.
+
+| Kategori | Neler yazılır |
+|---|---|
+| Moderasyon | Ban, yasak kaldırma, kick, susturma, `/temizle` (bot komutuyla ya da elle yapılanlar) |
+| Üyeler | Katılma, ayrılma, takma ad ve rol değişikliği |
+| Mesajlar | Silinen ve düzenlenen mesajlar, toplu silme |
+| Ses kanalları | Girme, çıkma, kanal değiştirme |
+| Sunucu | Kanal ve rol oluşturma/silme |
+
+- Elle yapılan moderasyon ve sunucu değişikliklerinin görünmesi için bot rolünde **Denetim Kaydını Görüntüle** izni olmalı.
+- Silinen/düzenlenen mesajların **içeriği** varsayılan olarak yazılmaz. Açmak için önce Developer Portal > Bot >
+  **Message Content Intent**'i aç, sonra `.env` dosyasına `MESAJ_ICERIGI=1` yazıp botu yeniden başlat.
+  Sıra önemli: intent açılmadan `MESAJ_ICERIGI=1` yapılırsa bot bağlanamaz.
 
 ### Oyun fırsatları
 

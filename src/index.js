@@ -1,20 +1,36 @@
 require('dotenv').config();
 const fs = require('node:fs');
 const path = require('node:path');
-const { Client, Collection, Events, GatewayIntentBits, MessageFlags } = require('discord.js');
+const { Client, Collection, Events, GatewayIntentBits, MessageFlags, Partials } = require('discord.js');
 const { ayarlariGetir } = require('./depo');
 const hatirlatici = require('./hatirlatici');
 const firsatlar = require('./firsatlar');
+const gunluk = require('./gunluk');
 
 if (!process.env.DISCORD_TOKEN) {
   console.error('DISCORD_TOKEN bulunamadı. .env dosyasını oluşturup doldurdun mu?');
   process.exit(1);
 }
 
+// Silinen/düzenlenen mesajların içeriğini günlüğe yazmak için gerekli. Ayrıcalıklı bir
+// izin olduğundan Developer Portal > Bot > "Message Content Intent" açılmadan
+// etkinleştirilirse bot bağlanamaz; bu yüzden .env ile ayrıca açılır.
+const mesajIcerigi = process.env.MESAJ_ICERIGI === '1' ? [GatewayIntentBits.MessageContent] : [];
+
 const client = new Client({
   // GuildMembers: yeni üye geldiğinde haber almak için gerekli.
   // Developer Portal > Bot > "Server Members Intent" açık olmalı.
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers],
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMembers,
+    // Sunucu günlüğü için: denetim kaydı, mesaj ve ses olayları
+    GatewayIntentBits.GuildModeration,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.GuildVoiceStates,
+    ...mesajIcerigi,
+  ],
+  // Bot açılmadan önce yazılmış mesajların silinmesi de haber verilsin
+  partials: [Partials.Message],
   // Sebep gibi kullanıcının yazdığı metinlerdeki @everyone ve rol etiketleri
   // bildirim göndermesin; sadece kullanıcı etiketleri çalışır.
   allowedMentions: { parse: ['users'] },
@@ -32,6 +48,7 @@ client.once(Events.ClientReady, (c) => {
   console.log(`Bot hazır: ${c.user.tag}`);
   hatirlatici.hepsiniYukle(client);
   firsatlar.baslat(client);
+  console.log(`Mesaj içeriği günlüğü: ${mesajIcerigi.length ? 'açık' : 'kapalı'}`);
 });
 
 // Dinleyici olmazsa bağlantı hatası botu çökertir
@@ -51,6 +68,8 @@ client.on(Events.InteractionCreate, async (interaction) => {
     else await interaction.reply(cevap).catch(() => {});
   }
 });
+
+gunluk.baslat(client);
 
 // Yeni üye: hoş geldin mesajı + otomatik rol
 client.on(Events.GuildMemberAdd, async (uye) => {
