@@ -6,6 +6,7 @@ const {
   MessageFlags,
 } = require('discord.js');
 const { ayarlariGetir, ayarKaydet } = require('../depo');
+const { yazabilirMi } = require('../yardimci');
 
 // /ayarla sifirla seçenekleri: görünen ad -> depodaki anahtar
 const AYARLAR = {
@@ -13,12 +14,6 @@ const AYARLAR = {
   'hosgeldin-kanali': 'hosgeldinKanali',
   'oto-rol': 'otoRol',
 };
-
-// Bot bu kanala yazabiliyor mu? Yazamıyorsa mesajlar sessizce kaybolur, o yüzden baştan söyle.
-function yazabilirMi(interaction, kanal, ekIzinler = []) {
-  const izinler = kanal.permissionsFor(interaction.guild.members.me);
-  return izinler?.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, ...ekIzinler]) ?? false;
-}
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -73,7 +68,7 @@ module.exports = {
 
     if (alt === 'log-kanali') {
       const kanal = interaction.options.getChannel('kanal', true);
-      if (!yazabilirMi(interaction, kanal, [PermissionFlagsBits.EmbedLinks])) {
+      if (!yazabilirMi(kanal, [PermissionFlagsBits.EmbedLinks])) {
         mesaj = `❌ ${kanal} kanalına yazamıyorum. Bana orada Kanalı Görüntüle, Mesaj Gönder ve Bağlantı Yerleştir izinlerini ver.`;
       } else {
         ayarKaydet(sunucuId, 'logKanali', kanal.id);
@@ -81,7 +76,7 @@ module.exports = {
       }
     } else if (alt === 'hosgeldin-kanali') {
       const kanal = interaction.options.getChannel('kanal', true);
-      if (!yazabilirMi(interaction, kanal)) {
+      if (!yazabilirMi(kanal)) {
         mesaj = `❌ ${kanal} kanalına yazamıyorum. Bana orada Kanalı Görüntüle ve Mesaj Gönder izinlerini ver.`;
       } else {
         ayarKaydet(sunucuId, 'hosgeldinKanali', kanal.id);
