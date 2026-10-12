@@ -6,26 +6,41 @@ const path = require('node:path');
 const { REST, Routes } = require('discord.js');
 
 const { DISCORD_TOKEN, CLIENT_ID, GUILD_IDS } = process.env;
-if (!DISCORD_TOKEN || !CLIENT_ID || !GUILD_IDS) {
-  console.error('.env dosyasında DISCORD_TOKEN, CLIENT_ID ve GUILD_IDS dolu olmalı.');
+if (!DISCORD_TOKEN || !CLIENT_ID) {
+  console.error('.env dosyasında DISCORD_TOKEN ve CLIENT_ID dolu olmalı.');
   process.exit(1);
 }
 
 const komutKlasoru = path.join(__dirname, 'commands');
-const komutlar = fs
+const hepsi = fs
   .readdirSync(komutKlasoru)
   .filter((d) => d.endsWith('.js'))
-  .map((d) => require(path.join(komutKlasoru, d)).data.toJSON());
+  .map((d) => require(path.join(komutKlasoru, d)));
+// Bot sahibine özel komutlar (ör. /sunucular) yalnızca GUILD_IDS sunucularına yüklenir
+const genel = hepsi.filter((k) => !k.sahipKomutu).map((k) => k.data.toJSON());
+const sahibeOzel = hepsi.filter((k) => k.sahipKomutu).map((k) => k.data.toJSON());
 
 const rest = new REST().setToken(DISCORD_TOKEN);
 
 (async () => {
-  for (const sunucuId of GUILD_IDS.split(',').map((s) => s.trim()).filter(Boolean)) {
+  // Genel komutlar botun eklendiği her sunucuda kendiliğinden görünür
+  try {
+    await rest.put(Routes.applicationCommands(CLIENT_ID), { body: genel });
+    console.log(`${genel.length} komut yüklendi (botun bulunduğu tüm sunucular)`);
+  } catch (hata) {
+    console.error('Komutlar yüklenemedi:', hata.message);
+    process.exitCode = 1;
+    return;
+  }
+
+  // Sunucuya özel liste her seferinde baştan yazılır; eski sürümlerden kalan
+  // kopyalar da böylece silinir ve komutlar iki kez görünmez.
+  for (const sunucuId of (GUILD_IDS ?? '').split(',').map((s) => s.trim()).filter(Boolean)) {
     try {
-      await rest.put(Routes.applicationGuildCommands(CLIENT_ID, sunucuId), { body: komutlar });
-      console.log(`${komutlar.length} komut yüklendi -> sunucu ${sunucuId}`);
+      await rest.put(Routes.applicationGuildCommands(CLIENT_ID, sunucuId), { body: sahibeOzel });
+      console.log(`${sahibeOzel.length} sahip komutu yüklendi -> sunucu ${sunucuId}`);
     } catch (hata) {
-      console.error(`Sunucu ${sunucuId} için yüklenemedi:`, hata.message);
+      console.error(`Sunucu ${sunucuId} için sahip komutları yüklenemedi:`, hata.message);
       process.exitCode = 1;
     }
   }

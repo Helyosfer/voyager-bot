@@ -17,6 +17,7 @@ module.exports = {
   async execute(interaction) {
     // Liste yüklü komutlardan üretilir; yeni komut eklenince kendiliğinden güncellenir
     const komutlar = interaction.client.komutlar
+      .filter((k) => !k.sahipKomutu) // Bot sahibine özel komutlar listelenmez
       .map((k) => k.data.toJSON())
       .sort((a, b) => a.name.localeCompare(b.name, 'tr'));
     const herkes = komutlar.filter((k) => !k.default_member_permissions);

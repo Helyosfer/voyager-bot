@@ -5,6 +5,14 @@ const path = require('node:path');
 
 const KLASOR = path.join(__dirname, '..', 'data');
 
+// Kayıtları yalnızca botun kendi kullanıcısı okuyabilsin (ayarlar, imza anahtarı).
+// Klasör henüz yoksa yaz() onu doğru izinle oluşturur.
+try {
+  fs.chmodSync(KLASOR, 0o700);
+} catch {
+  // Klasör yok
+}
+
 function oku(ad, varsayilan) {
   const dosya = path.join(KLASOR, `${ad}.json`);
   let icerik;
@@ -27,11 +35,11 @@ function oku(ad, varsayilan) {
 }
 
 function yaz(ad, veri) {
-  fs.mkdirSync(KLASOR, { recursive: true });
+  fs.mkdirSync(KLASOR, { recursive: true, mode: 0o700 });
   // Önce geçici dosyaya yaz, sonra yerine taşı: yazma yarıda kesilirse eski dosya sağlam kalır
   const dosya = path.join(KLASOR, `${ad}.json`);
   const gecici = `${dosya}.tmp`;
-  fs.writeFileSync(gecici, JSON.stringify(veri, null, 2));
+  fs.writeFileSync(gecici, JSON.stringify(veri, null, 2), { mode: 0o600 });
   fs.renameSync(gecici, dosya);
 }
 

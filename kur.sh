@@ -56,7 +56,7 @@ if [[ ! -f "$HEDEF/.env" ]]; then
   exit 0
 fi
 
-if grep -Eq '^(DISCORD_TOKEN|CLIENT_ID|GUILD_IDS)=[[:space:]]*$' "$HEDEF/.env"; then
+if grep -Eq '^(DISCORD_TOKEN|CLIENT_ID)=[[:space:]]*$' "$HEDEF/.env"; then
   echo "$HEDEF/.env içinde boş değer var. Doldur: sudo nano $HEDEF/.env"
   exit 1
 fi
