@@ -8,7 +8,7 @@ const {
   escapeMarkdown,
 } = require('discord.js');
 const { ayarlariGetir, ayarKaydet } = require('../depo');
-const { yazabilirMi } = require('../yardimci');
+const { yazabilirMi, etiketEngeli } = require('../yardimci');
 const yayin = require('../yayin');
 
 const platformSecenegi = (o) =>
@@ -88,7 +88,7 @@ module.exports = {
         sonuc = await yayin.ekle(sunucuId, platform, girdi);
       } catch (hata) {
         console.error('/yayin ekle hatası:', hata.message);
-        return interaction.editReply(`❌ Eklenemedi: ${hata.message}`);
+        return interaction.editReply('❌ Eklenemedi: platforma ulaşılamadı ya da botun bu platformla bağlantısında sorun var. Biraz sonra yeniden dene; sürerse botun sahibine haber ver.');
       }
       if (sonuc.hata) return interaction.editReply(`❌ ${sonuc.hata}`);
       const kanalNotu = ayarlariGetir(sunucuId).yayinKanali ? '' : ' Bildirimlerin gelmesi için `/yayin kanal` ile bir kanal seç.';
@@ -113,6 +113,8 @@ module.exports = {
         return cevapla('✅ Yayın bildirimlerinde artık rol etiketlenmeyecek.');
       }
       if (rol.id === interaction.guild.id) return cevapla('❌ @everyone seçilemez; ayrı bir rol oluştur.');
+      const etiketlenemez = etiketEngeli(interaction, rol);
+      if (etiketlenemez) return cevapla(`❌ ${etiketlenemez}`);
       ayarKaydet(sunucuId, 'yayinRol', rol.id);
       const etiketleyebilir =
         rol.mentionable || interaction.guild.members.me.permissions.has(PermissionFlagsBits.MentionEveryone);

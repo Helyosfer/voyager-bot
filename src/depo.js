@@ -3,7 +3,8 @@
 const fs = require('node:fs');
 const path = require('node:path');
 
-const KLASOR = path.join(__dirname, '..', 'data');
+// VERI_KLASORU yalnızca testler içindir: gerçek data/ klasörüne dokunmadan geçici bir klasöre yazarlar
+const KLASOR = process.env.VERI_KLASORU || path.join(__dirname, '..', 'data');
 
 // Kayıtları yalnızca botun kendi kullanıcısı okuyabilsin (ayarlar, imza anahtarı).
 // Klasör henüz yoksa yaz() onu doğru izinle oluşturur.

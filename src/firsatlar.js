@@ -62,6 +62,19 @@ async function jsonGetir(url) {
   return yanit.json();
 }
 
+// Dış servisten gelen adres bağlantı ya da resim olarak kullanılmadan önce denetlenir: yalnızca
+// http(s). Geçersiz bir adres kartın tamamını (ve o turdaki gönderimi) düşürür. Parantezler
+// kodlanır; yoksa [ad](adres) yazımında bağlantı erken kapanır.
+function httpAdresi(adres) {
+  try {
+    const u = new URL(adres);
+    if (u.protocol !== 'https:' && u.protocol !== 'http:') return null;
+    return u.href.replace(/\(/g, '%28').replace(/\)/g, '%29');
+  } catch {
+    return null;
+  }
+}
+
 async function bedavalariGetir() {
   const veri = await jsonGetir('https://www.gamerpower.com/api/giveaways?type=game');
   if (!Array.isArray(veri)) return []; // Aktif çekiliş yokken dizi yerine durum nesnesi döner
@@ -77,10 +90,11 @@ async function bedavalariGetir() {
         deger: o.worth && o.worth !== 'N/A' ? o.worth : null,
         bitis: Number.isNaN(bitis) ? null : bitis,
         aciklama: o.description ?? '',
-        resim: o.image,
-        url: o.open_giveaway_url,
+        resim: httpAdresi(o.image),
+        url: httpAdresi(o.open_giveaway_url),
       };
-    });
+    })
+    .filter((o) => o.url);
 }
 
 const STEAM_TURLERI = { 0: 'app', 1: 'sub', 2: 'bundle' };
@@ -103,7 +117,7 @@ async function steamIndirimleri() {
       eski: fiyat(o.original_price, o.currency),
       yeni: fiyat(o.final_price, o.currency),
       bitis: o.discount_expiration ? o.discount_expiration * 1000 : null,
-      resim: o.header_image,
+      resim: httpAdresi(o.header_image),
       url: `https://store.steampowered.com/${STEAM_TURLERI[o.type] ?? 'app'}/${o.id}`,
     }));
 }
@@ -137,7 +151,7 @@ async function epicIndirimleri() {
       eski: f.fmtPrice.originalPrice,
       yeni: f.fmtPrice.discountPrice,
       bitis: Number.isNaN(bitis) ? null : bitis,
-      resim: o.keyImages?.find((r) => r.type === 'OfferImageWide')?.url ?? o.keyImages?.[0]?.url,
+      resim: httpAdresi(o.keyImages?.find((r) => r.type === 'OfferImageWide')?.url ?? o.keyImages?.[0]?.url),
       url: `https://store.epicgames.com/tr/p/${sayfa}`,
     });
   }
@@ -157,9 +171,10 @@ async function gogIndirimleri() {
       eski: o.price.base,
       yeni: o.price.final,
       bitis: null,
-      resim: o.coverHorizontal,
-      url: o.storeLink,
-    }));
+      resim: httpAdresi(o.coverHorizontal),
+      url: httpAdresi(o.storeLink),
+    }))
+    .filter((o) => o.url);
 }
 
 // Kaynaklardan biri çalışmıyorsa diğerleri yine de işlensin; çalışmayan null döner.
@@ -461,7 +476,7 @@ function baslat(client) {
     try {
       await kontrolEt(client);
     } catch (hata) {
-      console.error('Fırsat kontrolü başarısız:', hata);
+      console.error('Fırsat kontrolü başarısız:', hata?.stack ?? hata);
     } finally {
       calisiyor = false;
     }
@@ -470,4 +485,8 @@ function baslat(client) {
   setInterval(calistir, KONTROL_ARALIGI);
 }
 
-module.exports = { baslat, kontrolEt, simdiGonder, ayarCoz, MAGAZALAR, INDIRIM_SECENEKLERI };
+module.exports = {
+  baslat, kontrolEt, simdiGonder, ayarCoz, MAGAZALAR, INDIRIM_SECENEKLERI,
+  // Test için
+  httpAdresi,
+};

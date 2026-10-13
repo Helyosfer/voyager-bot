@@ -41,7 +41,12 @@ function kur(client, kayit, deneme = 1) {
       if (!kalici && deneme < EN_FAZLA_DENEME) return kur(client, kayit, deneme + 1);
       console.error(`Hatırlatma gönderilemedi (${kayit.id}):`, hata.message);
     }
-    yaz('hatirlaticilar', oku('hatirlaticilar', []).filter((h) => h.id !== kayit.id));
+    // Zamanlayıcının içinde yakalanmayan bir hata (ör. dosya yazılamazsa) botu bütün sunucularda kapatır
+    try {
+      yaz('hatirlaticilar', oku('hatirlaticilar', []).filter((h) => h.id !== kayit.id));
+    } catch (hata) {
+      console.error(`Hatırlatıcı kaydı silinemedi (${kayit.id}):`, hata.message);
+    }
   }, kalan);
 }
 

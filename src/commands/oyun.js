@@ -7,8 +7,12 @@ const {
   MessageFlags,
 } = require('discord.js');
 const { ayarlariGetir, ayarKaydet } = require('../depo');
-const { yazabilirMi } = require('../yardimci');
+const { yazabilirMi, etiketEngeli, beklemeSayaci, neZaman } = require('../yardimci');
 const firsatlar = require('../firsatlar');
+
+// /oyun simdi her çağrıda dört mağazaya ve oyun başına Steam'e istek atar, rolü de etiketler.
+// Art arda çalıştırılırsa botun adresi bu servislerde sınırlanabilir; sunucu başına bu aralıkla çalışır.
+const simdiSayaci = beklemeSayaci(5 * 60_000);
 
 const DURUMLAR = [
   { name: 'Açık', value: 'acik' },
@@ -121,6 +125,8 @@ module.exports = {
         return cevapla('✅ Fırsat bildirimlerinde artık rol etiketlenmeyecek.');
       }
       if (rol.id === interaction.guild.id) return cevapla('❌ @everyone seçilemez; ayrı bir rol oluştur.');
+      const etiketlenemez = etiketEngeli(interaction, rol);
+      if (etiketlenemez) return cevapla(`❌ ${etiketlenemez}`);
       ayarKaydet(sunucuId, 'oyunRol', rol.id);
       const etiketleyebilir =
         rol.mentionable || interaction.guild.members.me.permissions.has(PermissionFlagsBits.MentionEveryone);
@@ -140,6 +146,9 @@ module.exports = {
 
     if (alt === 'simdi') {
       if (!ayar.kanal) return cevapla('❌ Önce `/oyun kanal` ile bir kanal seç.');
+      const kalan = simdiSayaci.bekle(sunucuId);
+      if (kalan) return cevapla(`⏳ Fırsatlar az önce gönderildi. Yeniden ${neZaman(kalan)} gönderebilirsin.`);
+      simdiSayaci.isaretle(sunucuId);
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
       const sonuc = await firsatlar.simdiGonder(interaction.guild);
       return interaction.editReply(

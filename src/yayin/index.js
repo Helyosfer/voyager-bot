@@ -2,7 +2,7 @@
 // Ayarlar /yayin komutuyla yapılır. Twitch ve Kick haberi kendileri gönderir (webhook),
 // bu yüzden bot küçük bir HTTP sunucusu açar; YouTube düzenli aralıklarla kontrol edilir.
 const http = require('node:http');
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, escapeMarkdown } = require('discord.js');
 const { oku, yaz, ayarlariGetir } = require('../depo');
 const { adAyikla } = require('./ortak');
 const site = require('../site');
@@ -98,7 +98,8 @@ function bildirimMesaji(platform, bilgi, rol = null) {
 
   const dugme = new ButtonBuilder().setStyle(ButtonStyle.Link).setLabel('Yayını izle').setURL(bilgi.url);
   return {
-    content: `${rol ? `<@&${rol}> ` : ''}🔴 **${bilgi.ad}** yayında!`,
+    // Ad platformdan gelir; içindeki biçimlendirme ve bağlantı yazımı mesajda çalışmasın
+    content: `${rol ? `<@&${rol}> ` : ''}🔴 **${escapeMarkdown(String(bilgi.ad), { maskedLink: true })}** yayında!`,
     embeds: [embed],
     components: [new ActionRowBuilder().addComponents(dugme)],
     allowedMentions: rol ? { roles: [rol] } : { parse: [] },
@@ -139,8 +140,17 @@ async function bildir(platform, id, bilgi) {
 
 function webhookSunucusu() {
   const sunucu = http.createServer((istek, yanit) => {
-    const yol = new URL(istek.url, 'http://yerel').pathname.replace(/\/+$/, '');
-    const platform = WEBHOOK_YOLLARI[yol];
+    let yol;
+    try {
+      yol = new URL(istek.url, 'http://yerel').pathname.replace(/\/+$/, '');
+    } catch {
+      // "//" gibi ayrıştırılamayan adresler. Yakalanmazsa hata bütün botu kapatır;
+      // bu adrese internetteki herkes istek atabilir.
+      yanit.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' }).end('Geçersiz istek');
+      return;
+    }
+    // Bağlantısı kurulmamış platformun webhook'u işlenmez
+    const platform = Object.hasOwn(WEBHOOK_YOLLARI, yol) && WEBHOOK_YOLLARI[yol].hazir() ? WEBHOOK_YOLLARI[yol] : null;
     if (istek.method !== 'POST' || !platform) {
       site.sun(istek, yanit, yol); // Webhook dışındaki her şey: tanıtım sayfası ya da 404
       return;
