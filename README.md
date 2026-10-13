@@ -27,6 +27,7 @@ Node.js ve [discord.js](https://discord.js.org) ile yazıldı. Kodu alıp kendi 
 - [VPS'te 7/24 çalıştırma](#vpste-724-çalıştırma-ubuntu)
 - [Güvenlik](#güvenlik)
 - [Dosya yapısı](#dosya-yapısı)
+- [Lisans](#lisans)
 
 ## Neler yapar
 
@@ -409,3 +410,11 @@ test/                 Güvenlik testleri (npm test) ve Discord deneme listesi
 ```
 
 Yeni komut eklemek için `src/commands/` içine `ping.js` gibi bir dosya ekleyip `npm run komutlar` çalıştır.
+
+## Lisans
+
+Telif hakkı © 2026 Helyosfer.
+
+Voyager özgür yazılımdır; [GNU Genel Kamu Lisansı sürüm 3](LICENSE) (GPL-3.0) koşullarıyla dağıtılır. Kodu
+kullanabilir, değiştirebilir ve dağıtabilirsin; değiştirip dağıttığın sürümü de aynı lisansla, kaynak koduyla
+birlikte paylaşman gerekir. Yazılım hiçbir garanti olmadan sunulur.
