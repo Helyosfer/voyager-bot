@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Voyager — Discord botu</title>
-<meta name="description" content="Voyager: moderasyon, sunucu günlüğü, canlı yayın bildirimleri ve oyun fırsatları sunan Discord botu.">
+<meta name="description" content="Voyager; topluluk sunucusu kuran, sunucuyu koruyan, yayın, oyun fırsatı ve haber bildirimleri gönderen bir Discord botu.">
 <meta property="og:title" content="Voyager — Discord botu">
-<meta property="og:description" content="Sunucunu korur. Olan biteni kaydeder. Haber verir.">
+<meta property="og:description" content="Sunucunu kurar, korur, haberdar eder. Başka bota gerek kalmaz.">
 <meta property="og:type" content="website">
 <meta name="theme-color" content="#000000">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23000'/%3E%3Cellipse cx='32' cy='32' rx='23' ry='9' fill='none' stroke='%238e8e93' stroke-width='2' transform='rotate(-28 32 32)'/%3E%3Ccircle cx='32' cy='32' r='7' fill='%23fff'/%3E%3C/svg%3E">
@@ -151,7 +151,7 @@
   }
 
   /* Bölümler */
-  section { padding: clamp(80px, 13vw, 150px) 0; }
+  section { padding: clamp(72px, 11vw, 130px) 0; scroll-margin-top: 20px; }
   .kicker { margin: 0 0 18px; font-size: 0.9rem; color: #c7c7cc; }
   .kicker .num { margin-right: 10px; font: 0.8rem var(--mono); color: var(--accent); }
   h2 {
@@ -163,8 +163,11 @@
   }
   h2 .dim { color: #48484d; }
   .lead { max-width: 34rem; margin: 22px 0 0; font-size: 1.12rem; color: var(--muted); }
+  code { font: 0.92em var(--mono); color: var(--text); }
 
   .cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; margin-top: 56px; }
+  /* Kart sayısı tekse sonuncusu satırı tek başına doldurur */
+  .cards > .card:last-child:nth-child(odd) { grid-column: 1 / -1; }
   .card {
     padding: 34px 32px 36px;
     border: 1px solid var(--border);
@@ -176,6 +179,46 @@
   .card .tag { margin: 0 0 26px; font: 0.76rem var(--mono); color: var(--muted); }
   .card h3 { margin: 0 0 10px; font-size: 1.6rem; font-weight: 600; letter-spacing: -0.025em; line-height: 1.15; }
   .card p { margin: 0; color: var(--muted); font-size: 1rem; line-height: 1.55; }
+
+  /* /sunucukur vitrini: ne kurduğu, büyük sayılarla */
+  .vitrin { margin-top: 56px; }
+  .vitrin + .cards { margin-top: 18px; }
+  .sayilar { display: flex; flex-wrap: wrap; gap: 14px clamp(28px, 7vw, 84px); margin: 0 0 26px; padding: 0; list-style: none; }
+  .sayilar li { display: flex; flex-direction: column; font-size: 0.95rem; color: var(--muted); }
+  .sayilar b {
+    font-size: clamp(3rem, 9vw, 5.2rem);
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: -0.05em;
+    background: var(--silver);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    padding-bottom: 0.06em;
+  }
+  .vitrin p { max-width: 40rem; }
+  /* İkincil bağlantılar: tam izinlerle ekleme */
+  .yan-link, .dipnot a { color: var(--text); border-bottom: 1px solid rgba(255, 255, 255, 0.3); transition: border-color 0.2s; }
+  .yan-link:hover, .dipnot a:hover { border-color: #fff; }
+  .yan-link { display: inline-block; margin-top: 20px; font-size: 0.95rem; font-weight: 500; }
+  .dipnot { max-width: 30rem; margin: 22px auto 0; font-size: 0.9rem; line-height: 1.5; color: var(--muted); }
+  .yan-link:focus-visible, .dipnot a:focus-visible { border-radius: 4px; }
+
+  /* Komut listesi */
+  .gruplar { display: grid; grid-template-columns: repeat(2, 1fr); gap: 44px 56px; margin-top: 56px; }
+  .grup h3 { margin: 0 0 6px; font-size: 0.9rem; font-weight: 500; color: #c7c7cc; }
+  .grup ul { margin: 0; padding: 0; list-style: none; }
+  .grup li {
+    display: grid;
+    grid-template-columns: 7.6rem 1fr;
+    gap: 14px;
+    align-items: baseline;
+    padding: 12px 0;
+    border-top: 1px solid var(--border);
+    font-size: 0.95rem;
+    color: var(--muted);
+  }
+  .grup code { font-size: 0.86rem; }
 
   .son { text-align: center; }
   .son h2 { background: var(--silver); -webkit-background-clip: text; background-clip: text; color: transparent; padding-bottom: 0.1em; }
@@ -203,10 +246,12 @@
     @keyframes belir { from { opacity: 0; transform: translateY(34px); } to { opacity: 1; transform: none; } }
   }
 
-  @media (max-width: 720px) {
-    .cards { grid-template-columns: 1fr; }
+  @media (max-width: 860px) {
     .nav-right { gap: 16px; }
     .nav-right .gizle { display: none; }
+  }
+  @media (max-width: 720px) {
+    .cards, .gruplar { grid-template-columns: 1fr; }
     .card { padding: 28px 24px 30px; }
   }
   @media (prefers-reduced-motion: reduce) {
@@ -221,7 +266,10 @@
   <div class="container nav">
     <a class="logo" href="#ust">voyager</a>
     <nav class="nav-right" aria-label="Sayfa">
-      <a class="gizle" href="#ozellikler">Özellikler</a>
+      <a class="gizle" href="#kur">Kur</a>
+      <a class="gizle" href="#koru">Koru</a>
+      <a class="gizle" href="#haber">Haber al</a>
+      <a class="gizle" href="#komutlar">Komutlar</a>
       <a class="gizle" href="https://github.com/Helyosfer/voyager-bot" rel="noopener">GitHub</a>
       <a class="nav-cta" href="{{DAVET}}" rel="noopener">Sunucuna ekle</a>
     </nav>
@@ -234,56 +282,182 @@
 
     <div class="hero-content">
       <h1>Voyager</h1>
-      <p class="role">Sunucunu korur. Olan biteni kaydeder. Haber verir.</p>
+      <p class="role">Sunucunu kurar, korur, haberdar eder. Başka bota gerek kalmaz.</p>
       <div class="hero-actions">
         <a class="btn btn-primary" href="{{DAVET}}" rel="noopener">Sunucuna ekle</a>
-        <a class="btn btn-ghost" href="#ozellikler">Neler yapar</a>
+        <a class="btn btn-ghost" href="#kur">Neler yapar</a>
       </div>
     </div>
     <div class="scroll-hint" aria-hidden="true">KAYDIR</div>
   </div>
 
-  <section id="ozellikler">
+  <section id="kur">
     <div class="container">
-      <p class="kicker reveal"><span class="num">01</span>Özellikler</p>
-      <h2 class="reveal">Tek bot.<br><span class="dim">Dört iş.</span></h2>
-      <p class="lead reveal">Her özellik sunucuya göre ayrı ayarlanır ve istenmeyen kapalı kalır.</p>
+      <p class="kicker reveal"><span class="num">01</span>Kur</p>
+      <h2 class="reveal">Bir komut yaz.<br><span class="dim">Sunucun hazır.</span></h2>
+      <p class="lead reveal">Saatlerce kanal açıp izin ayarlamayı unut. Voyager neyi kuracağını gösterir, sen onaylarsın, gerisini o halleder. Var olan kanallarına ve rollerine dokunmaz.</p>
+
+      <article class="card vitrin reveal">
+        <p class="tag">/sunucukur</p>
+        <ul class="sayilar">
+          <li><b>15</b>rol</li>
+          <li><b>14</b>kategori</li>
+          <li><b>55</b>kanal</li>
+        </ul>
+        <p>Sohbetten desteğe, oyundan etkinliğe kadar her şey izinleriyle birlikte hazır gelir. Günlük, hoş geldin, yayın ve oyun fırsatı kanalları baştan bağlıdır; ayrıca ayar yapmazsın.</p>
+        <a class="yan-link" href="{{DAVET_TAM}}" rel="noopener">Kurulum izinleriyle ekle ›</a>
+      </article>
 
       <div class="cards">
         <article class="card reveal">
-          <p class="tag">/ban · /kick · /sustur · /koruma</p>
-          <h3>Moderasyon</h3>
-          <p>Yasaklama, susturma ve mesaj temizleme. Ele geçirilmiş hesapların spam'ini ve ağır küfrü kendiliğinden durdurur.</p>
+          <p class="tag">üyelik-onay</p>
+          <h3>Üyelik onayı</h3>
+          <p>Onay vermeyen içeriyi göremez. Yeni gelen yalnızca başlangıç kanallarını görür; onay düğmesine basınca sunucu açılır.</p>
         </article>
         <article class="card reveal">
-          <p class="tag">/ayarla log-kanali</p>
-          <h3>Sunucu günlüğü</h3>
-          <p>Üye giriş çıkışları, silinen mesajlar, ses kanalları ve yönetim işlemleri tek bir kanalda.</p>
+          <p class="tag">rol-seçimi</p>
+          <h3>İlgi rolleri</h3>
+          <p>Üyeler rollerini menüden kendileri seçer. Sen tek tek rol dağıtmakla uğraşmazsın.</p>
         </article>
+        <article class="card reveal">
+          <p class="tag">destek-merkezi</p>
+          <h3>Destek talepleri</h3>
+          <p>Her talebe özel oda. Odayı yalnızca talep sahibi ve destek ekibi görür; kapanan talep 30 gün daha kayıt olarak durur.</p>
+        </article>
+        <article class="card reveal">
+          <p class="tag">/ayarla hosgeldin-kanali · oto-rol</p>
+          <h3>Karşılama</h3>
+          <p>Sunucun zaten kuruluysa sorun değil. Hoş geldin mesajını ve otomatik rolü iki komutla açarsın.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section id="koru">
+    <div class="container">
+      <p class="kicker reveal"><span class="num">02</span>Koru</p>
+      <h2 class="reveal">Sen uyurken de<br><span class="dim">sunucun güvende.</span></h2>
+      <p class="lead reveal">Gece üçte başlayan spam dalgasını, sen uyanmadan çoktan durdurmuş olur. Hangi korumanın açık olacağına sen karar verirsin.</p>
+
+      <div class="cards">
+        <article class="card reveal">
+          <p class="tag">/ban · /kick · /sustur · /temizle</p>
+          <h3>Moderasyon</h3>
+          <p>Ban, kick, susturma, toplu mesaj silme. Hepsi tek komut, hepsi saniyeler içinde.</p>
+        </article>
+        <article class="card reveal">
+          <p class="tag">/koruma spam · kufur</p>
+          <h3>Otomatik koruma</h3>
+          <p>Çalınmış bir hesap bütün kanallara spam atmaya başladığında mesajları siler, hesabı susturur. Sen daha bildirimi görmeden.</p>
+        </article>
+        <article class="card reveal">
+          <p class="tag">/kitle · /kilidiac</p>
+          <h3>Acil durum kilidi</h3>
+          <p>Saldırı mı var? Tek komutla bütün sunucu kilitlenir. Ortalık durulunca yine tek komutla her kanal eski izinlerine döner.</p>
+        </article>
+        <article class="card reveal">
+          <p class="tag">/ayarla log-kanali · log-kategori</p>
+          <h3>Sunucu günlüğü</h3>
+          <p>Sunucunda olan hiçbir şey gözünden kaçmaz. Kim girdi, kim çıktı, hangi mesaj silindi, kim neyi değiştirdi; hepsi kayıtta.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section id="haber">
+    <div class="container">
+      <p class="kicker reveal"><span class="num">03</span>Haber al</p>
+      <h2 class="reveal">Hiçbir şeyi<br><span class="dim">kaçırma.</span></h2>
+      <p class="lead reveal">Yayınlar, indirimler, haberler ayağına gelsin. Her biri için ayrı kanal seçersin; istersen bir rolü de etiketler.</p>
+
+      <div class="cards">
         <article class="card reveal">
           <p class="tag">/yayin · Twitch · Kick · YouTube</p>
           <h3>Yayın bildirimleri</h3>
-          <p>Seçtiğin yayıncılar yayına geçtiği anda kanalına haber verir.</p>
+          <p>Takip ettiğin yayıncı yayın açtığı anda sunucun haberdar olur. Twitch ve Kick'te anında, YouTube'da birkaç dakika içinde.</p>
         </article>
         <article class="card reveal">
           <p class="tag">/oyun · Steam · Epic · GOG</p>
           <h3>Oyun fırsatları</h3>
-          <p>İndirimleri ve bedava oyunları Türkiye fiyatlarıyla duyurur. Popüler oyunlar öne çıkar.</p>
+          <p>Bedava oyunu da büyük indirimi de kaçırmazsın. Steam, Epic ve GOG'u senin yerine takip eder, fiyatları Türkiye fiyatıyla gösterir.</p>
         </article>
+        <article class="card reveal">
+          <p class="tag">/haber · RSS</p>
+          <h3>Haberler</h3>
+          <p>İstediğin haber sitesini ekle, yeni haber çıktıkça kanalına düşsün. Sitenin adresini yazman yeterli.</p>
+        </article>
+        <!--instagram-->
+        <article class="card reveal">
+          <p class="tag">/instagram</p>
+          <h3>Instagram</h3>
+          <p>Takip ettiğin hesaplar yeni gönderi paylaştığında sunucun bilir. Herkese açık profesyonel hesaplarda çalışır.</p>
+        </article>
+        <!--/instagram-->
+      </div>
+    </div>
+  </section>
+
+  <section id="komutlar">
+    <div class="container">
+      <p class="kicker reveal"><span class="num">04</span>Komutlar</p>
+      <h2 class="reveal">Öğrenmesi<br><span class="dim">beş dakika.</span></h2>
+      <p class="lead reveal">Discord'da <code>/</code> yazınca hepsi karşına çıkar. Yetki isteyen komutları yalnızca o yetkiye sahip olanlar görür; tam liste için <code>/yardim</code> yaz.</p>
+
+      <div class="gruplar">
+        <div class="grup reveal">
+          <h3>Herkes</h3>
+          <ul>
+            <li><code>/yardim</code><span>Komutları ve ne işe yaradıklarını listeler</span></li>
+            <li><code>/hatirlat</code><span>Verdiğin süre dolunca seni etiketler</span></li>
+            <li><code>/ping</code><span>Botun çalışıp çalışmadığını gösterir</span></li>
+          </ul>
+        </div>
+        <div class="grup reveal">
+          <h3>Moderasyon</h3>
+          <ul>
+            <li><code>/ban</code><span>Kullanıcıyı sunucudan yasaklar</span></li>
+            <li><code>/unban</code><span>Yasağı kaldırır</span></li>
+            <li><code>/kick</code><span>Üyeyi atar (tekrar katılabilir)</span></li>
+            <li><code>/sustur</code><span>Üyeyi belirlediğin süre boyunca susturur</span></li>
+            <li><code>/temizle</code><span>Kanaldaki son mesajları toplu siler</span></li>
+          </ul>
+        </div>
+        <div class="grup reveal">
+          <h3>Kurulum ve koruma</h3>
+          <ul>
+            <li><code>/sunucukur</code><span>Topluluk sunucusunu kurar</span></li>
+            <li><code>/ayarla</code><span>Günlük kanalı, hoş geldin kanalı, otomatik rol</span></li>
+            <li><code>/koruma</code><span>Spam koruması ve küfür filtresi</span></li>
+            <li><code>/kitle</code><span>Bütün kanalları kilitler</span></li>
+            <li><code>/kilidiac</code><span>Kilidi açar, eski izinleri geri getirir</span></li>
+          </ul>
+        </div>
+        <div class="grup reveal">
+          <h3>Bildirimler</h3>
+          <ul>
+            <li><code>/yayin</code><span>Yayın bildirimleri (Twitch, Kick, YouTube)</span></li>
+            <li><code>/oyun</code><span>Bedava oyun ve indirim bildirimleri</span></li>
+            <li><code>/haber</code><span>Haber sitelerinden bildirimler</span></li>
+            <!--instagram-->
+            <li><code>/instagram</code><span>Instagram gönderi bildirimleri</span></li>
+            <!--/instagram-->
+          </ul>
+        </div>
       </div>
     </div>
   </section>
 
   <section class="son">
     <div class="container">
-      <p class="kicker reveal"><span class="num">02</span>Başla</p>
+      <p class="kicker reveal"><span class="num">05</span>Başla</p>
       <h2 class="reveal">Bir dakikada hazır.</h2>
       <ol class="adimlar reveal">
         <li><b>1</b><span>Sunucuna ekle</span></li>
-        <li><b>2</b><span>/yardim</span> yaz</li>
-        <li><b>3</b><span>/ayarla</span> ile kur</li>
+        <li><b>2</b><span>/sunucukur</span> ya da <span>/ayarla</span> ile kur</li>
+        <li><b>3</b><span>/yardim</span> ile gerisine bak</li>
       </ol>
       <a class="btn btn-primary btn-large reveal" href="{{DAVET}}" rel="noopener">Sunucuna ekle</a>
+      <p class="dipnot reveal">Bu düğme botu yalnızca temel izinlerle ekler. Sunucu kurulumunu ve acil durum kilidini de kullanacaksan <a href="{{DAVET_TAM}}" rel="noopener">tam izinlerle ekle</a>.</p>
     </div>
   </section>
 </main>
