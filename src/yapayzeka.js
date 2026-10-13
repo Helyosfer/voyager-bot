@@ -18,6 +18,9 @@ const ZAMAN_ASIMI = 20_000;
 // Düşünen modellerde düşünme de bu sınırdan yer: dar tutulursa cevaba yer kalmaz ve cevap boş döner.
 // Cevabın uzunluğunu talimat ve CEVAP_SINIRI belirler.
 const CIKTI_SINIRI = 4096; // token
+// Google model yoğunken 503 (ya da 500) döner; çoğu zaman birkaç saniye sonra geçer
+const ayar = { yenidenDeneme: [1500, 4000] }; // ms; denemeler arasındaki beklemeler (testler kısaltır)
+const bekle = (ms) => new Promise((coz) => setTimeout(coz, ms));
 const KISI_ARALIGI = 60_000; // Bir kişi bu aralıktan sık soramaz
 const KISI_GUNLUK = 20;
 const SUNUCU_GUNLUK = 150;
@@ -92,27 +95,32 @@ async function sor(sunucuId, kisiId, soru) {
   say(sunucuId, kisiId);
 
   let yanit;
-  try {
-    // Anahtar adres satırında değil başlıkta gider: adresler kayıtlara ve hata mesajlarına düşebilir
-    yanit = await fetch(`${API}/${encodeURIComponent(MODEL)}:generateContent`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': ANAHTAR },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: TALIMAT }] },
-        contents: [{ role: 'user', parts: [{ text: metin }] }],
-        generationConfig: { maxOutputTokens: CIKTI_SINIRI, temperature: 0.7 },
-      }),
-      signal: AbortSignal.timeout(ZAMAN_ASIMI),
-    });
-  } catch (hata) {
-    console.error('/sor isteği gönderilemedi:', hata.message);
-    return { hata: 'Cevap alınamadı; biraz sonra yeniden dene.' };
+  let govde;
+  for (let deneme = 0; ; deneme++) {
+    try {
+      // Anahtar adres satırında değil başlıkta gider: adresler kayıtlara ve hata mesajlarına düşebilir
+      yanit = await fetch(`${API}/${encodeURIComponent(MODEL)}:generateContent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': ANAHTAR },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: TALIMAT }] },
+          contents: [{ role: 'user', parts: [{ text: metin }] }],
+          generationConfig: { maxOutputTokens: CIKTI_SINIRI, temperature: 0.7 },
+        }),
+        signal: AbortSignal.timeout(ZAMAN_ASIMI),
+      });
+    } catch (hata) {
+      console.error('/sor isteği gönderilemedi:', hata.message);
+      return { hata: 'Cevap alınamadı; biraz sonra yeniden dene.' };
+    }
+    govde = await yanit.json().catch(() => null);
+    if (yanit.status < 500 || deneme >= ayar.yenidenDeneme.length) break;
+    await bekle(ayar.yenidenDeneme[deneme]);
   }
-
-  const govde = await yanit.json().catch(() => null);
   if (!yanit.ok) {
     // Soru metni kayda yazılmaz; yalnızca Google'ın hata durumu
     console.error(`/sor başarısız: HTTP ${yanit.status} ${govde?.error?.status ?? ''}`);
+    if (yanit.status >= 500) return { hata: 'Google tarafında model şu an yoğun; cevap alınamadı. Birkaç dakika sonra yeniden dene.' };
     if (yanit.status === 429) return { hata: '⏳ Şu an çok fazla soru soruluyor ya da günlük kota doldu. Biraz sonra yeniden dene.' };
     return { hata: 'Cevap alınamadı; biraz sonra yeniden dene.' };
   }
@@ -128,4 +136,4 @@ async function sor(sunucuId, kisiId, soru) {
   return { cevap: temizle(cevap) };
 }
 
-module.exports = { hazir, izinli, izinListesi, sor, sinirMesaji, temizle, SORU_SINIRI, KISI_GUNLUK, SUNUCU_GUNLUK, TOPLAM_GUNLUK };
+module.exports = { ayar, hazir, izinli, izinListesi, sor, sinirMesaji, temizle, SORU_SINIRI, KISI_GUNLUK, SUNUCU_GUNLUK, TOPLAM_GUNLUK };

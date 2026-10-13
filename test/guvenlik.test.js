@@ -462,6 +462,18 @@ test('/sor: anahtar başlıkta gider, cevap etiket ve gizli bağlantı içeremez
     const sessiz = console.error;
     console.error = () => {};
     assert.match((await yz.sor('s2', 'k2', 'soru')).hata, /kota/);
+
+    // Google yoğunken (503) istek yeniden denenir; düzelirse cevap gelir, düzelmezse açık bir mesaj
+    yz.ayar.yenidenDeneme = [1, 1];
+    let deneme = 0;
+    const yogun = { ok: false, status: 503, json: async () => ({ error: { status: 'UNAVAILABLE' } }) };
+    global.fetch = async () => (++deneme < 3 ? yogun : { ok: true, status: 200, json: async () => ({ candidates: [{ content: { parts: [{ text: 'geldi' }] } }] }) });
+    assert.equal((await yz.sor('s2', 'k4', 'soru')).cevap, 'geldi');
+    assert.equal(deneme, 3);
+    deneme = 0;
+    global.fetch = async () => (++deneme, yogun);
+    assert.match((await yz.sor('s2', 'k5', 'soru')).hata, /yoğun/);
+    assert.equal(deneme, 3, 'en fazla üç deneme');
     // Düşünme notu cevap sayılmaz; yalnızca düşünme dönerse cevap boş kabul edilir
     global.fetch = async () => ({ ok: true, status: 200, json: async () => ({ candidates: [{ finishReason: 'MAX_TOKENS', content: { parts: [{ text: 'gizli not', thought: true }] } }] }) });
     assert.match((await yz.sor('s2', 'k3', 'soru')).hata, /cevap üretilemedi/);
