@@ -429,6 +429,8 @@ test('Instagram yalnızca izin verilen sunucularda açık', () => {
 test('/sor: anahtar başlıkta gider, cevap etiket ve gizli bağlantı içeremez, sınırlar uygulanır', async () => {
   const yz = src('yapayzeka');
   const asilFetch = global.fetch;
+  const asilLog = console.log;
+  console.log = () => {};
   const istekler = [];
   let cevapMetni = '@everyone [bedava nitro](https://ornek.com) ' + 'a'.repeat(3000);
   global.fetch = async (adres, secenek) => {
@@ -474,12 +476,26 @@ test('/sor: anahtar başlıkta gider, cevap etiket ve gizli bağlantı içeremez
     global.fetch = async () => (++deneme, yogun);
     assert.match((await yz.sor('s2', 'k5', 'soru')).hata, /yoğun/);
     assert.equal(deneme, 3, 'en fazla üç deneme');
+
+    // Model düşünme ayarını tanımazsa (400) istek ayarsız yinelenir ve ayar bir daha gönderilmez
+    const govdeler = [];
+    global.fetch = async (adres, secenek) => {
+      const govde = JSON.parse(secenek.body);
+      govdeler.push(govde);
+      if (govde.generationConfig.thinkingConfig) return { ok: false, status: 400, json: async () => ({ error: { status: 'INVALID_ARGUMENT' } }) };
+      return { ok: true, status: 200, json: async () => ({ candidates: [{ content: { parts: [{ text: 'tamam' }] } }] }) };
+    };
+    assert.equal((await yz.sor('s2', 'k6', 'soru')).cevap, 'tamam');
+    assert.equal((await yz.sor('s2', 'k7', 'soru')).cevap, 'tamam');
+    assert.equal(govdeler.length, 3);
+    assert.equal(govdeler[0].generationConfig.thinkingConfig.thinkingLevel, 'minimal');
     // Düşünme notu cevap sayılmaz; yalnızca düşünme dönerse cevap boş kabul edilir
     global.fetch = async () => ({ ok: true, status: 200, json: async () => ({ candidates: [{ finishReason: 'MAX_TOKENS', content: { parts: [{ text: 'gizli not', thought: true }] } }] }) });
     assert.match((await yz.sor('s2', 'k3', 'soru')).hata, /cevap üretilemedi/);
     console.error = sessiz;
   } finally {
     global.fetch = asilFetch;
+    console.log = asilLog;
   }
 });
 
@@ -491,6 +507,8 @@ test('/sor yalnızca izin verilen sunucularda açık; cevap mesajı kimseyi etik
   assert.equal(yz.izinli('999', yz.izinListesi({})), true);
 
   const asilFetch = global.fetch;
+  const asilLog = console.log;
+  console.log = () => {};
   global.fetch = async () => ({ ok: true, status: 200, json: async () => ({ candidates: [{ content: { parts: [{ text: '@everyone merhaba' }] } }] }) });
   const gonderilen = [];
   try {
@@ -503,6 +521,7 @@ test('/sor yalnızca izin verilen sunucularda açık; cevap mesajı kimseyi etik
     });
   } finally {
     global.fetch = asilFetch;
+    console.log = asilLog;
   }
   assert.deepEqual(gonderilen[0].allowedMentions, { parse: [] });
   assert.ok(gonderilen[0].content.length <= 2000);

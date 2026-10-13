@@ -20,6 +20,9 @@ const ZAMAN_ASIMI = 20_000;
 const CIKTI_SINIRI = 4096; // token
 // Google model yoğunken 503 (ya da 500) döner; çoğu zaman birkaç saniye sonra geçer
 const ayar = { yenidenDeneme: [1500, 4000] }; // ms; denemeler arasındaki beklemeler (testler kısaltır)
+// Kısa sorular için modelin uzun uzun düşünmesi gerekmez; düşünme cevabı belirgin biçimde yavaşlatır.
+// Model bu ayarı tanımazsa (HTTP 400) ayar bırakılır ve istek ayarsız yinelenir.
+let dusunme = (process.env.GEMINI_DUSUNME ?? 'minimal').trim();
 const bekle = (ms) => new Promise((coz) => setTimeout(coz, ms));
 const KISI_ARALIGI = 60_000; // Bir kişi bu aralıktan sık soramaz
 const KISI_GUNLUK = 20;
@@ -96,7 +99,10 @@ async function sor(sunucuId, kisiId, soru) {
 
   let yanit;
   let govde;
-  for (let deneme = 0; ; deneme++) {
+  const baslangic = Date.now();
+  let deneme = 0;
+  for (; ; deneme++) {
+    const dusunmeGonderildi = Boolean(dusunme);
     try {
       // Anahtar adres satırında değil başlıkta gider: adresler kayıtlara ve hata mesajlarına düşebilir
       yanit = await fetch(`${API}/${encodeURIComponent(MODEL)}:generateContent`, {
@@ -105,7 +111,7 @@ async function sor(sunucuId, kisiId, soru) {
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: TALIMAT }] },
           contents: [{ role: 'user', parts: [{ text: metin }] }],
-          generationConfig: { maxOutputTokens: CIKTI_SINIRI, temperature: 0.7 },
+          generationConfig: { maxOutputTokens: CIKTI_SINIRI, temperature: 0.7, ...(dusunme && { thinkingConfig: { thinkingLevel: dusunme } }) },
         }),
         signal: AbortSignal.timeout(ZAMAN_ASIMI),
       });
@@ -114,6 +120,12 @@ async function sor(sunucuId, kisiId, soru) {
       return { hata: 'Cevap alınamadı; biraz sonra yeniden dene.' };
     }
     govde = await yanit.json().catch(() => null);
+    if (yanit.status === 400 && dusunmeGonderildi) {
+      console.error(`/sor: model düşünme ayarını (${dusunme}) kabul etmedi; ayarsız devam ediliyor`);
+      dusunme = '';
+      deneme--;
+      continue;
+    }
     if (yanit.status < 500 || deneme >= ayar.yenidenDeneme.length) break;
     await bekle(ayar.yenidenDeneme[deneme]);
   }
@@ -124,6 +136,8 @@ async function sor(sunucuId, kisiId, soru) {
     if (yanit.status === 429) return { hata: '⏳ Şu an çok fazla soru soruluyor ya da günlük kota doldu. Biraz sonra yeniden dene.' };
     return { hata: 'Cevap alınamadı; biraz sonra yeniden dene.' };
   }
+  // Yavaşlığın kaynağını görmek için: süre, deneme sayısı ve düşünme miktarı (soru ve cevap yazılmaz)
+  console.log(`/sor: ${((Date.now() - baslangic) / 1000).toFixed(1)} sn, ${deneme + 1} deneme, düşünme ${govde?.usageMetadata?.thoughtsTokenCount ?? 0} token`);
   const aday = govde?.candidates?.[0];
   // Modelin düşünme notları (thought) cevaba katılmaz
   const cevap = (aday?.content?.parts ?? []).filter((p) => !p.thought).map((p) => p.text ?? '').join('');
