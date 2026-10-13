@@ -462,9 +462,10 @@ test('/sor: anahtar başlıkta gider, cevap etiket ve gizli bağlantı içeremez
     const sessiz = console.error;
     console.error = () => {};
     assert.match((await yz.sor('s2', 'k2', 'soru')).hata, /kota/);
-    console.error = sessiz;
-    global.fetch = async () => ({ ok: true, status: 200, json: async () => ({ candidates: [] }) });
+    // Düşünme notu cevap sayılmaz; yalnızca düşünme dönerse cevap boş kabul edilir
+    global.fetch = async () => ({ ok: true, status: 200, json: async () => ({ candidates: [{ finishReason: 'MAX_TOKENS', content: { parts: [{ text: 'gizli not', thought: true }] } }] }) });
     assert.match((await yz.sor('s2', 'k3', 'soru')).hata, /cevap üretilemedi/);
+    console.error = sessiz;
   } finally {
     global.fetch = asilFetch;
   }

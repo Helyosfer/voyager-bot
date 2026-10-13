@@ -15,6 +15,9 @@ const API = 'https://generativelanguage.googleapis.com/v1beta/models';
 const SORU_SINIRI = 500; // karakter
 const CEVAP_SINIRI = 1600; // karakter; Discord mesaj sınırı 2000 (sorunun alıntısı ve dipnot da sığmalı)
 const ZAMAN_ASIMI = 20_000;
+// Düşünen modellerde düşünme de bu sınırdan yer: dar tutulursa cevaba yer kalmaz ve cevap boş döner.
+// Cevabın uzunluğunu talimat ve CEVAP_SINIRI belirler.
+const CIKTI_SINIRI = 4096; // token
 const KISI_ARALIGI = 60_000; // Bir kişi bu aralıktan sık soramaz
 const KISI_GUNLUK = 20;
 const SUNUCU_GUNLUK = 150;
@@ -97,7 +100,7 @@ async function sor(sunucuId, kisiId, soru) {
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: TALIMAT }] },
         contents: [{ role: 'user', parts: [{ text: metin }] }],
-        generationConfig: { maxOutputTokens: 700, temperature: 0.7 },
+        generationConfig: { maxOutputTokens: CIKTI_SINIRI, temperature: 0.7 },
       }),
       signal: AbortSignal.timeout(ZAMAN_ASIMI),
     });
@@ -113,8 +116,15 @@ async function sor(sunucuId, kisiId, soru) {
     if (yanit.status === 429) return { hata: '⏳ Şu an çok fazla soru soruluyor ya da günlük kota doldu. Biraz sonra yeniden dene.' };
     return { hata: 'Cevap alınamadı; biraz sonra yeniden dene.' };
   }
-  const cevap = (govde?.candidates?.[0]?.content?.parts ?? []).map((p) => p.text ?? '').join('');
-  if (!cevap.trim()) return { hata: 'Bu soruya cevap üretilemedi (model cevap vermedi ya da içerik filtresine takıldı).' };
+  const aday = govde?.candidates?.[0];
+  // Modelin düşünme notları (thought) cevaba katılmaz
+  const cevap = (aday?.content?.parts ?? []).filter((p) => !p.thought).map((p) => p.text ?? '').join('');
+  if (!cevap.trim()) {
+    // Sebebi görmek için yalnızca Google'ın durum alanları yazılır; soru ve cevap metni yazılmaz
+    const neden = [aday?.finishReason, govde?.promptFeedback?.blockReason].filter(Boolean).join(' ') || 'bilinmiyor';
+    console.error(`/sor boş cevap: ${neden} (düşünme: ${govde?.usageMetadata?.thoughtsTokenCount ?? 0} token)`);
+    return { hata: 'Bu soruya cevap üretilemedi (model cevap vermedi ya da içerik filtresine takıldı).' };
+  }
   return { cevap: temizle(cevap) };
 }
 
