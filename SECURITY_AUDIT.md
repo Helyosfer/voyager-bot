@@ -438,7 +438,8 @@ Bunlar yetki politikasını, ürün davranışını ya da dağıtımı değişti
   değiştiremez.
 - **Doğrulama:** WSL üzerindeki Ubuntu 26.04'te (systemd açık) denendi, 13 Ekim 2026. Bot bütün kısıtlamalarla açıldı, Discord'a bağlandı, tanıtım sayfasını
   sundu ve `/hatirlat` ile `/ayarla log-kanali` komutlarında veri yazdı; kayıtlarda `EROFS`, `EACCES` ya da `EPERM` yok.
-  Canlı sunucu (VPS) farklı bir Ubuntu sürümü ve çekirdek kullanıyor olabilir; orada ilk çalıştırmada kayıtlara bakılmalı.
+  Aynı gün canlı sunucuda (VPS) `kur.sh` çalıştırıldı: kısıtlamalar uygulandı (`ProtectSystem=strict`,
+  `ReadWritePaths=/opt/voyager/data`, `ProtectHome=yes`), bot açıldı ve site cevap veriyor.
 - **İşletim etkisi:** Değişiklik ancak `kur.sh` sunucuda yeniden çalıştırılınca yürürlüğe
   girer. Bot başlamazsa betik bunu söyler ve kısıtlamaların nasıl kaldırılacağını yazar. Node ev klasörünün altında
   kuruluysa (ör. nvm) `ProtectHome` kendiliğinden atlanır.
