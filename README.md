@@ -1,6 +1,40 @@
 # Voyager
 
-Moderasyon ve yardımcı araçlar içeren özel Discord botu (Node.js + discord.js).
+Sunucunu koruyan, olan biteni kaydeden ve haber veren bir Discord botu. Moderasyon, otomatik koruma, sunucu
+günlüğü, canlı yayın bildirimleri ve oyun fırsatları tek botta.
+
+**Site:** [voyager.helyosfer.me](https://voyager.helyosfer.me) · botu sunucuna eklemek için sitedeki **Sunucuna ekle**
+düğmesini kullan.
+
+Node.js ve [discord.js](https://discord.js.org) ile yazıldı. Kodu alıp kendi botunu da çalıştırabilirsin; adımlar
+[Kendi botunu çalıştırmak](#kendi-botunu-çalıştırmak) bölümünde.
+
+## İçindekiler
+
+- [Neler yapar](#neler-yapar)
+- [Komutlar](#komutlar)
+- [Özellikler](#özellikler)
+  - [Otomatik koruma](#otomatik-koruma)
+  - [Sunucu günlüğü](#sunucu-günlüğü)
+  - [Canlı yayın bildirimleri](#canlı-yayın-bildirimleri)
+  - [Oyun fırsatları](#oyun-fırsatları)
+- [Sunucuna ekledikten sonra](#sunucuna-ekledikten-sonra)
+- [Kendi botunu çalıştırmak](#kendi-botunu-çalıştırmak)
+- [VPS'te 7/24 çalıştırma](#vpste-724-çalıştırma-ubuntu)
+- [Güvenlik](#güvenlik)
+- [Dosya yapısı](#dosya-yapısı)
+
+## Neler yapar
+
+- **Moderasyon:** yasaklama, atma, süreli susturma, toplu mesaj silme.
+- **Otomatik koruma:** ele geçirilmiş hesapların spam'ini durdurur, ağır küfürleri siler.
+- **Sunucu günlüğü:** üye giriş çıkışları, silinen ve düzenlenen mesajlar, ses kanalları ve yönetim işlemleri tek kanalda.
+- **Canlı yayın bildirimleri:** Twitch, Kick ve YouTube'da takip ettiğin yayıncılar yayına geçince haber verir.
+- **Oyun fırsatları:** Steam, Epic ve GOG'daki bedava oyunları ve indirimleri Türkiye fiyatlarıyla duyurur.
+- **Karşılama:** yeni üyeye hoş geldin mesajı ve otomatik rol.
+- **Hatırlatıcı:** belirttiğin süre sonra seni etiketler.
+
+Her sunucunun ayarları ayrıdır ve bir özellik açılmadıkça kapalı kalır.
 
 ## Komutlar
 
@@ -8,18 +42,21 @@ Moderasyon ve yardımcı araçlar içeren özel Discord botu (Node.js + discord.
 |---|---|---|
 | `/yardim` | Tüm komutları ve ne işe yaradıklarını listeler | Herkes |
 | `/ping` | Bot çalışıyor mu kontrol eder | Herkes |
+| `/hatirlat` | Belirtilen süre sonra hatırlatma yapar (kişi başı en fazla 5) | Herkes |
 | `/ban` | Kullanıcıyı yasaklar | Üyeleri Yasakla |
 | `/unban` | Kullanıcının yasağını kaldırır | Üyeleri Yasakla |
 | `/kick` | Üyeyi atar | Üyeleri At |
 | `/sustur` | Üyeyi belirli dakika susturur (0 = kaldır) | Üyelere Zaman Aşımı Uygula |
 | `/temizle` | Kanaldaki son 1-100 mesajı siler | Mesajları Yönet |
 | `/ayarla` | Log kanalı ve kategorileri, hoş geldin kanalı, oto rol (`sifirla` ile kaldırılır) | Sunucuyu Yönet |
-| `/hatirlat` | Belirtilen süre sonra hatırlatma yapar (kişi başı en fazla 5) | Herkes |
 | `/koruma` | Otomatik spam koruması ve ağır küfür filtresi | Sunucuyu Yönet |
 | `/yayin` | Canlı yayın bildirimlerini ayarlar (Twitch, Kick, YouTube) | Sunucuyu Yönet |
 | `/oyun` | Bedava oyun ve indirim bildirimlerini ayarlar (Steam, Epic, GOG) | Sunucuyu Yönet |
 
-Ayrıca: yeni üyeye hoş geldin mesajı ve otomatik rol.
+Yetki gerektiren komutlar yalnızca o yetkisi olanlara görünür. `/ban`, `/kick` ve `/sustur` ayrıca rol sırasına
+bakar: kendinle aynı ya da daha yüksek roldeki bir üyeye işlem yapamazsın.
+
+## Özellikler
 
 ### Otomatik koruma
 
@@ -74,33 +111,7 @@ Seçilen yayıncılar yayına geçince bot seçilen kanala haber verir. Yalnızc
 | Kick | Anında (Kick haber verir) | Kick geliştirici uygulaması + botun dışarıdan ulaşılan adresi |
 | YouTube | 1-3 dakika (dakikada bir kontrol) | YouTube Data API anahtarı |
 
-Anahtarlar `.env` dosyasına yazılır (`.env.example` içinde açıklamalı). Bir platformun anahtarı yoksa yalnızca
-o platform kapalı kalır.
-
-Twitch ve Kick için bot `127.0.0.1:8788` üzerinde küçük bir HTTP sunucusu açar; bunu web sunucunla dışarı
-açman gerekir. Caddy örneği:
-
-```
-voyager.ornek.com {
-	reverse_proxy 127.0.0.1:8788
-}
-```
-
-`.env` içinde `YAYIN_ADRESI=https://voyager.ornek.com` olur; Kick uygulamasının webhook adresi
-`https://voyager.ornek.com/kick` olarak girilir. Gelen her istek imzasıyla doğrulanır.
-
-### Tanıtım sayfası
-
-Bot, yayın webhook'ları için açtığı HTTP sunucusunun ana adresinde tek sayfalık bir tanıtım sitesi de verir
-(`src/site/`): başlık, özellikler ve "Sunucuna ekle" düğmesi. Düğmenin linki `bot` kapsamını ve gereken izinleri
-açıkça taşır, Developer Portal'daki varsayılan kurulum ayarlarına bağlı değildir. Arka planda NASA'nın
-[helyosfer animasyonu](https://svs.gsfc.nasa.gov/20363) oynar (kaynak: NASA's Goddard Space Flight Center
-Conceptual Image Lab); dosya NASA'nın sunucusundan yüklenir.
-
-### Bot sahibi komutları
-
-`/sunucular liste` ve `/sunucular ayril` yalnızca `.env` içindeki `GUILD_IDS` sunucularına yüklenir ve yalnızca
-uygulamanın sahibi kullanabilir: botun bulunduğu sunucuları gösterir, istenen sunucudan çıkarır.
+Bir sunucu en fazla 50 yayıncı takip edebilir. Etiketlenecek rolü, ancak o rolü kendisi de etiketleyebilen biri seçebilir.
 
 ### Oyun fırsatları
 
@@ -119,7 +130,7 @@ Bot 30 dakikada bir bedava oyunları ve mağaza indirimlerini kontrol eder, yeni
 | `/oyun bedava` | Bedava oyunları açar/kapatır; mağaza seçer (varsayılan: Steam, Epic ve GOG) |
 | `/oyun indirim` | İndirimleri açar/kapatır; mağaza (varsayılan: Steam, Epic ve GOG) ve en az indirim oranını (varsayılan: %50) belirler |
 | `/oyun rol` | Fırsat geldiğinde etiketlenecek rol |
-| `/oyun simdi` | Şu an yayında olan fırsatları hemen gönderir |
+| `/oyun simdi` | Şu an yayında olan fırsatları hemen gönderir (sunucu başına 5 dakikada bir) |
 | `/oyun goster` | Ayarları gösterir |
 | `/oyun kapat` | Bildirimleri kapatır |
 
@@ -129,11 +140,25 @@ Popüler oyunlar (Steam'de en az 20.000 incelemesi olanlar) resimli büyük bir 
 listede gösterilir. Aynı oyun birden fazla mağazada indirimdeyse tek kayıtta birleştirilir. Eşik
 `src/firsatlar.js` içindeki `POPULER_ESIK` değeridir.
 
-## Kurulum
+## Sunucuna ekledikten sonra
+
+1. Sunucu Ayarları → Roller: **Voyager rolünü**, yöneteceği rollerin üstüne sürükle. Bot kendi rolünden yüksek
+   kişilere işlem yapamaz ve yüksek rolleri veremez.
+2. `/ayarla log-kanali` ile günlük kanalını seç.
+3. İstersen `/ayarla hosgeldin-kanali` ve `/ayarla oto-rol` ile karşılamayı aç.
+4. `/koruma spam` ile otomatik korumayı aç.
+5. Gerisi için `/yardim`.
+
+Oto rolü, ancak o rolü kendisi de verebilen biri ayarlayabilir (Rolleri Yönet yetkisi ve rol sırası). Yönetim
+yetkisi taşıyan bir rol (üye atma, mesaj ya da rol yönetme gibi) oto rol yapılamaz.
+
+## Kendi botunu çalıştırmak
+
+Hazır botu kullanmak yerine kodu kendi Discord uygulamanla çalıştırmak istersen.
 
 ### 1. Node.js kur
 
-<https://nodejs.org> adresinden **LTS** sürümünü indirip kur. Kurulumdan sonra terminali kapatıp yeniden aç.
+<https://nodejs.org> adresinden **LTS** sürümünü indirip kur (en az 18). Kurulumdan sonra terminali kapatıp yeniden aç.
 
 ### 2. Discord'da botu oluştur
 
@@ -142,20 +167,14 @@ listede gösterilir. Aynı oyun birden fazla mağazada indirimdeyse tek kayıtta
 3. Soldan **Bot** → **Reset Token** → çıkan token'ı kopyala → `.env` içinde `DISCORD_TOKEN`.
    Token botun şifresidir; kimseyle paylaşma.
 4. Aynı sayfada **Server Members Intent**'i aç (hoş geldin mesajı için gerekli).
-5. Soldan **Installation** → *Guild Install* altında scope olarak `bot` ve `applications.commands` seç.
-   Bot izinleri: Ban Members, Kick Members, Moderate Members, Manage Messages, Manage Roles,
-   View Channels, Send Messages, Embed Links, Read Message History.
-6. Oluşan davet linkini tarayıcıda aç ve botu sunucuya ekle.
+5. Soldan **Installation** → **User Install** kutusunu kaldır, yalnızca **Guild Install** kalsın. Komutlar botun
+   bulunduğu sunucular için yazıldı.
 
 ### 3. .env dosyasını hazırla
 
 `.env.example` dosyasını kopyalayıp adını `.env` yap; `DISCORD_TOKEN` ve `CLIENT_ID` değerlerini doldur.
-Komutlar genel yüklenir: bot hangi sunucuya eklenirse orada kendiliğinden görünür, sunucu ID'si gerekmez.
-
-### Botu başka sunuculara açmak
-
-Developer Portal → Bot → **Public Bot** açıksa davet linkine sahip herkes botu kendi sunucusuna ekleyebilir.
-Her sunucunun ayarları, yayıncı listesi ve günlüğü ayrıdır. Bot 100 sunucuyu geçerse Discord doğrulama ister.
+Diğer satırlar isteğe bağlıdır ve dosyanın içinde açıklamalıdır. Bir platformun anahtarı yoksa yalnızca o
+platform kapalı kalır.
 
 ### 4. Çalıştır
 
@@ -171,20 +190,56 @@ npm run komutlar
 npm start
 ```
 
-Terminalde `Bot hazır: ...` yazısını görünce Discord'da `/ping` yaz.
+Terminalde `Bot hazır: ...` yazısını görünce bot çalışıyor demektir.
 
-`npm run komutlar` sadece komut eklediğinde veya komutun adını/seçeneklerini değiştirdiğinde gerekir.
+`npm run komutlar` yalnızca komut eklediğinde ya da bir komutun adını/seçeneklerini değiştirdiğinde gerekir.
+Komutlar genel yüklenir: bot hangi sunucuya eklenirse orada kendiliğinden görünür.
 
-### 5. Sunucuda ilk ayarlar
+### 5. Botu sunucuna ekle
 
-- Sunucu Ayarları → Roller: **botun rolünü**, yöneteceği rollerin üstüne sürükle.
-  (Bot, kendi rolünden yüksek kişilere işlem yapamaz ve yüksek rolleri veremez.)
-- `/ayarla log-kanali`, `/ayarla hosgeldin-kanali`, `/ayarla oto-rol`
+Bot çalışırken tarayıcıda <http://localhost:8788> adresini aç ve **Sunucuna ekle** düğmesine bas. Düğmenin linki
+`bot` kapsamını ve gereken izinleri açıkça taşır; Developer Portal'daki varsayılan kurulum ayarlarına bağlı değildir.
+
+Sonra Discord'da `/ping` yaz.
+
+### Tanıtım sayfası ve yayın webhook'ları
+
+Bot `127.0.0.1:8788` üzerinde küçük bir HTTP sunucusu açar. Bu sunucu iki iş görür:
+
+- **Tanıtım sayfası** (`src/site/`): başlık, özellikler ve "Sunucuna ekle" düğmesi.
+  [voyager.helyosfer.me](https://voyager.helyosfer.me) bu sayfadır. Arka planda NASA'nın
+  [helyosfer animasyonu](https://svs.gsfc.nasa.gov/20363) oynar (kaynak: NASA's Goddard Space Flight Center
+  Conceptual Image Lab); dosya NASA'nın sunucusundan yüklenir.
+- **Twitch ve Kick webhook'ları** (`/twitch`, `/kick`): yayın başladığında platformlar buraya haber verir.
+  Gelen her istek imzasıyla doğrulanır.
+
+Sunucu yalnızca kendi makinesinden erişilir; internete web sunucunla açarsın. Caddy örneği:
+
+```
+voyager.ornek.com {
+	reverse_proxy 127.0.0.1:8788
+}
+```
+
+`.env` içinde `YAYIN_ADRESI=https://voyager.ornek.com` olur; Kick uygulamasının webhook adresi
+`https://voyager.ornek.com/kick` olarak girilir.
+
+### Botu başka sunuculara açmak
+
+Developer Portal → Bot → **Public Bot** açıksa davet linkine sahip herkes botu kendi sunucusuna ekleyebilir.
+Her sunucunun ayarları, yayıncı listesi ve günlüğü ayrıdır. Bot 100 sunucuyu geçerse Discord doğrulama ister.
+
+### Bot sahibi komutları
+
+`/sunucular liste` ve `/sunucular ayril` yalnızca `.env` içindeki `GUILD_IDS` sunucularına yüklenir ve yalnızca
+uygulamanın sahibi kullanabilir: botun bulunduğu sunucuları gösterir, istenen sunucudan çıkarır.
 
 ## VPS'te 7/24 çalıştırma (Ubuntu)
 
-`kur.sh` botu `/opt/voyager` altına kurar, ayrı bir kullanıcıyla `systemd` servisi olarak başlatır.
-Çökerse veya sunucu yeniden başlarsa bot kendiliğinden açılır.
+### İlk kurulum
+
+`kur.sh` botu `/opt/voyager` altına kurar ve ayrı, yetkisiz bir kullanıcıyla `systemd` servisi olarak başlatır.
+Node.js yoksa onu da kurar. Çökerse veya sunucu yeniden başlarsa bot kendiliğinden açılır.
 
 Dosyaları sunucuya gönder (kendi bilgisayarından):
 
@@ -199,7 +254,29 @@ cd ~/voyager && sudo bash kur.sh
 ```
 
 İlk çalıştırmada `.env` dosyasını oluşturup durur. `sudo nano /opt/voyager/.env` ile doldur,
-sonra aynı komutu tekrar çalıştır. Kodu güncellediğinde de aynı iki adımı tekrarlaman yeterli.
+sonra aynı komutu tekrar çalıştır.
+
+### Güncelleme
+
+Her güncellemede dosyaları elle kopyalamak yerine, tek komutla gönderen bir düzen kurabilirsin.
+
+Bir kez, sunucuda (`vps/erisim-kur.sh` dosyasını ve bilgisayarında ürettiğin SSH anahtarının `.pub` dosyasını gönderdikten sonra):
+
+```bash
+sudo bash erisim-kur.sh anahtar.pub
+```
+
+Bu, yalnızca SSH anahtarıyla girebilen ve root olarak tek bir şeyi (botu güncelleyen betiği) çalıştırabilen
+`voyager-deploy` kullanıcısını kurar. Sonra bilgisayarında `vps/.hedef` dosyasına hedefi yaz
+(ör. `voyager-deploy@SUNUCU_ADRESI`; bu dosya repoya girmez) ve her güncellemede:
+
+```bash
+bash vps/gonder.sh
+```
+
+Betik commit'i değil, o an klasörde duran `src/` içeriğini gönderir; göndermeden önce klasörde ne olduğuna bak.
+
+### İşletim
 
 | Ne için | Komut |
 |---|---|
@@ -207,17 +284,38 @@ sonra aynı komutu tekrar çalıştır. Kodu güncellediğinde de aynı iki adı
 | Durumu gör | `sudo systemctl status voyager` |
 | Yeniden başlat | `sudo systemctl restart voyager` |
 
+## Güvenlik
+
+- **Sırlar** `.env` dosyasında durur; dosya repoya girmez ve sunucuda yalnızca bot kullanıcısı okuyabilir.
+  `.env` dosyasını ve bot jetonunu kimseyle paylaşma.
+- **Ayarlar ve kayıtlar** `data/` klasöründedir; bu klasör de repoya girmez ve yalnızca bota açıktır.
+- **Servis** (`kur.sh` ile kurulduğunda) kısıtlı çalışır: dosya sistemini salt okunur görür, yalnızca `data/` klasörüne yazabilir.
+- **Webhook'lar** imzasıyla doğrulanır; 10 dakikadan eski mesajlar reddedilir.
+- **Etiketler:** kullanıcının yazdığı metindeki `@everyone` ve rol etiketleri bildirim göndermez.
+- **Mesaj içeriği** yalnızca `MESAJ_ICERIGI=1` ise okunur ve yalnızca sunucunun kendi log kanalına yazılır.
+
+Bir güvenlik sorunu bulursan herkese açık bir kayıt açmak yerine [helyosfer.me](https://helyosfer.me)
+üzerindeki iletişim bilgileriyle haber ver.
+
 ## Dosya yapısı
 
 ```
 kur.sh                VPS kurulum betiği
+vps/
+  erisim-kur.sh       Sunucuda güncelleme kullanıcısını kurar
+  gonder.sh           Kodu sunucuya gönderir ve botu yeniden başlatır
 src/
   index.js            Botun başlangıç noktası
   komutlari-yukle.js  Komutları Discord'a tanıtır
-  depo.js             Ayarları data/ klasörüne kaydeder
-  yardimci.js         Yetki kontrolü ve log gönderme
-  hatirlatici.js      Hatırlatıcı zamanlayıcıları
   commands/           Her dosya bir komut
+  depo.js             Ayarları data/ klasörüne kaydeder
+  yardimci.js         Yetki kontrolleri ve log gönderme
+  gunluk.js           Sunucu günlüğü
+  koruma.js           Spam koruması ve küfür filtresi
+  firsatlar.js        Oyun fırsatları
+  hatirlatici.js      Hatırlatıcı zamanlayıcıları
+  yayin/              Yayın bildirimleri (Twitch, Kick, YouTube) ve HTTP sunucusu
+  site.js, site/      Tanıtım sayfası
 ```
 
 Yeni komut eklemek için `src/commands/` içine `ping.js` gibi bir dosya ekleyip `npm run komutlar` çalıştır.
