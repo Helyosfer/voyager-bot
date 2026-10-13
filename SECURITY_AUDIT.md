@@ -38,7 +38,7 @@ yeniden çalıştırılınca yansır (bkz. [Yayına alma notları](#7-yayına-al
 | VGR-17 | Düşük | Ortak haber ve Instagram kapasitesi birkaç sunucu tarafından tüketilebilir | Uygulandı: haber havuzu yayın bildirimlerindeki oranla; sahip başına sınır |
 | VGR-18 | Düşük | Yakalanmamış bir hata bütün botu yeniden başlatıyor | Uygulandı: üç yer; kapanmadan önce sebep kayda yazılıyor |
 | VGR-19 | Düşük | systemd servisi az kısıtlı; bot kendi kodunun sahibi | Uygulandı (`kur.sh`); WSL'de Ubuntu üzerinde denendi |
-| VGR-20 | Düşük | Kurulumda kilit dosyası zorunlu değil; Node kurulumu `curl \| bash` ile | Uygulandı; `kur.sh` kısmı WSL'de denendi, güncelleme betiği denenmedi |
+| VGR-20 | Düşük | Kurulumda kilit dosyası zorunlu değil; Node kurulumu `curl \| bash` ile | Uygulandı; WSL'de ve canlı sunucuda denendi |
 | VGR-21 | Bilgilendirme | Tanıtım sayfasında HSTS başlığı yok | Uygulandı |
 | VGR-22 | Bilgilendirme | İç hata metni komutu kullanan yöneticiye gösteriliyor | Uygulandı |
 | VGR-23 | Bilgilendirme | Kayıtlarda kullanıcının yazdığı metin | Uygulandı |
@@ -455,7 +455,9 @@ Bunlar yetki politikasını, ürün davranışını ya da dağıtımı değişti
   - Node kurulumunda internetten indirilen betik root olarak çalıştırılmıyor. NodeSource deposu imza anahtarıyla
     elle ekleniyor; paketleri `apt` bu anahtarla doğruluyor.
 - **Doğrulama:** `kur.sh` WSL üzerindeki Ubuntu 26.04'te (systemd açık) denendi, 13 Ekim 2026: Node'u olmayan makinede Node 24 imzalı depodan kuruldu,
-  `npm ci --ignore-scripts` bağımlılıkları kurdu, bot çalıştı. `vps/erisim-kur.sh` içindeki güncelleme betiği denenmedi.
+  `npm ci --ignore-scripts` bağımlılıkları kurdu, bot çalıştı. Güncelleme betiği aynı gün canlı sunucuda denendi:
+  kilit dosyası değişen ilk gönderimde bağımlılıklar `npm ci` ile yeniden kuruldu, hemen ardından yapılan ikinci
+  gönderimde kurulum atlandı; ikisinde de bot yeniden açıldı.
 - **İşletim etkisi:** `vps/erisim-kur.sh` sunucuda yeniden çalıştırılana kadar eski
   güncelleme betiği kullanılır. Yeni betiğin ilk çalışmasında bağımlılıklar bir kez baştan kurulur; o sırada ağ
   kesilirse `node_modules` eksik kalır ve bot yeniden başlatılmaz (çalışan kopya devam eder); betik yeniden
@@ -564,8 +566,6 @@ Hepsi yukarıdaki bölümlerde ayrıntısıyla yazılı; burada toplu halde.
 
 - **Çok hesaplı kötüye kullanım.** VGR-13: açık destek odalarıyla kategoriyi doldurma, saatte 15 odayla sınırlı.
   VGR-17: Instagram havuzu.
-- **Linux'ta denenmeyen.** `vps/erisim-kur.sh` içindeki güncelleme betiği (VGR-20). `kur.sh` WSL'de denendi; canlı
-  sunucuda ilk çalıştırmada yine de kayıtlara bakılmalı (bölüm 7).
 - **Discord üzerinde denenmeyenler.** Yeni komutların hiçbiri gerçek bir sunucuda çalıştırılmadı. Liste:
   `test/DISCORD_DENEME.md`.
 - **GitHub'da çalışmayan.** CI iş akışı (VGR-26).
