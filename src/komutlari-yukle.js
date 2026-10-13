@@ -1,6 +1,6 @@
 // Komutları Discord'a tanıtır. Yeni komut eklediğinde veya bir komutun
 // adını/seçeneklerini değiştirdiğinde bir kez çalıştır: npm run komutlar
-require('dotenv').config();
+require('dotenv').config({ quiet: true });
 const fs = require('node:fs');
 const path = require('node:path');
 const { REST, Routes } = require('discord.js');
