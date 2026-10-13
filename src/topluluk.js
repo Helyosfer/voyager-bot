@@ -484,6 +484,10 @@ const UYE_BASI_KAPALI_ODA = 3; // Bir üyenin saklanan kapalı oda sayısı; faz
 // Yukarıdakiler hesap başınadır; çok sayıda hesap kullanan biri için ayrıca sunucu geneli sınırlar:
 const SUNUCU_SAATLIK_TALEP = 15; // Bir sunucuda bir saatte açılabilen talep sayısı
 const KATEGORI_ESIGI = 40; // Kategori bu kadar kanala ulaşınca en eski kapalı odalar silinir (Discord sınırı 50)
+// Aynı anda açık oda sayısı. Eşikten küçük olduğu için kategori açık odalarla doldurulamaz:
+// kapalı odalar eşikte silinir, açık odalar bu sınırı geçemez.
+const ACIK_ODA_SINIRI = 25;
+const UYELIK_BEKLEMESI = 10 * 60_000; // Sunucuya yeni katılan bu süre dolmadan talep açamaz
 const SAAT = 60 * 60_000;
 const talepSayaci = beklemeSayaci(TALEP_ARALIGI);
 const sinirUyarisi = beklemeSayaci(SAAT);
@@ -496,16 +500,33 @@ function sonSaattekiler(sunucuId) {
 }
 
 // Talep açılamıyorsa üyeye gösterilecek mesajı döndürür, açılabiliyorsa null.
+// Ekibe destek kayıt kanalından haber verir; aynı türden uyarı en sık saatte bir yazılır
+async function ekibeHaber(interaction, t, tur, metin) {
+  const anahtar = `${interaction.guildId}:${tur}`;
+  if (sinirUyarisi.bekle(anahtar)) return;
+  sinirUyarisi.isaretle(anahtar);
+  await kayitYaz(interaction.guild, t, metin);
+}
+
 async function talepBeklemesi(interaction, t) {
+  // Yeni açılmış hesaplarla sunucuya girip hemen oda açmaya karşı
+  const katildi = interaction.member?.joinedTimestamp;
+  if (katildi && Date.now() - katildi < UYELIK_BEKLEMESI) {
+    return `⏳ Sunucuya yeni katıldın. Destek talebini ${neZaman(katildi + UYELIK_BEKLEMESI - Date.now())} açabilirsin.`;
+  }
   const kalan = talepSayaci.bekle(`${interaction.guildId}:${interaction.user.id}`);
   if (kalan) return `⏳ Az önce bir destek talebi açtın. Yenisini ${neZaman(kalan)} açabilirsin.`;
-  if (sonSaattekiler(interaction.guildId).length < SUNUCU_SAATLIK_TALEP) return null;
-  // Ekip haberdar olsun; aynı uyarı en sık saatte bir yazılır
-  if (!sinirUyarisi.bekle(interaction.guildId)) {
-    sinirUyarisi.isaretle(interaction.guildId);
-    await kayitYaz(interaction.guild, t, `⚠️ Son bir saatte ${SUNUCU_SAATLIK_TALEP} destek talebi açıldı; yenileri bir süre reddedilecek. Kötüye kullanım olabilir: açılan odalara bak.`);
+
+  const acik = interaction.guild.channels.cache.filter((k) => k.parentId === t.kategoriler.talepler && !k.name.startsWith('kapalı-')).size;
+  if (acik >= ACIK_ODA_SINIRI) {
+    await ekibeHaber(interaction, t, 'acik', `⚠️ Aynı anda ${ACIK_ODA_SINIRI} destek odası açık; biri kapanana kadar yeni talep açılamaz. Biten talepleri kapat; kötüye kullanım varsa hesapları sunucudan at.`);
+    return '⏳ Destek ekibi şu an çok yoğun, yeni talep açılamıyor. Biraz sonra yeniden dene.';
   }
-  return '⏳ Şu an çok fazla destek talebi açılıyor. Biraz sonra yeniden dene.';
+  if (sonSaattekiler(interaction.guildId).length >= SUNUCU_SAATLIK_TALEP) {
+    await ekibeHaber(interaction, t, 'saatlik', `⚠️ Son bir saatte ${SUNUCU_SAATLIK_TALEP} destek talebi açıldı; yenileri bir süre reddedilecek. Kötüye kullanım olabilir: açılan odalara bak.`);
+    return '⏳ Şu an çok fazla destek talebi açılıyor. Biraz sonra yeniden dene.';
+  }
+  return null;
 }
 
 const odaSahibi = (kanal) => /^sahip=(\d+);/.exec(kanal.topic ?? '')?.[1] ?? null;

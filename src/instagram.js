@@ -28,6 +28,15 @@ const JETON_YENILEME = 30 * 24 * 60 * 60_000;
 let client = null;
 const hazir = () => Boolean(UYGULAMA && GIZLI && ILK_JETON);
 
+// Instagram'da havuzu Meta'nın saatlik istek sınırı belirler ve bütün sunucular paylaşır; büyütülemez.
+// Yabancı sunucular dolduramasın diye özellik yalnızca izin verilen sunucularda açılır:
+// .env içindeki INSTAGRAM_SUNUCULAR ve GUILD_IDS. İkisi de boşsa (tek sunuculuk kurulum) her sunucuda açıktır.
+function izinListesi(ortam = process.env) {
+  return new Set([ortam.INSTAGRAM_SUNUCULAR, ortam.GUILD_IDS].flatMap((deger) => (deger ?? '').split(',')).map((s) => s.trim()).filter(Boolean));
+}
+const IZINLILER = izinListesi();
+const izinli = (sunucuId, liste = IZINLILER) => liste.size === 0 || liste.has(sunucuId);
+
 async function jsonIste(adres) {
   const yanit = await fetch(adres, { signal: AbortSignal.timeout(20_000) });
   const govde = await yanit.json().catch(() => null);
@@ -115,6 +124,7 @@ const enYeni = (gonderiler) => gonderiler.reduce((en, g) => Math.max(en, g.zaman
 // Başarılıysa { hesap }, değilse { hata } döndürür.
 async function ekle(sunucuId, girdi) {
   if (!hazir()) return { hata: 'Instagram bağlantısı henüz kurulmamış. Botun .env dosyasında şunlar dolu olmalı: META_APP_ID, META_APP_SECRET ve INSTAGRAM_TOKEN.' };
+  if (!izinli(sunucuId)) return { hata: 'Instagram bildirimleri bu sunucuda açık değil. Botun sahibi sunucuyu izin listesine eklemeli.' };
   const kullaniciAdi = adAyikla(girdi).toLowerCase();
   if (!/^[a-z0-9._]{1,30}$/.test(kullaniciAdi)) return { hata: 'Geçerli bir Instagram kullanıcı adı ya da profil adresi yaz.' };
 
@@ -247,4 +257,4 @@ function baslat(discordClient) {
     .finally(() => setTimeout(dongu, 60_000));
 }
 
-module.exports = { baslat, hazir, liste, ekle, cikar, kontrolEt, bildirimMesaji, kontrolAraligi, SUNUCU_BASI_SINIR };
+module.exports = { baslat, hazir, liste, ekle, cikar, kontrolEt, bildirimMesaji, kontrolAraligi, izinListesi, izinli, SUNUCU_BASI_SINIR };
