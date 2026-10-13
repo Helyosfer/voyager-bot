@@ -477,6 +477,17 @@ test('/sor: anahtar başlıkta gider, cevap etiket ve gizli bağlantı içeremez
     assert.match((await yz.sor('s2', 'k5', 'soru')).hata, /yoğun/);
     assert.equal(deneme, 3, 'en fazla üç deneme');
 
+    // Yedek model: asıl model yoğunsa soru beklemeden yedeğe sorulur
+    yz.ayar.modeller = ['asil', 'yedek'];
+    const sorulan = [];
+    global.fetch = async (adres) => {
+      sorulan.push(adres.split('/').pop());
+      return adres.includes('/asil:') ? yogun : { ok: true, status: 200, json: async () => ({ candidates: [{ content: { parts: [{ text: 'yedekten' }] } }] }) };
+    };
+    assert.equal((await yz.sor('s2', 'k8', 'soru')).cevap, 'yedekten');
+    assert.deepEqual(sorulan, ['asil:generateContent', 'yedek:generateContent']);
+    yz.ayar.modeller = ['test-modeli'];
+
     // Model düşünme ayarını tanımazsa (400) istek ayarsız yinelenir ve ayar bir daha gönderilmez
     const govdeler = [];
     global.fetch = async (adres, secenek) => {

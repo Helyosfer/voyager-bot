@@ -9,7 +9,7 @@
 // Tek kişi ya da tek sunucu bitiremesin diye aşağıdaki sınırlar uygulanır.
 const { baglantisiz, beklemeSayaci } = require('./yardimci');
 
-const { GEMINI_API_KEY: ANAHTAR, GEMINI_MODEL: MODEL } = process.env;
+const { GEMINI_API_KEY: ANAHTAR, GEMINI_MODEL: MODEL, GEMINI_YEDEK_MODEL: YEDEK } = process.env;
 const API = 'https://generativelanguage.googleapis.com/v1beta/models';
 
 const SORU_SINIRI = 500; // karakter
@@ -19,7 +19,11 @@ const ZAMAN_ASIMI = 20_000;
 // Cevabın uzunluğunu talimat ve CEVAP_SINIRI belirler.
 const CIKTI_SINIRI = 4096; // token
 // Google model yoğunken 503 (ya da 500) döner; çoğu zaman birkaç saniye sonra geçer
-const ayar = { yenidenDeneme: [1500, 4000] }; // ms; denemeler arasındaki beklemeler (testler kısaltır)
+// Yedek model tanımlıysa (GEMINI_YEDEK_MODEL) asıl model cevap veremediğinde soru hemen ona sorulur.
+const ayar = {
+  yenidenDeneme: [1500, 4000], // ms; turlar arasındaki beklemeler (testler kısaltır)
+  modeller: [MODEL, YEDEK].map((m) => (m ?? '').trim()).filter(Boolean),
+};
 // Kısa sorular için modelin uzun uzun düşünmesi gerekmez; düşünme cevabı belirgin biçimde yavaşlatır.
 // Model bu ayarı tanımazsa (HTTP 400) ayar bırakılır ve istek ayarsız yinelenir.
 let dusunme = (process.env.GEMINI_DUSUNME ?? 'minimal').trim();
@@ -101,11 +105,14 @@ async function sor(sunucuId, kisiId, soru) {
   let govde;
   const baslangic = Date.now();
   let deneme = 0;
+  let model;
   for (; ; deneme++) {
+    const { modeller } = ayar;
+    model = modeller[deneme % modeller.length];
     const dusunmeGonderildi = Boolean(dusunme);
     try {
       // Anahtar adres satırında değil başlıkta gider: adresler kayıtlara ve hata mesajlarına düşebilir
-      yanit = await fetch(`${API}/${encodeURIComponent(MODEL)}:generateContent`, {
+      yanit = await fetch(`${API}/${encodeURIComponent(model)}:generateContent`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': ANAHTAR },
         body: JSON.stringify({
@@ -126,8 +133,15 @@ async function sor(sunucuId, kisiId, soru) {
       deneme--;
       continue;
     }
-    if (yanit.status < 500 || deneme >= ayar.yenidenDeneme.length) break;
-    await bekle(ayar.yenidenDeneme[deneme]);
+    // Yoğunluk (5xx) her zaman yeniden denenir. Kota (429) ya da bulunamayan model (404) yalnızca
+    // sırada başka bir model varsa: aynı modeli yeniden denemek sonucu değiştirmez.
+    const yedekVar = modeller.length > 1;
+    if (yanit.status < 500 && !(yedekVar && [404, 429].includes(yanit.status))) break;
+    const tur = Math.floor((deneme + 1) / modeller.length);
+    if (tur > ayar.yenidenDeneme.length) break;
+    if (yedekVar) console.error(`/sor: ${model} cevap veremedi (HTTP ${yanit.status}); sıradaki deneniyor`);
+    // Modeller art arda denenir; bekleme yalnızca yeni tura geçerken
+    if ((deneme + 1) % modeller.length === 0) await bekle(ayar.yenidenDeneme[tur - 1]);
   }
   if (!yanit.ok) {
     // Soru metni kayda yazılmaz; yalnızca Google'ın hata durumu
@@ -137,7 +151,7 @@ async function sor(sunucuId, kisiId, soru) {
     return { hata: 'Cevap alınamadı; biraz sonra yeniden dene.' };
   }
   // Yavaşlığın kaynağını görmek için: süre, deneme sayısı ve düşünme miktarı (soru ve cevap yazılmaz)
-  console.log(`/sor: ${((Date.now() - baslangic) / 1000).toFixed(1)} sn, ${deneme + 1} deneme, düşünme ${govde?.usageMetadata?.thoughtsTokenCount ?? 0} token`);
+  console.log(`/sor: ${((Date.now() - baslangic) / 1000).toFixed(1)} sn, ${deneme + 1} deneme, model ${model}, düşünme ${govde?.usageMetadata?.thoughtsTokenCount ?? 0} token`);
   const aday = govde?.candidates?.[0];
   // Modelin düşünme notları (thought) cevaba katılmaz
   const cevap = (aday?.content?.parts ?? []).filter((p) => !p.thought).map((p) => p.text ?? '').join('');

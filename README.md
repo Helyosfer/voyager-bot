@@ -238,7 +238,8 @@ yalnızca soran görür. Cevaplar yanlış olabilir; her cevabın altında bu no
 - Kota bütün sunucular arasında ortaktır. Sınırlar: kişi başı dakikada 1 ve günde 20 soru, sunucu başı günde 150,
   toplam günde 450 (`src/yapayzeka.js` içindeki sabitler; modelin Google'daki günlük sınırına göre ayarlanır).
 - Kurulum: `.env` içinde `GEMINI_API_KEY` (AI Studio'dan, başka anahtarlardan ayrı) ve `GEMINI_MODEL` (modelin
-  API'deki adı). İkisi yoksa komut yüklenmez. Özellik yalnızca `GEMINI_SUNUCULAR` ve `GUILD_IDS` içindeki
+  API'deki adı). İkisi yoksa komut yüklenmez. İsteğe bağlı `GEMINI_YEDEK_MODEL`: asıl model yoğunken ya da kotası
+  dolduğunda soru bu modele sorulur. Özellik yalnızca `GEMINI_SUNUCULAR` ve `GUILD_IDS` içindeki
   sunucularda açıktır; ikisi de boşsa her sunucuda açık olur.
 
 ## Sunucuna ekledikten sonra
