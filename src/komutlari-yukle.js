@@ -15,7 +15,9 @@ const komutKlasoru = path.join(__dirname, 'commands');
 const hepsi = fs
   .readdirSync(komutKlasoru)
   .filter((d) => d.endsWith('.js'))
-  .map((d) => require(path.join(komutKlasoru, d)));
+  .map((d) => require(path.join(komutKlasoru, d)))
+  // Gereken bağlantısı kurulmamış komutlar (ör. /instagram) yüklenmez
+  .filter((k) => k.etkin?.() !== false);
 // Bot sahibine özel komutlar (ör. /sunucular) yalnızca GUILD_IDS sunucularına yüklenir
 // Komutlar yalnızca botun eklendiği sunucularda kullanılabilir (integration_types 0 = sunucuya
 // kurulum). Belirtilmezse, uygulamada "User Install" açıkken botu kendi hesabına kuran herkes
