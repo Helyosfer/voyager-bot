@@ -87,6 +87,9 @@ async function kilitle(guild, yapan) {
   const botTemel = bitler(BOT_IZINLERI);
   let kilitlenemeyen = 0n; // Hiçbir yolla yasaklanamayan izinler
   let gizlenen = 0; // İzni kilitlenemediği için kilit boyunca gizlenen kanallar
+  let satirVerilebiliyor = true; // Discord bota "İzinleri Yönet" satırını verdiriyor mu (ilk retten sonra false)
+  let tam = 0; // Bütün izinleri tek seferde kilitlenen kanallar
+  let kismi = 0; // Yalnızca botun elindeki izinlerle kilitlenen kanallar
 
   // botAllow: botun bu kanalda elinde tutacağı izinler. Bot, kilitlediği izinleri kendi
   // satırında açık tutar; herkese yasaklanan bir izni kendisi de kaybederse onu bir daha değiştiremez.
@@ -107,24 +110,42 @@ async function kilitle(guild, yapan) {
 
   const kanaliKilitle = async (kanal) => {
     // 1. Bota bu kanalda "İzinleri Yönet" satırını ver (bkz. dosya başındaki 1. kural).
-    //    Yalnızca bu tek izin: bot o an kanalda kendisinde olmayan bir izni kendine veremez.
-    await kanal.permissionOverwrites.edit(ben, { ManageRoles: true }, { reason: sebep });
-    try {
-      // 2. Satır sınırı kaldırdıysa bütün izinler tek seferde kilitlenir
-      await kanal.permissionOverwrites.set(kilitliListe(kanal, tumu, botTemel | tumu), sebep);
-    } catch (hata) {
-      if (hata.code !== YETKI_YOK) throw hata;
-      // 3. Kaldırmadıysa: yalnızca botun bu kanalda elinde olan izinler kilitlenebilir
-      const eldeki = kanal.permissionsFor(ben)?.bitfield ?? 0n;
-      let yasak = tumu & eldeki;
-      const acikKalan = tumu & ~yasak;
-      // Yazma ya da bağlanma açık kaldıysa kanal kilit boyunca gizlenir: göremeyen giremez de
-      const gizle = Boolean(acikKalan & (P.SendMessages | P.Connect)) && Boolean(eldeki & P.ViewChannel);
-      if (gizle) yasak |= P.ViewChannel;
-      await kanal.permissionOverwrites.set(kilitliListe(kanal, yasak, (botTemel & eldeki) | yasak), sebep);
-      if (gizle) gizlenen++;
-      kilitlenemeyen |= gizle ? acikKalan & ~(P.SendMessages | P.Connect | P.Speak) : acikKalan;
+    //    Discord bu satırı her zaman verdirmez (botta Yönetici izni yoksa reddedebilir);
+    //    verilemezse kanal 3. adımdaki gibi, botun elindeki izinlerle kilitlenir.
+    //    Bir kanalda reddedildiyse diğerlerinde de reddedilir; saldırı anında zaman kaybetmemek
+    //    için kalan kanallarda yeniden denenmez.
+    let satirVar = satirVerilebiliyor;
+    if (satirVar) {
+      try {
+        await kanal.permissionOverwrites.edit(ben, { ManageRoles: true }, { reason: sebep });
+      } catch (hata) {
+        if (hata.code !== YETKI_YOK) throw hata;
+        satirVar = satirVerilebiliyor = false;
+      }
     }
+    if (satirVar) {
+      try {
+        // 2. Satır sınırı kaldırdıysa bütün izinler tek seferde kilitlenir
+        await kanal.permissionOverwrites.set(kilitliListe(kanal, tumu, botTemel | tumu), sebep);
+        tam++;
+        return;
+      } catch (hata) {
+        if (hata.code !== YETKI_YOK) throw hata;
+      }
+    }
+    // 3. Yalnızca botun bu kanalda elinde olan izinler kilitlenebilir
+    const eldeki = kanal.permissionsFor(ben)?.bitfield ?? 0n;
+    let yasak = tumu & eldeki;
+    const acikKalan = tumu & ~yasak;
+    // Yazma ya da bağlanma açık kaldıysa kanal kilit boyunca gizlenir: göremeyen giremez de
+    const gizle = Boolean(acikKalan & (P.SendMessages | P.Connect)) && Boolean(eldeki & P.ViewChannel);
+    if (gizle) yasak |= P.ViewChannel;
+    // Satır verilemediyse botun kendi satırına da "İzinleri Yönet" yazılmaz; aynı sebeple reddedilir
+    const botIzni = ((botTemel & eldeki) | yasak) & (satirVar ? ~0n : ~P.ManageRoles);
+    await kanal.permissionOverwrites.set(kilitliListe(kanal, yasak, botIzni), sebep);
+    kismi++;
+    if (gizle) gizlenen++;
+    kilitlenemeyen |= gizle ? acikKalan & ~(P.SendMessages | P.Connect | P.Speak) : acikKalan;
   };
 
   // Kategoriler önce: eşitlenmiş kanalları da kapattığı için sunucunun çoğu hemen kilitlenir
@@ -139,6 +160,7 @@ async function kilitle(guild, yapan) {
   }
 
   const basarisiz = hatalar.filter(Boolean).length;
+  console.log(`Kilit (${guild.id}): ${tam} kanal tam, ${kismi} kanal botun elindeki izinlerle kilitlendi, ${basarisiz} kanal kilitlenemedi`);
   const sonuc = {
     kilitlenen: sirali.length - basarisiz,
     basarisiz,

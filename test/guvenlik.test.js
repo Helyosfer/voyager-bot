@@ -240,6 +240,46 @@ test('üst üste binen /kitle ve /kilidiac: yalnızca biri çalışır, yedek ez
   assert.equal(kilit.kilitli(guild.id), false);
 });
 
+test('/kitle: "İzinleri Yönet" satırı verilemese de kanal botun elindeki izinlerle kilitlenir', async () => {
+  const kilit = src('kilit');
+  const yetkiYok = Object.assign(new Error('Missing Permissions'), { code: 50013 });
+  const yazilan = [];
+  const herkes = 'kilit-2';
+  const kanal = {
+    id: 'k1',
+    name: 'genel',
+    type: 0,
+    isThread: () => false,
+    permissionsFor: () => izinli(P.ViewChannel, P.SendMessages, P.AddReactions, P.ManageRoles),
+    permissionOverwrites: {
+      cache: new Collection([[herkes, { id: herkes, type: 0, allow: izinli(P.SendMessages), deny: izinli() }]]),
+      edit: async () => {
+        throw yetkiYok;
+      },
+      set: async (liste) => yazilan.push(liste),
+    },
+  };
+  const guild = {
+    id: herkes,
+    ownerId: 'sahip',
+    members: { me: { id: 'bot', permissions: izinli() } },
+    channels: { cache: new Collection([[kanal.id, kanal]]) },
+    roles: { everyone: { id: herkes }, cache: new Collection() },
+    voiceStates: { cache: new Collection() },
+  };
+  const sessiz = console.log;
+  console.log = () => {};
+  const sonuc = await kilit.kilitle(guild, { id: 'u', tag: 'deneme', toString: () => '<@u>' }).finally(() => (console.log = sessiz));
+  assert.deepEqual([sonuc.kilitlenen, sonuc.basarisiz], [1, 0]);
+  const [liste] = yazilan;
+  const satir = (id) => liste.find((s) => s.id === id);
+  assert.ok(satir(herkes).deny & P.SendMessages, 'herkese yazma yasaklanmalı');
+  assert.equal(satir(herkes).allow & P.SendMessages, 0n);
+  assert.equal(satir('bot').allow & P.ManageRoles, 0n, 'bot kendine İzinleri Yönet satırı yazmamalı');
+  assert.ok(satir('bot').allow & P.SendMessages, 'bot kilitlediği izni kendinde tutmalı');
+  await kilit.ac({ ...guild, channels: { cache: new Collection() } }, { id: 'u', tag: 'deneme', toString: () => '<@u>' });
+});
+
 // --- Destek talepleri ---
 const KATEGORI = 'kat';
 const zamanKimligi = (ms) => String(SnowflakeUtil.generate({ timestamp: ms }));
