@@ -8,6 +8,10 @@ const firsatlar = require('./firsatlar');
 const gunluk = require('./gunluk');
 const yayin = require('./yayin');
 const koruma = require('./koruma');
+const instagram = require('./instagram');
+const haber = require('./haber');
+const topluluk = require('./topluluk');
+const kilit = require('./kilit');
 const { otoRolVer, komutYetkisiVar, hataMetni } = require('./yardimci');
 
 // Yakalanmamış bir hata botu kapatır; systemd birkaç saniyede yeniden başlatır. Bu davranış
@@ -63,6 +67,8 @@ client.once(Events.ClientReady, (c) => {
   hatirlatici.hepsiniYukle(client);
   firsatlar.baslat(client);
   yayin.baslat(client);
+  instagram.baslat(client);
+  haber.baslat(client);
   console.log(`Mesaj içeriği günlüğü: ${mesajIcerigi.length ? 'açık' : 'kapalı'}`);
 });
 
@@ -83,6 +89,18 @@ client.on(Events.InteractionCreate, async (interaction) => {
     return;
   }
 
+  // /sunucukur ile kurulan kalıcı düğme, menü ve formlar (üyelik onayı, roller, destek)
+  if ((interaction.isMessageComponent() || interaction.isModalSubmit()) && interaction.customId.startsWith('tp:')) {
+    try {
+      await topluluk.etkilesim(interaction);
+    } catch (hata) {
+      console.error(`${interaction.customId} hatası:`, hataMetni(hata));
+      const cevap = { content: 'İşlem sırasında bir hata oluştu.', flags: MessageFlags.Ephemeral };
+      if (interaction.replied || interaction.deferred) await interaction.followUp(cevap).catch(() => {});
+      else await interaction.reply(cevap).catch(() => {});
+    }
+    return;
+  }
   if (!interaction.isChatInputCommand()) return;
   const komut = client.komutlar.get(interaction.commandName);
   if (!komut) return;
@@ -105,6 +123,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
 gunluk.baslat(client);
 koruma.baslat(client);
+kilit.baslat(client);
 
 // Yeni üye: hoş geldin mesajı + otomatik rol
 client.on(Events.GuildMemberAdd, async (uye) => {
