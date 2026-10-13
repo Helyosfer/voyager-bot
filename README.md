@@ -189,7 +189,7 @@ Terminalde `Bot hazır: ...` yazısını görünce Discord'da `/ping` yaz.
 Dosyaları sunucuya gönder (kendi bilgisayarından):
 
 ```bash
-scp -r package.json .env.example kur.sh src KULLANICI@IP:voyager/
+scp -r package.json package-lock.json .env.example kur.sh src KULLANICI@IP:voyager/
 ```
 
 Sunucuda:

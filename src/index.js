@@ -8,6 +8,17 @@ const firsatlar = require('./firsatlar');
 const gunluk = require('./gunluk');
 const yayin = require('./yayin');
 const koruma = require('./koruma');
+const { otoRolVer, komutYetkisiVar, hataMetni } = require('./yardimci');
+
+// Yakalanmamış bir hata botu kapatır; systemd birkaç saniyede yeniden başlatır. Bu davranış
+// değişmez, ama kapanmadan önce sebep kayda açıkça yazılır. Node'un kendi çıktısı hata
+// nesnesinin tamamını basar; onda kullanıcının yazdığı metin de bulunabilir (bkz. hataMetni).
+for (const olay of ['uncaughtException', 'unhandledRejection']) {
+  process.on(olay, (hata) => {
+    console.error(`Yakalanmamış hata (${olay}), bot kapanıyor:`, hataMetni(hata));
+    process.exit(1);
+  });
+}
 
 if (!process.env.DISCORD_TOKEN) {
   console.error('DISCORD_TOKEN bulunamadı. .env dosyasını oluşturup doldurdun mu?');
@@ -63,14 +74,29 @@ client.on(Events.GuildDelete, (sunucu) => console.log(`Sunucudan çıkarıldı: 
 client.on(Events.Error, (hata) => console.error('Discord bağlantı hatası:', hata));
 
 client.on(Events.InteractionCreate, async (interaction) => {
+  // Botun bulunmadığı bir sunucudan gelen etkileşim (bot bir kullanıcının hesabına kurulmuşsa
+  // olur). Komutlar sunucunun üyelerine, kanallarına ve rollerine eriştiği için orada çalışamaz.
+  if (interaction.inGuild() && !interaction.inCachedGuild()) {
+    if (interaction.isRepliable()) {
+      await interaction.reply({ content: '❌ Voyager bu sunucuda değil. Komutları kullanmak için bir yönetici botu sunucuya eklemeli.', flags: MessageFlags.Ephemeral }).catch(() => {});
+    }
+    return;
+  }
+
   if (!interaction.isChatInputCommand()) return;
   const komut = client.komutlar.get(interaction.commandName);
   if (!komut) return;
 
+  // Geri alınması zor komutlarda (kesinYetki) gereken yetkiyi bot da denetler; ayrıntı yardimci.js'te
+  if (komut.kesinYetki && !komutYetkisiVar(interaction, komut)) {
+    await interaction.reply({ content: '❌ Bu komutu kullanmak için gereken yetkin yok.', flags: MessageFlags.Ephemeral }).catch(() => {});
+    return;
+  }
+
   try {
     await komut.execute(interaction);
   } catch (hata) {
-    console.error(`/${interaction.commandName} hatası:`, hata);
+    console.error(`/${interaction.commandName} hatası:`, hataMetni(hata));
     const cevap = { content: 'Komut çalışırken bir hata oluştu.', flags: MessageFlags.Ephemeral };
     if (interaction.replied || interaction.deferred) await interaction.followUp(cevap).catch(() => {});
     else await interaction.reply(cevap).catch(() => {});
@@ -82,16 +108,19 @@ koruma.baslat(client);
 
 // Yeni üye: hoş geldin mesajı + otomatik rol
 client.on(Events.GuildMemberAdd, async (uye) => {
-  const { hosgeldinKanali, otoRol } = ayarlariGetir(uye.guild.id);
+  // Burada yakalanmayan bir hata (ör. ayar dosyası okunamazsa) botu bütün sunucularda kapatır
+  try {
+    const { hosgeldinKanali, otoRol } = ayarlariGetir(uye.guild.id);
 
-  if (otoRol) {
-    await uye.roles.add(otoRol).catch((h) => console.error('Oto rol verilemedi:', h.message));
-  }
-  if (hosgeldinKanali) {
-    const kanal = await uye.guild.channels.fetch(hosgeldinKanali).catch(() => null);
-    if (kanal?.isTextBased()) {
-      await kanal.send(`👋 Hoş geldin ${uye}! Seninle birlikte **${uye.guild.memberCount}** kişiyiz.`).catch(() => {});
+    if (otoRol) await otoRolVer(uye, otoRol);
+    if (hosgeldinKanali) {
+      const kanal = await uye.guild.channels.fetch(hosgeldinKanali).catch(() => null);
+      if (kanal?.isTextBased()) {
+        await kanal.send(`👋 Hoş geldin ${uye}! Seninle birlikte **${uye.guild.memberCount}** kişiyiz.`).catch(() => {});
+      }
     }
+  } catch (hata) {
+    console.error('Yeni üye işlenemedi:', hataMetni(hata));
   }
 });
 

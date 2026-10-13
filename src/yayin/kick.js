@@ -54,10 +54,16 @@ async function esitle(idler) {
 
 // Kick mesajlarını kendi özel anahtarıyla imzalar; açık anahtarı servisinden alınır.
 let acikAnahtar = null;
+let anahtarDenendi = 0;
+// Anahtar en sık bu aralıkla indirilir. Webhook adresine herkes istek atabilir; imzası
+// tutmayan her istek Kick'e yeni bir istek attıramasın.
+const ANAHTAR_ARALIGI = 60_000;
 async function acikAnahtariAl(yenile = false) {
-  if (!acikAnahtar || yenile) {
+  if ((!acikAnahtar || yenile) && Date.now() - anahtarDenendi > ANAHTAR_ARALIGI) {
+    anahtarDenendi = Date.now();
     const yanit = await fetch(`${TABAN}/public-key`, { signal: AbortSignal.timeout(15_000) });
-    acikAnahtar = (await yanit.json()).data.public_key;
+    const anahtar = (await yanit.json().catch(() => null))?.data?.public_key;
+    if (yanit.ok && typeof anahtar === 'string') acikAnahtar = anahtar;
   }
   return acikAnahtar;
 }
@@ -70,9 +76,12 @@ async function imzaGecerli(basliklar, govde) {
   // Eski bir mesajın yeniden gönderilmesine karşı: 10 dakikadan eski olanları reddet
   if (!(Math.abs(Date.now() - Date.parse(zaman)) <= 10 * 60_000)) return false;
   const dogrula = (anahtar) =>
-    crypto.createVerify('RSA-SHA256').update(`${kimlik}.${zaman}.`).update(govde).verify(anahtar, imza, 'base64');
-  // Kick anahtarını değiştirmiş olabilir; tutmazsa bir kez güncel anahtarla dene
-  return dogrula(await acikAnahtariAl()) || dogrula(await acikAnahtariAl(true));
+    Boolean(anahtar) && crypto.createVerify('RSA-SHA256').update(`${kimlik}.${zaman}.`).update(govde).verify(anahtar, imza, 'base64');
+  const eldeki = await acikAnahtariAl();
+  if (dogrula(eldeki)) return true;
+  // Kick anahtarını değiştirmiş olabilir; tutmazsa güncel anahtarla dene
+  const guncel = await acikAnahtariAl(true);
+  return guncel !== eldeki && dogrula(guncel);
 }
 
 async function yayinBasladi(olay) {

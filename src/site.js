@@ -24,6 +24,9 @@ const BASLIKLAR = {
     "default-src 'none'; script-src 'self'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; media-src https://svs.gsfc.nasa.gov; img-src data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'no-referrer',
+  // Site bir kez https ile açıldıysa tarayıcı bir yıl boyunca bu alan adında http kullanmaz.
+  // Yalnızca bu alan adı için geçerlidir (alt alan adlarını kapsamaz); http üzerinden gelen cevapta yok sayılır.
+  'Strict-Transport-Security': 'max-age=31536000',
 };
 
 // yol: sondaki / atılmış adres yolu ("" ana sayfadır)

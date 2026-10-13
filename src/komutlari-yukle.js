@@ -17,8 +17,12 @@ const hepsi = fs
   .filter((d) => d.endsWith('.js'))
   .map((d) => require(path.join(komutKlasoru, d)));
 // Bot sahibine özel komutlar (ör. /sunucular) yalnızca GUILD_IDS sunucularına yüklenir
-const genel = hepsi.filter((k) => !k.sahipKomutu).map((k) => k.data.toJSON());
-const sahibeOzel = hepsi.filter((k) => k.sahipKomutu).map((k) => k.data.toJSON());
+// Komutlar yalnızca botun eklendiği sunucularda kullanılabilir (integration_types 0 = sunucuya
+// kurulum). Belirtilmezse, uygulamada "User Install" açıkken botu kendi hesabına kuran herkes
+// komutları botun bulunmadığı sunucularda da çalıştırabilir; komutlar buna göre yazılmadı.
+const kayit = (k) => ({ ...k.data.toJSON(), integration_types: [0] });
+const genel = hepsi.filter((k) => !k.sahipKomutu).map(kayit);
+const sahibeOzel = hepsi.filter((k) => k.sahipKomutu).map(kayit);
 
 const rest = new REST().setToken(DISCORD_TOKEN);
 

@@ -7,7 +7,7 @@ const {
   MessageFlags,
 } = require('discord.js');
 const { ayarlariGetir, ayarKaydet } = require('../depo');
-const { yazabilirMi } = require('../yardimci');
+const { yazabilirMi, otoRolEngeli } = require('../yardimci');
 const { KATEGORILER, kategoriAcik } = require('../gunluk');
 
 // /ayarla sifirla seçenekleri: görünen ad -> depodaki anahtar
@@ -124,10 +124,9 @@ module.exports = {
       mesaj = `✅ ${ayar} ayarı kaldırıldı.`;
     } else if (alt === 'oto-rol') {
       const rol = interaction.options.getRole('rol', true);
-      if (rol.managed || rol.id === interaction.guild.id) {
-        mesaj = '❌ Bu rol otomatik verilemez.';
-      } else if (rol.position >= interaction.guild.members.me.roles.highest.position) {
-        mesaj = '❌ Bu rol benim rolümden yüksek. Bot rolünü rol listesinde bu rolün üstüne taşı.';
+      const engel = otoRolEngeli(interaction, rol);
+      if (engel) {
+        mesaj = `❌ ${engel}`;
       } else {
         ayarKaydet(sunucuId, 'otoRol', rol.id);
         mesaj = `✅ Yeni üyelere ${rol} rolü verilecek.`;

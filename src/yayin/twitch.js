@@ -98,7 +98,9 @@ function webhook(basliklar, govde) {
   if (!kimlik || !zaman || !imza) return { durum: 400 };
 
   const beklenen = `sha256=${crypto.createHmac('sha256', imzaAnahtari()).update(kimlik + zaman).update(govde).digest('hex')}`;
-  const gecerli = imza.length === beklenen.length && crypto.timingSafeEqual(Buffer.from(imza), Buffer.from(beklenen));
+  // Uzunluk bayt olarak karşılaştırılır: timingSafeEqual farklı uzunlukta hata fırlatır
+  const [gelen, olmasiGereken] = [Buffer.from(imza), Buffer.from(beklenen)];
+  const gecerli = gelen.length === olmasiGereken.length && crypto.timingSafeEqual(gelen, olmasiGereken);
   // Eski bir mesajın yeniden gönderilmesine karşı: 10 dakikadan eski olanları reddet
   if (!gecerli || Math.abs(Date.now() - Date.parse(zaman)) > 10 * 60_000) return { durum: 403 };
 

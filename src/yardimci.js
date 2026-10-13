@@ -36,4 +36,124 @@ async function logGonder(guild, { baslik, renk, hedef, yetkili, sebep, ek }) {
   await gunlukGonder(guild, 'moderasyon', embed);
 }
 
-module.exports = { mudahaleEngeli, logGonder, yazabilirMi };
+// Yeni gelen herkese kendiliğinden verilmemesi gereken, yönetim yetkisi taşıyan izinler
+const YONETIM_IZINLERI = [
+  PermissionFlagsBits.Administrator,
+  PermissionFlagsBits.ManageGuild,
+  PermissionFlagsBits.ManageRoles,
+  PermissionFlagsBits.ManageChannels,
+  PermissionFlagsBits.ManageWebhooks,
+  PermissionFlagsBits.ManageMessages,
+  PermissionFlagsBits.ManageThreads,
+  PermissionFlagsBits.ManageNicknames,
+  PermissionFlagsBits.KickMembers,
+  PermissionFlagsBits.BanMembers,
+  PermissionFlagsBits.ModerateMembers,
+  PermissionFlagsBits.MuteMembers,
+  PermissionFlagsBits.DeafenMembers,
+  PermissionFlagsBits.MoveMembers,
+  PermissionFlagsBits.MentionEveryone,
+  PermissionFlagsBits.ViewAuditLog,
+];
+const yonetimRolu = (rol) => rol.permissions.any(YONETIM_IZINLERI);
+
+// Bu rol "oto rol" yapılabilir mi? Yapılamazsa sebebini döndürür.
+// Rolü bot verir; bu yüzden komutu kullanan kişinin o rolü kendisinin de verebiliyor olması
+// gerekir. Yoksa yalnızca Sunucuyu Yönet yetkisi olan biri, kendi veremeyeceği bir rolü
+// (ör. moderatör rolünü) yeni gelen herkese, yani kendi ikinci hesabına da verdirebilir.
+function otoRolEngeli(interaction, rol) {
+  const { guild, member } = interaction;
+  if (rol.managed || rol.id === guild.id) return 'Bu rol otomatik verilemez.';
+  if (yonetimRolu(rol)) {
+    return 'Bu rol yönetim yetkisi taşıyor (ör. üye atma, mesaj ya da rol yönetme). Yeni gelen herkese verilmesi güvenli değil; yetkisiz bir rol seç.';
+  }
+  if (rol.position >= guild.members.me.roles.highest.position) {
+    return 'Bu rol benim rolümden yüksek. Bot rolünü rol listesinde bu rolün üstüne taşı.';
+  }
+  const sahipMi = interaction.user.id === guild.ownerId;
+  if (!sahipMi && (!member.permissions.has(PermissionFlagsBits.ManageRoles) || rol.position >= member.roles.highest.position)) {
+    return 'Bu rolü sen de veremiyorsun. Oto rol yapabilmen için Rolleri Yönet yetkin olmalı ve rol senin en yüksek rolünden aşağıda olmalı.';
+  }
+  return null;
+}
+
+// Oto rolü yeni üyeye verir. Rol ayarlandıktan sonra ona yönetim yetkisi eklenmişse vermez;
+// sessizce durmasın diye (en sık saatte bir) kayda ve log kanalına uyarı yazar.
+const otoRolUyarisi = beklemeSayaci(60 * 60_000);
+async function otoRolVer(uye, rolId) {
+  const rol = uye.guild.roles.cache.get(rolId);
+  if (!rol) return; // Rol silinmiş
+  if (!yonetimRolu(rol)) {
+    await uye.roles.add(rol).catch((h) => console.error('Oto rol verilemedi:', h.message));
+    return;
+  }
+  if (otoRolUyarisi.bekle(uye.guild.id)) return;
+  otoRolUyarisi.isaretle(uye.guild.id);
+  console.error(`Oto rol verilmedi (${uye.guild.id}): rol yönetim yetkisi taşıyor`);
+  await gunlukGonder(
+    uye.guild,
+    'uyeler',
+    new EmbedBuilder()
+      .setTitle('⚠️ Oto rol verilmiyor')
+      .setColor(0xfee75c)
+      .setDescription(`${rol} rolü yönetim yetkisi taşıdığı için yeni gelenlere verilmiyor. Rolün yetkilerini kaldır ya da \`/ayarla oto-rol\` ile başka bir rol seç.`),
+  );
+}
+
+// Komutun bildirdiği yetki, komutu kullanan kişide var mı? Bu denetimi normalde Discord yapar,
+// ama sunucu yöneticileri kuralı Sunucu Ayarları → Entegrasyonlar bölümünden gevşetebilir.
+// "kesinYetki" işaretli komutlarda bot ayrıca bununla da denetler (bkz. index.js).
+function komutYetkisiVar(interaction, komut) {
+  const gereken = komut.data.toJSON().default_member_permissions;
+  return !gereken || Boolean(interaction.memberPermissions?.has(BigInt(gereken)));
+}
+
+// hepsi: { [sunucuId]: [kayıtlar] }. Bu sunucunun sahibine ait bütün sunuculardaki kayıt sayısını
+// döndürür. Bot herkese açıkken, birkaç sunucusu olan tek kişi bütün sunucuların paylaştığı
+// kapasiteyi (ör. toplam haber kaynağı sayısı) tek başına dolduramasın diye kullanılır.
+function sahibinToplami(client, hepsi, sunucuId) {
+  const sahip = client?.guilds.cache.get(sunucuId)?.ownerId;
+  if (!sahip) return 0;
+  return Object.entries(hepsi).reduce(
+    (toplam, [id, kayitlar]) => toplam + (client.guilds.cache.get(id)?.ownerId === sahip ? kayitlar.length : 0),
+    0,
+  );
+}
+
+// Bildirimlerde etiketlenecek rolü seçen kişi o rolü kendisi de etiketleyebiliyor olmalı;
+// yoksa etiketleyemediği bir rolü bot üzerinden etiketletmiş olur.
+function etiketEngeli(interaction, rol) {
+  if (rol.mentionable || interaction.memberPermissions?.has(PermissionFlagsBits.MentionEveryone)) return null;
+  return `${rol} rolünü etiketleme yetkin yok. Rol ayarlarından "Bu rolden herkesin bahsetmesine izin ver" seçeneğini aç ya da başka bir rol seç.`;
+}
+
+// Dışarıdan gelen metin (haber özeti, gönderi açıklaması) kart içinde [yazı](adres) biçiminde
+// gizli bağlantı oluşturamasın
+const baglantisiz = (metin) => metin.replace(/\]\(/g, ']\\(');
+
+// Hatanın kayda yazılacak hali. Hata nesnesinin tamamı yazılmaz: Discord hatalarında
+// gönderilen isteğin gövdesi, yani kullanıcının yazdığı metin (ör. yasaklama sebebi) de bulunur.
+const hataMetni = (hata) => hata?.stack ?? String(hata);
+
+// Bir işlemin sunucu ya da kişi başına ne sıklıkla yapılabileceğini izler (bellekte tutulur,
+// bot yeniden başlayınca sıfırlanır). bekle(anahtar): beklenecek milisaniye, serbestse 0.
+function beklemeSayaci(aralik) {
+  const sonlar = new Map();
+  return {
+    bekle: (anahtar) => Math.max((sonlar.get(anahtar) ?? 0) + aralik - Date.now(), 0),
+    isaretle(anahtar) {
+      sonlar.set(anahtar, Date.now());
+      if (sonlar.size > 5000) {
+        for (const [a, zaman] of sonlar) if (Date.now() - zaman > aralik) sonlar.delete(a);
+      }
+    },
+  };
+}
+
+// "<t:...:R>" Discord'da "5 dakika içinde" gibi canlı bir sayaç gösterir
+const neZaman = (ms) => `<t:${Math.ceil((Date.now() + ms) / 1000)}:R>`;
+
+module.exports = {
+  mudahaleEngeli, logGonder, yazabilirMi, otoRolEngeli, otoRolVer, yonetimRolu, komutYetkisiVar, etiketEngeli,
+  baglantisiz, hataMetni, beklemeSayaci, neZaman, sahibinToplami,
+};
