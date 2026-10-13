@@ -1,10 +1,10 @@
 # Voyager
 
-Sunucunu koruyan, olan biteni kaydeden ve haber veren bir Discord botu. Moderasyon, otomatik koruma, sunucu
-günlüğü, canlı yayın bildirimleri ve oyun fırsatları tek botta.
+Sunucunu kuran, koruyan ve haber veren bir Discord botu. Hazır topluluk sunucusu kurulumu, moderasyon, otomatik
+koruma, acil durum kilidi, sunucu günlüğü; yayın, haber ve oyun fırsatı bildirimleri tek botta.
 
 **Site:** [voyager.helyosfer.me](https://voyager.helyosfer.me) · botu sunucuna eklemek için sitedeki **Sunucuna ekle**
-düğmesini kullan.
+düğmesini kullan. `/sunucukur` ve `/kitle` kullanacaksan sayfadaki **tam izinlerle ekle** bağlantısıyla ekle.
 
 Node.js ve [discord.js](https://discord.js.org) ile yazıldı. Kodu alıp kendi botunu da çalıştırabilirsin; adımlar
 [Kendi botunu çalıştırmak](#kendi-botunu-çalıştırmak) bölümünde.
@@ -14,9 +14,13 @@ Node.js ve [discord.js](https://discord.js.org) ile yazıldı. Kodu alıp kendi 
 - [Neler yapar](#neler-yapar)
 - [Komutlar](#komutlar)
 - [Özellikler](#özellikler)
+  - [Sunucu kurulumu](#sunucu-kurulumu-sunucukur)
+  - [Acil durum kilidi](#acil-durum-kilidi-kitle-kilidiac)
   - [Otomatik koruma](#otomatik-koruma)
   - [Sunucu günlüğü](#sunucu-günlüğü)
   - [Canlı yayın bildirimleri](#canlı-yayın-bildirimleri)
+  - [Haber bildirimleri](#haber-bildirimleri)
+  - [Instagram gönderi bildirimleri](#instagram-gönderi-bildirimleri)
   - [Oyun fırsatları](#oyun-fırsatları)
 - [Sunucuna ekledikten sonra](#sunucuna-ekledikten-sonra)
 - [Kendi botunu çalıştırmak](#kendi-botunu-çalıştırmak)
@@ -26,10 +30,14 @@ Node.js ve [discord.js](https://discord.js.org) ile yazıldı. Kodu alıp kendi 
 
 ## Neler yapar
 
+- **Sunucu kurulumu:** tek komutla roller, kanallar, izinler, üyelik onayı ve destek sistemi.
 - **Moderasyon:** yasaklama, atma, süreli susturma, toplu mesaj silme.
 - **Otomatik koruma:** ele geçirilmiş hesapların spam'ini durdurur, ağır küfürleri siler.
+- **Acil durum kilidi:** saldırı anında bütün kanalları kilitler, sonra eski haline döndürür.
 - **Sunucu günlüğü:** üye giriş çıkışları, silinen ve düzenlenen mesajlar, ses kanalları ve yönetim işlemleri tek kanalda.
 - **Canlı yayın bildirimleri:** Twitch, Kick ve YouTube'da takip ettiğin yayıncılar yayına geçince haber verir.
+- **Haberler:** takip ettiğin sitelerin yeni haberlerini duyurur (RSS).
+- **Instagram:** seçtiğin hesapların yeni gönderilerini duyurur (ayrıca kurulum ister).
 - **Oyun fırsatları:** Steam, Epic ve GOG'daki bedava oyunları ve indirimleri Türkiye fiyatlarıyla duyurur.
 - **Karşılama:** yeni üyeye hoş geldin mesajı ve otomatik rol.
 - **Hatırlatıcı:** belirttiğin süre sonra seni etiketler.
@@ -50,13 +58,58 @@ Her sunucunun ayarları ayrıdır ve bir özellik açılmadıkça kapalı kalır
 | `/temizle` | Kanaldaki son 1-100 mesajı siler | Mesajları Yönet |
 | `/ayarla` | Log kanalı ve kategorileri, hoş geldin kanalı, oto rol (`sifirla` ile kaldırılır) | Sunucuyu Yönet |
 | `/koruma` | Otomatik spam koruması ve ağır küfür filtresi | Sunucuyu Yönet |
+| `/sunucukur` | Topluluk sunucusu kurar: roller, kanallar, izinler, üyelik onayı, destek sistemi | Yönetici |
+| `/kitle`, `/kilidiac` | Acil durumda bütün kanalları kilitler ve geri açar | Yönetici |
 | `/yayin` | Canlı yayın bildirimlerini ayarlar (Twitch, Kick, YouTube) | Sunucuyu Yönet |
+| `/haber` | Haber sitelerinin yeni haberlerini duyurur (RSS) | Sunucuyu Yönet |
+| `/instagram` | Instagram hesaplarının yeni gönderilerini duyurur | Sunucuyu Yönet |
 | `/oyun` | Bedava oyun ve indirim bildirimlerini ayarlar (Steam, Epic, GOG) | Sunucuyu Yönet |
 
 Yetki gerektiren komutlar yalnızca o yetkisi olanlara görünür. `/ban`, `/kick` ve `/sustur` ayrıca rol sırasına
-bakar: kendinle aynı ya da daha yüksek roldeki bir üyeye işlem yapamazsın.
+bakar: kendinle aynı ya da daha yüksek roldeki bir üyeye işlem yapamazsın. `/sunucukur`, `/kitle` ve `/kilidiac`
+Sunucu Ayarları → Entegrasyonlar'dan başka bir role açılsa bile yalnızca Yönetici yetkisi olanlarca kullanılabilir.
 
 ## Özellikler
+
+### Sunucu kurulumu (`/sunucukur`)
+
+Yalnızca Yönetici yetkisi olanlar çalıştırabilir. Eksiksiz bir topluluk sunucusu kurar: 15 rol, 14 kategori, 55 kanal.
+Önce ne oluşturulacağını gösterir ve onay ister. Mevcut kanal ve roller silinmez ya da değiştirilmez; aynı adda
+olanlar atlanır, komut yeniden çalıştırılırsa yalnızca eksikler tamamlanır.
+
+- **İzinler kategori düzeyinde tanımlanır** ve kanallar kategorisiyle eşitlenmiş (senkron) oluşur. Yalnızca farklı
+  davranması gereken kanallar (kurallar, duyurular, bot akışları...) kendi iznini taşır.
+- **Üyelik onayı:** Yeni gelenler `Yeni Gelen` rolüyle başlar ve yalnızca başlangıç ile destek kanallarını görür.
+  `üyelik-onay` kanalındaki düğmeye basınca `Üye` olur, topluluk kanalları açılır.
+- **İlgi rolleri:** `rol-seçimi` kanalındaki menüden seçilir.
+- **Destek talepleri:** `destek-merkezi` kanalındaki düğme, yalnızca talep sahibinin ve destek ekibinin gördüğü bir oda açar.
+  Kapatılan oda hemen silinmez; sahibi okuyabilir ama yazamaz. Kapalı odalar 30 gün sonra silinir; bir üyenin en fazla
+  3 kapalı odası saklanır. Bir üye 10 dakikada bir talep açabilir.
+- Günlük, hoş geldin, oyun fırsatları ve yayın kanalları botun ayarlarına kendiliğinden bağlanır.
+
+| Rol | Erişim |
+|---|---|
+| Yeni Gelen | Başlangıç ve herkese açık destek (yalnızca okur) |
+| Üye | Topluluk, oyun, teknoloji, medya, ses, etkinlik ve destek |
+| Destekçi, İçerik Üreticisi | Üye alanları + Özel Alan |
+| Etkinlik Ekibi | Üye alanları + etkinlik duyurusu yazma + Ekip Alanı |
+| Destek Ekibi | Üye alanları + destek talepleri + Ekip Alanı |
+| Moderatör | Yukarıdakiler + Moderasyon (üye atma, susturma, mesaj yönetme) |
+| Yönetici | Her yer (ayrıca yasaklama); **Administrator izni verilmez** |
+
+Botta **Kanalları Yönet** ve **Rolleri Yönet** izinleri olmalı; bot yalnızca kendisinde olan izinleri kanal kurallarına
+yazabildiği için **Bağlan**, **Konuş**, **Video** ve **Dosya Ekle** izinleri de önerilir. Kurulumdan sonra Voyager rolü
+yeni rollerin üstüne taşınmalıdır.
+
+### Acil durum kilidi (`/kitle`, `/kilidiac`)
+
+`/kitle` saldırı anında bütün kanalları kilitler: sunucu sahibi dışındaki üyeler yazamaz, tepki ekleyemez, konu açamaz ve
+ses kanallarına giremez. Her kanalın izinleri saklanır; `/kilidiac` hepsini kilitten önceki haline birebir döndürür.
+
+- Kilitliyken sunucuya eklenen botlar kendiliğinden atılır.
+- Yetki varsa (Üyeleri Taşı) ses kanallarındakiler çıkarılır.
+- Discord kuralı gereği sunucu sahibi ve **Administrator** iznine sahip roller kanal izinlerinden etkilenmez.
+- Bot bir izni ancak kendisinde de varsa kilitleyebilir; eksik olanlar komutun cevabında listelenir.
 
 ### Otomatik koruma
 
@@ -113,6 +166,27 @@ Seçilen yayıncılar yayına geçince bot seçilen kanala haber verir. Yalnızc
 
 Bir sunucu en fazla 50 yayıncı takip edebilir. Etiketlenecek rolü, ancak o rolü kendisi de etiketleyebilen biri seçebilir.
 
+### Haber bildirimleri
+
+`/haber` ile haber sitelerinin yeni haberleri bir kanala duyurulur (kanal, ekle, cikar, liste, rol, kapat). Sitelerin
+kendi RSS/Atom beslemeleri okunur; anahtar ya da hesap gerekmez.
+
+- `/haber ekle` sitenin adresini (ör. `webtekno.com`) ya da doğrudan RSS adresini kabul eder; site adresi verilirse besleme otomatik bulunur.
+- Kaynaklar 10 dakikada bir kontrol edilir; bir kaynaktan tek seferde en fazla 3 haber duyurulur. Sunucu başına 15 kaynak.
+- Kaynak eklendiğinde mevcut haberler gönderilmez, yalnızca sonradan yayınlananlar duyurulur.
+- Adresi kullanıcılar verdiği için bot yalnızca herkese açık adreslere, standart portlardan bağlanır; iç ağ adresleri reddedilir.
+- Bütün sunucuların takip ettiği toplam kaynak sayısı sınırlıdır; aynı kişinin sahip olduğu sunucular toplamda 30 kaynak ekleyebilir.
+
+### Instagram gönderi bildirimleri
+
+`/instagram` ile seçilen hesapların yeni gönderileri bir kanala duyurulur (kanal, ekle, cikar, liste, rol, test, kapat).
+Sunucu başına 20 hesap. Instagram'ın resmi Business Discovery servisi kullanılır:
+
+- Yalnızca **profesyonel** (işletme / içerik üreticisi) ve herkese açık hesaplar takip edilebilir.
+- Anında değildir; hesaplar yaklaşık 5 dakikada bir kontrol edilir (hesap sayısı arttıkça aralık uzar).
+- Botun sahibinin, bir Facebook Sayfasına bağlı profesyonel bir Instagram hesabı ve bir Meta geliştirici uygulaması olmalıdır.
+  `.env` içinde `META_APP_ID`, `META_APP_SECRET` ve `INSTAGRAM_TOKEN` doldurulur; bot jetonu uzun ömürlüsüyle değiştirip kendisi yeniler.
+
 ### Oyun fırsatları
 
 Bot 30 dakikada bir bedava oyunları ve mağaza indirimlerini kontrol eder, yeni çıkanları seçtiğin kanala gönderir.
@@ -141,6 +215,9 @@ listede gösterilir. Aynı oyun birden fazla mağazada indirimdeyse tek kayıtta
 `src/firsatlar.js` içindeki `POPULER_ESIK` değeridir.
 
 ## Sunucuna ekledikten sonra
+
+Boş bir sunucuyu baştan kurmak istiyorsan `/sunucukur` ile başla; günlük, hoş geldin, yayın ve oyun kanallarını
+kendisi bağlar. Hazır bir sunucuda:
 
 1. Sunucu Ayarları → Roller: **Voyager rolünü**, yöneteceği rollerin üstüne sürükle. Bot kendi rolünden yüksek
    kişilere işlem yapamaz ve yüksek rolleri veremez.
@@ -197,8 +274,10 @@ Komutlar genel yüklenir: bot hangi sunucuya eklenirse orada kendiliğinden gör
 
 ### 5. Botu sunucuna ekle
 
-Bot çalışırken tarayıcıda <http://localhost:8788> adresini aç ve **Sunucuna ekle** düğmesine bas. Düğmenin linki
-`bot` kapsamını ve gereken izinleri açıkça taşır; Developer Portal'daki varsayılan kurulum ayarlarına bağlı değildir.
+Bot çalışırken tarayıcıda <http://localhost:8788> adresini aç. **Sunucuna ekle** düğmesi botu temel izinlerle
+(moderasyon, günlük, bildirimler, oto rol) ekler; `/sunucukur` ve `/kitle` için gereken kanal yönetimi izinlerini
+isteyen **tam izinlerle ekle** bağlantısı sayfanın altındadır. İki link de `bot` kapsamını ve izinleri açıkça taşır;
+Developer Portal'daki varsayılan kurulum ayarlarına bağlı değildir.
 
 Sonra Discord'da `/ping` yaz.
 
@@ -206,7 +285,7 @@ Sonra Discord'da `/ping` yaz.
 
 Bot `127.0.0.1:8788` üzerinde küçük bir HTTP sunucusu açar. Bu sunucu iki iş görür:
 
-- **Tanıtım sayfası** (`src/site/`): başlık, özellikler ve "Sunucuna ekle" düğmesi.
+- **Tanıtım sayfası** (`src/site/`): başlık, özellikler, komut listesi ve "Sunucuna ekle" düğmesi.
   [voyager.helyosfer.me](https://voyager.helyosfer.me) bu sayfadır. Arka planda NASA'nın
   [helyosfer animasyonu](https://svs.gsfc.nasa.gov/20363) oynar (kaynak: NASA's Goddard Space Flight Center
   Conceptual Image Lab); dosya NASA'nın sunucusundan yüklenir.
@@ -294,6 +373,9 @@ Betik commit'i değil, o an klasörde duran `src/` içeriğini gönderir; gönde
 - **Etiketler:** kullanıcının yazdığı metindeki `@everyone` ve rol etiketleri bildirim göndermez.
 - **Mesaj içeriği** yalnızca `MESAJ_ICERIGI=1` ise okunur ve yalnızca sunucunun kendi log kanalına yazılır.
 
+Ayrıntılı kurallar ve yayından önce yapılacak kontroller: [SECURITY_PROTOCOL.md](SECURITY_PROTOCOL.md). Denetim
+bulguları: [SECURITY_AUDIT.md](SECURITY_AUDIT.md). Güvenlik kurallarının testleri `npm test` ile çalışır.
+
 Bir güvenlik sorunu bulursan herkese açık bir kayıt açmak yerine [helyosfer.me](https://helyosfer.me)
 üzerindeki iletişim bilgileriyle haber ver.
 
@@ -312,10 +394,15 @@ src/
   yardimci.js         Yetki kontrolleri ve log gönderme
   gunluk.js           Sunucu günlüğü
   koruma.js           Spam koruması ve küfür filtresi
+  topluluk.js         /sunucukur şablonu, üyelik onayı, ilgi rolleri, destek talepleri
+  kilit.js            Acil durum kilidi
+  haber.js            Haber bildirimleri; haber-ayristir.js ayrı iş parçacığında çalışır
+  instagram.js        Instagram gönderi bildirimleri
   firsatlar.js        Oyun fırsatları
   hatirlatici.js      Hatırlatıcı zamanlayıcıları
   yayin/              Yayın bildirimleri (Twitch, Kick, YouTube) ve HTTP sunucusu
   site.js, site/      Tanıtım sayfası
+test/                 Güvenlik testleri (npm test) ve Discord deneme listesi
 ```
 
 Yeni komut eklemek için `src/commands/` içine `ping.js` gibi bir dosya ekleyip `npm run komutlar` çalıştır.
