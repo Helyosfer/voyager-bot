@@ -513,10 +513,10 @@ async function talepBeklemesi(interaction, t) {
   // Yeni açılmış hesaplarla sunucuya girip hemen oda açmaya karşı
   const katildi = interaction.member?.joinedTimestamp;
   if (katildi && Date.now() - katildi < UYELIK_BEKLEMESI) {
-    return `⏳ Sunucuya yeni katıldın. Destek talebini ${neZaman(katildi + UYELIK_BEKLEMESI - Date.now())} açabilirsin.`;
+    return `⏳ Sunucuya yeni katıldın. Destek talebi açabileceğin zaman: ${neZaman(katildi + UYELIK_BEKLEMESI - Date.now())}`;
   }
   const kalan = talepSayaci.bekle(`${interaction.guildId}:${interaction.user.id}`);
-  if (kalan) return `⏳ Az önce bir destek talebi açtın. Yenisini ${neZaman(kalan)} açabilirsin.`;
+  if (kalan) return `⏳ Az önce bir destek talebi açtın. Yenisini açabileceğin zaman: ${neZaman(kalan)}`;
 
   const acik = interaction.guild.channels.cache.filter((k) => k.parentId === t.kategoriler.talepler && !k.name.startsWith('kapalı-')).size;
   if (acik >= ACIK_ODA_SINIRI) {

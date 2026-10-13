@@ -147,7 +147,7 @@ module.exports = {
     if (alt === 'simdi') {
       if (!ayar.kanal) return cevapla('❌ Önce `/oyun kanal` ile bir kanal seç.');
       const kalan = simdiSayaci.bekle(sunucuId);
-      if (kalan) return cevapla(`⏳ Fırsatlar az önce gönderildi. Yeniden ${neZaman(kalan)} gönderebilirsin.`);
+      if (kalan) return cevapla(`⏳ Fırsatlar az önce gönderildi. Yeniden gönderebileceğin zaman: ${neZaman(kalan)}`);
       simdiSayaci.isaretle(sunucuId);
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
       const sonuc = await firsatlar.simdiGonder(interaction.guild);

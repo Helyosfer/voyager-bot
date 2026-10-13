@@ -54,7 +54,7 @@ module.exports = {
     const satirlar = [];
     let uzunluk = 0;
     for (const s of sirali) {
-      const satir = `**${escapeMarkdown(s.name)}** · ${s.memberCount} üye · eklendi <t:${Math.floor(s.joinedTimestamp / 1000)}:R>\n\`${s.id}\``;
+      const satir = `**${escapeMarkdown(s.name)}** · ${s.memberCount} üye · eklendi: <t:${Math.floor(s.joinedTimestamp / 1000)}:R>\n\`${s.id}\``;
       if (uzunluk + satir.length > 3900) break; // Açıklama sınırı 4096
       satirlar.push(satir);
       uzunluk += satir.length + 2;

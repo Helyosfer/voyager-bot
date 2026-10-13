@@ -276,7 +276,7 @@ function bedavaEmbed(o) {
 
 function bedavaSatiri(o) {
   const fiyat = o.deger ? `~~${o.deger}~~ **Bedava**` : '**Bedava**';
-  const bitis = o.bitis ? ` · bitiş ${zaman(o.bitis)}` : '';
+  const bitis = o.bitis ? ` · bitiş: ${zaman(o.bitis)}` : '';
   const platform = o.platformlar.filter((p) => p !== 'PC').join(', ') || 'PC';
   return `[${escapeMarkdown(o.ad)}](${o.url}) · ${platform} · ${fiyat}${bitis}`;
 }
@@ -293,7 +293,7 @@ function indirimKarti(oyun) {
     .addFields(
       oyun.teklifler.map((t) => ({
         name: INDIRIM_MAGAZALARI[t.magaza].ad,
-        value: [fiyatMetni(t), t.bitis ? `bitiş ${zaman(t.bitis)}` : null, `[Mağazada aç](${t.url})`].filter(Boolean).join('\n'),
+        value: [fiyatMetni(t), t.bitis ? `bitiş: ${zaman(t.bitis)}` : null, `[Mağazada aç](${t.url})`].filter(Boolean).join('\n'),
         inline: true,
       })),
     )
@@ -304,7 +304,7 @@ function indirimKarti(oyun) {
 }
 
 function indirimSatiri(oyun) {
-  const metin = (t) => `${fiyatMetni(t)}${t.bitis ? ` · bitiş ${zaman(t.bitis)}` : ''}`;
+  const metin = (t) => `${fiyatMetni(t)}${t.bitis ? ` · bitiş: ${zaman(t.bitis)}` : ''}`;
   if (oyun.teklifler.length === 1) {
     const t = oyun.teklifler[0];
     return `[${escapeMarkdown(oyun.ad)}](${t.url}) · ${INDIRIM_MAGAZALARI[t.magaza].ad} · ${metin(t)}`;

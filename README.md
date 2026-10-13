@@ -45,6 +45,9 @@ Node.js ve [discord.js](https://discord.js.org) ile yazıldı. Kodu alıp kendi 
 
 Her sunucunun ayarları ayrıdır ve bir özellik açılmadıkça kapalı kalır.
 
+Bekleme süresi bildiren mesajlardaki sayaçlar (ör. "5 dakika içinde") Discord tarafından, okuyan kişinin uygulama
+diliyle gösterilir.
+
 ## Komutlar
 
 | Komut | Ne yapar | Gereken yetki |
@@ -112,6 +115,9 @@ ses kanallarına giremez. Her kanalın izinleri saklanır; `/kilidiac` hepsini k
 - Yetki varsa (Üyeleri Taşı) ses kanallarındakiler çıkarılır.
 - Discord kuralı gereği sunucu sahibi ve **Administrator** iznine sahip roller kanal izinlerinden etkilenmez.
 - Bot bir izni ancak kendisinde de varsa kilitleyebilir; eksik olanlar komutun cevabında listelenir.
+- Bir ses kanalını kilitleyebilmesi için botun o kanalda **Bağlan** izni olmalıdır. `/sunucukur` bunu kendisi verir;
+  elle kurulmuş ya da eski bir kurulumdan kalan ses kanallarında izin yoksa komut o kanalları "erişimim yok" diye bildirir.
+- Bot **Yönetici** olmak zorunda değildir. Kilit, botun kanalda elinde olan izinlerle uygulanır.
 
 ### Otomatik koruma
 

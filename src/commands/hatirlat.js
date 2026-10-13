@@ -35,9 +35,10 @@ module.exports = {
       });
     }
 
-    // <t:...:R> Discord'da "5 dakika içinde" gibi canlı bir sayaç gösterir
+    // <t:...:R> Discord'da "5 dakika içinde" gibi canlı bir sayaç gösterir. Sayaç okuyanın uygulama diliyle
+    // yazıldığı için cümlenin ortasına değil sonuna konur.
     await interaction.reply({
-      content: `⏰ Tamam, <t:${Math.floor(zaman / 1000)}:R> hatırlatacağım.`,
+      content: `⏰ Tamam, hatırlatacağım: <t:${Math.floor(zaman / 1000)}:R>`,
       flags: MessageFlags.Ephemeral,
     });
   },
