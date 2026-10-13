@@ -15,6 +15,7 @@ Denetimde bulunanlar, alınan kararlar ve kalan riskler için: [SECURITY_AUDIT.m
 | `DISCORD_TOKEN` | `.env` | Developer Portal → Bot → Reset Token |
 | `TWITCH_CLIENT_SECRET`, `KICK_CLIENT_SECRET` | `.env` | Platformların geliştirici konsolları |
 | `YOUTUBE_API_KEY` | `.env` | Google Cloud Console |
+| `GEMINI_API_KEY` | `.env` | Google AI Studio (YouTube anahtarından ayrı; yalnızca Gemini API'sine kısıtlı) |
 | `META_APP_SECRET`, `INSTAGRAM_TOKEN` | `.env` | Meta geliştirici paneli, Graph API Explorer |
 | Twitch webhook imza anahtarı | `data/yayin-gizli.json` | Bot (ilk kullanımda) |
 | Uzun ömürlü Instagram jetonu | `data/instagram-jeton.json` | Bot (`.env`'deki jetonu değiştirir ve yeniler) |
@@ -98,6 +99,16 @@ Kullanıcının yazdığı her şey, webhook gövdeleri ve internetten indirilen
   açıklamasına koyduğun dış metni `baglantisiz` ile geçir. Uzun metni `kisalt` ile sınırla.
 - Dış servisten gelen bir adresi bağlantı ya da resim yapmadan önce `httpAdresi` ile denetle (`firsatlar.js`).
 
+**Dil modeli (`/sor`)**
+
+- Modele giden metin ve modelden dönen cevap güvenilmezdir. Kullanıcı "önceki talimatları unut" diyebilir; talimat
+  metni bir güvenlik sınırı değildir.
+- Modele hiçbir yetki verme: komut çalıştıramaz, rol ya da kanal değiştiremez, başka kullanıcıların mesajlarını
+  göremez. Modelin çıktısına göre sunucuda işlem yapan bir özellik ekleme.
+- Cevabı `allowedMentions: { parse: [] }` ile gönder, `baglantisiz` ile geçir, uzunluğunu sınırla.
+- Anahtarı adres satırına değil başlığa koy. Soru metnini kayda yazma.
+- Başkalarının mesajlarını (kanal geçmişi gibi) modele göndermeden önce bunun gizlilik etkisini düşün ve belgeye yaz.
+
 **Adres indirme**
 
 - Kullanıcının verdiği bir adresi yalnızca `src/haber.js` içindeki `indir` ile indir. `fetch` ya da `http.get` ile
@@ -141,6 +152,7 @@ eklerken aynı türden bir sınır koy.
 | Kapalı destek odası | 30 gün; üye başı en fazla 3; kategori 40 kanala ulaşınca en eskiler silinir | `topluluk.js` |
 | `/oyun simdi` | Sunucu başı 5 dakikada bir | `commands/oyun.js` |
 | `/haber ekle` | Sunucu başı aynı anda tek işlem | `commands/haber.js` |
+| `/sor` | Kişi başı dakikada 1 ve günde 20; sunucu başı günde 150; toplam günde 450; soru 500 karakter; yalnızca izin verilen sunucularda | `yapayzeka.js` |
 | İndirilen sayfa | 3 MB, 20 saniye; ayrıştırma 5 saniye | `haber.js` |
 | Webhook gövdesi | 1 MB | `yayin/index.js` |
 

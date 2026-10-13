@@ -157,7 +157,7 @@ HTTP sunucusu arası (yalnızca imzası doğrulanan webhook güvenilir); bot ile
 
 | Tehdit | Neden |
 |---|---|
-| Prompt injection | Kodda dil modeli kullanımı yok |
+| Prompt injection | Denetim sırasında kodda dil modeli yoktu. Sonradan eklenen `/sor` için bkz. "Denetimden sonra eklenenler" |
 | SQL enjeksiyonu | Veritabanı yok; veri JSON dosyalarında |
 | Komut enjeksiyonu | `src/` içinde `child_process`, `eval` ya da `new Function` yok (arandı). Betikler kullanıcı girdisi almıyor |
 | Yol geçişi | Dosya adları kodda sabit (`depo.js`); HTTP sunucusu yalnızca iki sabit dosyayı verir (`site.js:48-60`) |
@@ -559,6 +559,19 @@ Bunlar yetki politikasını, ürün davranışını ya da dağıtımı değişti
   eski haline döndürdü; kayıtta hata yok. Kilit sırasında yetkisiz bir hesabın yazamadığı ayrıca denenmedi.
 - **Kalan:** Bu düzeltmeden önce `/sunucukur` ile kurulmuş sunuculardaki ses kanalları, bot Yönetici değilse
   kilitlenemez; komut bunu "erişimim yok" diye bildirir.
+
+### Denetimden sonra eklenenler
+
+#### `/sor`: Gemini ile soru cevaplama (13 Ekim 2026)
+
+- **Yer:** `src/yapayzeka.js`, `src/commands/sor.js`
+- **Yeni risk:** prompt injection, ortak kotanın tüketilmesi, kullanıcı metninin üçüncü tarafa (Google) gitmesi.
+- **Alınan önlemler:** model yalnızca metin üretir ve hiçbir işlem yapamaz; cevap etiket atamaz, gizli bağlantı
+  içeremez, uzunluğu sınırlıdır; anahtar başlıkta gider, soru kayda yazılmaz; kişi, sunucu ve toplam günlük
+  sınırlar vardır; özellik yalnızca izin verilen sunucularda ve yalnızca anahtar tanımlıysa açıktır.
+- **Doğrulama:** testler (sahte Gemini cevabıyla). Gerçek Gemini'ye karşı ilk deneme canlıda yapıldı.
+- **Kalan risk:** model yanlış ya da uygunsuz metin üretebilir; içerik süzgeci Google'ın kendi süzgecidir.
+  Sayaçlar bellekte tutulur; bot yeniden başlayınca sıfırlanır (Google'ın kendi günlük sınırı yine geçerlidir).
 
 ### Açık kalanlar
 

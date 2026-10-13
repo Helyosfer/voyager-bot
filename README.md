@@ -22,6 +22,7 @@ Node.js ve [discord.js](https://discord.js.org) ile yazıldı. Kodu alıp kendi 
   - [Haber bildirimleri](#haber-bildirimleri)
   - [Instagram gönderi bildirimleri](#instagram-gönderi-bildirimleri)
   - [Oyun fırsatları](#oyun-fırsatları)
+  - [Soru cevaplama](#soru-cevaplama-sor)
 - [Sunucuna ekledikten sonra](#sunucuna-ekledikten-sonra)
 - [Kendi botunu çalıştırmak](#kendi-botunu-çalıştırmak)
 - [VPS'te 7/24 çalıştırma](#vpste-724-çalıştırma-ubuntu)
@@ -42,6 +43,7 @@ Node.js ve [discord.js](https://discord.js.org) ile yazıldı. Kodu alıp kendi 
 - **Oyun fırsatları:** Steam, Epic ve GOG'daki bedava oyunları ve indirimleri Türkiye fiyatlarıyla duyurur.
 - **Karşılama:** yeni üyeye hoş geldin mesajı ve otomatik rol.
 - **Hatırlatıcı:** belirttiğin süre sonra seni etiketler.
+- **Soru cevaplama:** `/sor` ile yapay zekâya soru sorulur (ayrıca kurulum ister).
 
 Her sunucunun ayarları ayrıdır ve bir özellik açılmadıkça kapalı kalır.
 
@@ -55,6 +57,7 @@ diliyle gösterilir.
 | `/yardim` | Tüm komutları ve ne işe yaradıklarını listeler | Herkes |
 | `/ping` | Bot çalışıyor mu kontrol eder | Herkes |
 | `/hatirlat` | Belirtilen süre sonra hatırlatma yapar (kişi başı en fazla 5) | Herkes |
+| `/sor` | Yapay zekâya soru sorar (yalnızca kurulduysa ve izin verilen sunucularda) | Herkes |
 | `/ban` | Kullanıcıyı yasaklar | Üyeleri Yasakla |
 | `/unban` | Kullanıcının yasağını kaldırır | Üyeleri Yasakla |
 | `/kick` | Üyeyi atar | Üyeleri At |
@@ -223,6 +226,20 @@ Kanal ilk seçildiğinde o an yayında olanlar gönderilmez, yalnızca sonradan 
 Popüler oyunlar (Steam'de en az 20.000 incelemesi olanlar) resimli büyük bir kartla, diğerleri toplu bir
 listede gösterilir. Aynı oyun birden fazla mağazada indirimdeyse tek kayıtta birleştirilir. Eşik
 `src/firsatlar.js` içindeki `POPULER_ESIK` değeridir.
+
+### Soru cevaplama (`/sor`)
+
+`/sor soru:<metin>` soruyu Google'ın Gemini modeline sorar ve cevabı kanala yazar; `gizli` seçeneğiyle cevabı
+yalnızca soran görür. Cevaplar yanlış olabilir; her cevabın altında bu not yer alır.
+
+- Model yalnızca metin üretir: sunucuda hiçbir işlem yapamaz ve cevabı kimseyi etiketleyemez.
+- Sorulan metin Google'a gönderilir. Ücretsiz katmanda Google bu metni ürünlerini geliştirmek için kullanabilir;
+  kişisel bilgi yazılmamalıdır. Bot soruları kaydetmez.
+- Kota bütün sunucular arasında ortaktır. Sınırlar: kişi başı dakikada 1 ve günde 20 soru, sunucu başı günde 150,
+  toplam günde 450 (`src/yapayzeka.js` içindeki sabitler; modelin Google'daki günlük sınırına göre ayarlanır).
+- Kurulum: `.env` içinde `GEMINI_API_KEY` (AI Studio'dan, başka anahtarlardan ayrı) ve `GEMINI_MODEL` (modelin
+  API'deki adı). İkisi yoksa komut yüklenmez. Özellik yalnızca `GEMINI_SUNUCULAR` ve `GUILD_IDS` içindeki
+  sunucularda açıktır; ikisi de boşsa her sunucuda açık olur.
 
 ## Sunucuna ekledikten sonra
 
@@ -408,6 +425,7 @@ src/
   kilit.js            Acil durum kilidi
   haber.js            Haber bildirimleri; haber-ayristir.js ayrı iş parçacığında çalışır
   instagram.js        Instagram gönderi bildirimleri
+  yapayzeka.js        /sor: Gemini ile soru cevaplama
   firsatlar.js        Oyun fırsatları
   hatirlatici.js      Hatırlatıcı zamanlayıcıları
   yayin/              Yayın bildirimleri (Twitch, Kick, YouTube) ve HTTP sunucusu
