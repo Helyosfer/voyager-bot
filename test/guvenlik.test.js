@@ -353,6 +353,36 @@ test('destek talebi: sunucu geneli saatlik sınır ve dolmaya yakın kategoride 
   assert.equal(form.cagri[0][0], 'cevap', 'form da açılmamalı');
 });
 
+test('destek talebi: yeni katılan bekler; açık oda sınırı dolunca yeni talep açılmaz', async () => {
+  const topluluk = src('topluluk');
+  const { guild, olusan } = talepOrtami('talep-5', []);
+  const yeni = etkilesim('tp:talep-form', guild, '3000');
+  yeni.member.joinedTimestamp = Date.now() - 60_000;
+  await topluluk.etkilesim(yeni);
+  assert.match(yeni.cagri[0][1], /yeni katıldın/);
+  const eski = etkilesim('tp:talep-form', guild, '3001');
+  eski.member.joinedTimestamp = Date.now() - 60 * 60_000;
+  await topluluk.etkilesim(eski);
+  assert.equal(olusan.length, 1);
+
+  const acik = Array.from({ length: 25 }, (_, i) => ({ name: `talep-acik-${i}`, topic: `sahip=7${i}; konu=x` }));
+  const dolu = talepOrtami('talep-6', acik);
+  const fazla = etkilesim('tp:talep-form', dolu.guild, '3002');
+  await topluluk.etkilesim(fazla);
+  assert.equal(dolu.olusan.length, 0);
+  assert.match(fazla.cagri[0][1], /çok yoğun/);
+});
+
+test('Instagram yalnızca izin verilen sunucularda açık', () => {
+  const { izinListesi, izinli } = src('instagram');
+  const liste = izinListesi({ INSTAGRAM_SUNUCULAR: '111, 222', GUILD_IDS: '333' });
+  assert.deepEqual([...liste].sort(), ['111', '222', '333']);
+  assert.equal(izinli('222', liste), true);
+  assert.equal(izinli('999', liste), false);
+  // İkisi de boşsa (tek sunuculuk kurulum) her sunucuda açık
+  assert.equal(izinli('999', izinListesi({})), true);
+});
+
 // --- Haber: indirme sınırları ve kontrol döngüsü ---
 // İndirici yalnızca herkese açık adreslere bağlanır. Sınırlarını denemek için DNS cevabı ve
 // bağlantı sahtesiyle değiştirilir: "ornek.test" herkese açık bir adres gibi çözülür, bağlantı

@@ -362,8 +362,11 @@ Bunlar yetki politikasını, ürün davranışını ya da dağıtımı değişti
 - **Uygulanmayan:** Talep açmak için Üye rolü istemek değerlendirildi ve uygulanmadı. Üyelik onayı tek tıklık bir
   düğme olduğu için saldırgana engel olmaz; buna karşılık üyeliğini onaylayamayan gerçek bir kullanıcının tek destek
   yolunu kapatır (onaylanmamış hesaplar destek sohbetine de yazamaz).
-- **Kalan risk:** Çok sayıda hesap kullanan biri, her hesapla bir oda açık tutarak kategoriyi saatte en fazla 15
-  odayla doldurabilir. Açık odalar kendiliğinden silinmez; ekip uyarıyı görüp hesapları atmalıdır.
+- **Sonradan eklenen (13 Ekim 2026):** aynı anda en fazla 25 açık oda (`ACIK_ODA_SINIRI`) ve sunucuya yeni katılan
+  için 10 dakikalık bekleme (`UYELIK_BEKLEMESI`). Açık oda sınırı kategori eşiğinden küçük olduğu için kategori artık
+  doldurulamaz.
+- **Kalan risk:** Çok sayıda hesap kullanan biri 25 açık oda sınırını doldurup yeni taleplerin açılmasını
+  geçici olarak engelleyebilir. Ekip uyarıyı kayıt kanalında görür; odaları kapatıp hesapları atınca düzelir.
 
 #### VGR-14 · Yönetim yetkisi taşıyan bir rol oto rol yapılabiliyor
 
@@ -407,9 +410,10 @@ Bunlar yetki politikasını, ürün davranışını ya da dağıtımı değişti
   aynı oranla büyütmek (3600 hesap) aralığı 30 saate çıkarırdı.
 - **Davranış değişikliği:** Haber kaynağı sayısı çok artarsa botun işlemci ve ağ kullanımı da artar; 2700 kaynakta
   her 10 dakikalık turda 2700 sayfa indirilir.
-- **Kalan risk:** Instagram havuzu, farklı hesaplarla kurulmuş üç sunucuyla hâlâ doldurulabilir. Instagram
-  bağlantısı `.env` ile ayrıca açılmadıkça kapalıdır. Bot herkese açık olacaksa bu özelliği yalnızca izin verilen
-  sunuculara açmak gerekir.
+- **Sonradan eklenen (13 Ekim 2026):** Instagram yalnızca izin verilen sunucularda açık (`INSTAGRAM_SUNUCULAR` ve
+  `GUILD_IDS`). İzin listesi boş değilse yabancı sunucular havuza hesap ekleyemez.
+- **Kalan risk:** İzin listesi boş bırakılırsa (ikisi de tanımsız) özellik her sunucuda açıktır ve havuz birkaç
+  sunucuyla doldurulabilir.
 
 #### VGR-18 · Yakalanmamış bir hata bütün botu yeniden başlatıyor
 

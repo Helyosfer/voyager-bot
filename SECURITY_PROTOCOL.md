@@ -135,9 +135,9 @@ eklerken aynı türden bir sınır koy.
 | Yayıncı | Sunucu başı 50, platform başı 9000 | `yayin/index.js` |
 | Haber kaynağı | Sunucu başı 15, sahip başı 30, toplam 2700 | `haber.js` |
 | Haber kontrol turu | Aynı anda 4 kaynak; art arda üç kez hata veren ya da yavaş kalan kaynak saatte bir | `haber.js` |
-| Instagram hesabı | Sunucu başı 20, sahip başı 40, toplam 100 | `instagram.js` |
+| Instagram hesabı | Sunucu başı 20, sahip başı 40, toplam 100; yalnızca izin verilen sunucularda | `instagram.js` |
 | Özel yasaklı kelime | Sunucu başı 100 | `commands/koruma.js` |
-| Destek talebi | Üye başı 10 dakikada bir ve aynı anda tek açık oda; sunucu başı saatte 15 | `topluluk.js` |
+| Destek talebi | Üye başı 10 dakikada bir ve aynı anda tek açık oda; yeni katılan 10 dakika bekler; sunucu başı saatte 15 ve aynı anda 25 açık oda | `topluluk.js` |
 | Kapalı destek odası | 30 gün; üye başı en fazla 3; kategori 40 kanala ulaşınca en eskiler silinir | `topluluk.js` |
 | `/oyun simdi` | Sunucu başı 5 dakikada bir | `commands/oyun.js` |
 | `/haber ekle` | Sunucu başı aynı anda tek işlem | `commands/haber.js` |

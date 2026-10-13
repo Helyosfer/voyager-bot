@@ -84,7 +84,8 @@ olanlar atlanır, komut yeniden çalıştırılırsa yalnızca eksikler tamamlan
 - **İlgi rolleri:** `rol-seçimi` kanalındaki menüden seçilir.
 - **Destek talepleri:** `destek-merkezi` kanalındaki düğme, yalnızca talep sahibinin ve destek ekibinin gördüğü bir oda açar.
   Kapatılan oda hemen silinmez; sahibi okuyabilir ama yazamaz. Kapalı odalar 30 gün sonra silinir; bir üyenin en fazla
-  3 kapalı odası saklanır. Bir üye 10 dakikada bir talep açabilir.
+  3 kapalı odası saklanır. Bir üye 10 dakikada bir talep açabilir; sunucuya yeni katılan ilk 10 dakika açamaz.
+  Aynı anda en fazla 25 oda açık olabilir; sınıra gelince destek kayıt kanalına uyarı düşer.
 - Günlük, hoş geldin, oyun fırsatları ve yayın kanalları botun ayarlarına kendiliğinden bağlanır.
 
 | Rol | Erişim |
@@ -183,6 +184,8 @@ kendi RSS/Atom beslemeleri okunur; anahtar ya da hesap gerekmez.
 Sunucu başına 20 hesap. Instagram'ın resmi Business Discovery servisi kullanılır:
 
 - Yalnızca **profesyonel** (işletme / içerik üreticisi) ve herkese açık hesaplar takip edilebilir.
+- İstek sınırı bütün sunucular arasında ortak olduğu için özellik yalnızca izin verilen sunucularda açıktır:
+  `.env` içindeki `INSTAGRAM_SUNUCULAR` ve `GUILD_IDS`. İkisi de boşsa her sunucuda açık olur.
 - Anında değildir; hesaplar yaklaşık 5 dakikada bir kontrol edilir (hesap sayısı arttıkça aralık uzar).
 - Botun sahibinin, bir Facebook Sayfasına bağlı profesyonel bir Instagram hesabı ve bir Meta geliştirici uygulaması olmalıdır.
   `.env` içinde `META_APP_ID`, `META_APP_SECRET` ve `INSTAGRAM_TOKEN` doldurulur; bot jetonu uzun ömürlüsüyle değiştirip kendisi yeniler.
