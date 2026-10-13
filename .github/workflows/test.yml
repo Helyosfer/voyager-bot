@@ -1,0 +1,58 @@
+# Her push ve pull request'te testleri, sözdizimi denetimini ve bağımlılık denetimini çalıştırır.
+# Testler botu başlatmaz ve ağa çıkmaz; bu yüzden hiçbir sır (jeton, anahtar) gerekmez.
+name: Test
+
+on:
+  push:
+  pull_request:
+
+# İş akışı depoyu yalnızca okuyabilir
+permissions:
+  contents: read
+
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        # 24: kur.sh'ın sunucuya kurduğu sürüm. Diğerleri: desteği süren LTS sürümleri.
+        node: [20, 22, 24]
+    steps:
+      # Eylemler etiketle değil commit özetiyle sabitlenir; Dependabot güncel tutar
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ matrix.node }}
+      - name: Bağımlılıkları kur
+        run: npm ci --ignore-scripts
+      - name: Testler
+        run: npm test
+      - name: Sözdizimi
+        run: |
+          for f in src/*.js src/commands/*.js src/yayin/*.js test/*.js; do node --check "$f"; done
+          bash -n kur.sh
+          bash -n vps/erisim-kur.sh
+          bash -n vps/gonder.sh
+
+  denetim:
+    name: Bağımlılık denetimi
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - name: Bilinen açıklar
+        run: npm audit --omit=dev
