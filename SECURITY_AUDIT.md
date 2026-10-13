@@ -46,6 +46,7 @@ yeniden çalıştırılınca yansır (bkz. [Yayına alma notları](#7-yayına-al
 | VGR-25 | Bilgilendirme | Mağaza servislerinden gelen adresler doğrulanmadan bağlantı yapılıyor | Uygulandı |
 | VGR-26 | Bilgilendirme | Otomatik test ve CI yok | Uygulandı: 25 test ve CI (CI ilk push'ta çalışır) |
 | VGR-27 | Orta | Komutlar botun bulunmadığı sunucularda da çalıştırılabiliyor | Düzeltildi (kod); Developer Portal ayarı proje sahibinde |
+| VGR-28 | Orta | `/kitle` hiçbir kanalı kilitlemiyordu | Düzeltildi; Discord üzerinde denendi |
 
 ## 1. Kapsam ve mimari
 
@@ -539,6 +540,22 @@ Bunlar yetki politikasını, ürün davranışını ya da dağıtımı değişti
 - **Proje sahibine kalan:** Developer Portal → Installation sayfasında **User Install** seçeneğini kapatmak. Kod
   değişikliği yayına alınıp `npm run komutlar` çalışana kadar tek koruma budur.
 - **Doğrulama:** Sözdizimi ve mevcut testler. Discord üzerinde, deneme kurulumu yeniden kurulduktan sonra bakılmalı.
+
+#### VGR-28 · `/kitle` hiçbir kanalı kilitlemiyordu
+
+- **Önem:** Orta (bir koruma özelliği çalışmıyor ve çalıştığı izlenimini veriyordu)
+- **Yer:** `src/kilit.js` (`kanaliKilitle`), `src/topluluk.js` (`BOT` izin listesi)
+- **Kanıt:** Deneme sunucusunda görüldü (13 Ekim 2026): 73 kanalın hiçbiri kilitlenmedi. Kilit her kanalda önce bota
+  "İzinleri Yönet" satırı vermeye çalışıyordu; Discord bunu bot Yönetici olsa bile reddetti ve kod reddedilen kanalı
+  tamamen bırakıyordu. `/sunucukur`'un kurduğu ses kanallarında ise botun Bağlan izni olmadığı için izinler hiç
+  düzenlenemiyordu.
+- **Etki:** Saldırı anında `/kitle` çalıştıran yönetici sunucunun kilitlendiğini sanar, ama kanallar açık kalır.
+- **Düzeltme:** Satır verilemezse kanal botun elindeki izinlerle kilitlenir; ret bir kez görüldükten sonra diğer
+  kanallarda yeniden denenmez. `/sunucukur` şablonu bota ses kanallarında Bağlan iznini de verir.
+- **Doğrulama:** Yeni kurulan bir deneme sunucusunda `/kitle` 75 kanalın hepsini kilitledi, `/kilidiac` 75'ini de
+  eski haline döndürdü; kayıtta hata yok. Kilit sırasında yetkisiz bir hesabın yazamadığı ayrıca denenmedi.
+- **Kalan:** Bu düzeltmeden önce `/sunucukur` ile kurulmuş sunuculardaki ses kanalları, bot Yönetici değilse
+  kilitlenemez; komut bunu "erişimim yok" diye bildirir.
 
 ### Açık kalanlar
 

@@ -49,7 +49,8 @@ const EKIP = ['yonetici', 'moderator', 'destek', 'etkinlik'];
 const GOR = [P.ViewChannel, P.ReadMessageHistory];
 const YAZ = [P.SendMessages];
 const SES = [P.Connect, P.Speak, P.Stream];
-const BOT = [P.ViewChannel, P.ReadMessageHistory, P.SendMessages, P.EmbedLinks, P.AttachFiles];
+// Bağlan: bot ses kanalına girmez, ama Discord o kanalın izinlerini düzenleyebilmesi (ör. /kitle) için ister
+const BOT = [P.ViewChannel, P.ReadMessageHistory, P.SendMessages, P.EmbedLinks, P.AttachFiles, P.Connect];
 
 const kural = (roller, izin = [], yasak = []) => roller.map((rol) => ({ rol, izin, yasak }));
 
