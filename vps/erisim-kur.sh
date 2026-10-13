@@ -75,7 +75,20 @@ if [[ -e "$HEDEF/package-lock.json" ]]; then
 fi
 
 cd "$HEDEF"
-sudo -H -u voyager npm install --omit=dev
+# Bağımlılıklar yalnızca kilit dosyası değiştiyse yeniden kurulur. "npm ci" tam olarak kilit
+# dosyasındaki sürümleri kurar, ama önce node_modules klasörünü siler; bu yüzden her güncellemede
+# değil, yalnızca gerektiğinde çalışır. Paketlerin kurulum betikleri çalıştırılmaz.
+OZET_DOSYASI=node_modules/.kilit-ozeti
+if [[ -f package-lock.json ]]; then
+  OZET="$(sha256sum package-lock.json | cut -d' ' -f1)"
+  if [[ ! -f "$OZET_DOSYASI" || "$(cat "$OZET_DOSYASI")" != "$OZET" ]]; then
+    sudo -H -u voyager npm ci --omit=dev --ignore-scripts
+    # Özet bot kullanıcısıyla yazılır: klasör ona ait, root burada dosya oluşturmaz
+    echo "$OZET" | sudo -H -u voyager tee "$OZET_DOSYASI" >/dev/null
+  fi
+else
+  sudo -H -u voyager npm install --omit=dev --ignore-scripts
+fi
 sudo -H -u voyager npm run komutlar
 systemctl restart voyager
 sleep 3

@@ -17,8 +17,13 @@ fi
 if ! command -v node >/dev/null; then
   echo ">> Node.js kuruluyor..."
   apt-get update
-  apt-get install -y curl ca-certificates
-  curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
+  apt-get install -y curl ca-certificates gnupg
+  # NodeSource deposu elle eklenir: internetten indirilen bir betik root olarak çalıştırılmaz,
+  # paketler deponun imza anahtarıyla doğrulanır.
+  install -d -m 755 /etc/apt/keyrings
+  curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor --yes -o /etc/apt/keyrings/nodesource.gpg
+  echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_24.x nodistro main" > /etc/apt/sources.list.d/nodesource.list
+  apt-get update
   apt-get install -y nodejs
 elif (( $(node -p 'process.versions.node.split(".")[0]') < 18 )); then
   echo "Bu sunucuda eski bir Node.js var: $(node --version). Bot için en az 18 gerekli."
@@ -42,6 +47,9 @@ if [[ "$KAYNAK" != "$HEDEF" ]]; then
   # Eski src'yi sil: yoksa kaynakta silinen komut dosyaları sunucuda kalır ve yüklenmeye devam eder
   rm -rf "$HEDEF/src"
   cp -r "$KAYNAK/package.json" "$KAYNAK/.env.example" "$KAYNAK/src" "$HEDEF/"
+  if [[ -f "$KAYNAK/package-lock.json" ]]; then
+    cp "$KAYNAK/package-lock.json" "$HEDEF/"
+  fi
 fi
 
 if [[ ! -f "$HEDEF/.env" ]]; then
@@ -63,12 +71,26 @@ fi
 
 chown -R "$KULLANICI:$KULLANICI" "$HEDEF"
 chmod 600 "$HEDEF/.env"
+# Kayıt klasörü servis başlamadan önce var olmalı: servis dosya sistemini salt okunur görür,
+# yalnızca burası yazılabilir (aşağıdaki ReadWritePaths)
+install -d -m 700 -o "$KULLANICI" -g "$KULLANICI" "$HEDEF/data"
 
 cd "$HEDEF"
 echo ">> Bağımlılıklar kuruluyor..."
-sudo -H -u "$KULLANICI" npm install --omit=dev
+# Kilit dosyası varsa tam olarak oradaki sürümler kurulur. Paketlerin kurulum betikleri çalıştırılmaz.
+if [[ -f package-lock.json ]]; then
+  sudo -H -u "$KULLANICI" npm ci --omit=dev --ignore-scripts
+else
+  sudo -H -u "$KULLANICI" npm install --omit=dev --ignore-scripts
+fi
 echo ">> Komutlar Discord'a yükleniyor..."
 sudo -H -u "$KULLANICI" npm run komutlar
+
+# Node ev klasörlerinin altındaysa (ör. nvm ile kurulmuşsa) ProtectHome servisin Node'u görmesini engeller
+EV_KORUMASI="ProtectHome=true"
+case "$(readlink -f "$NODE")" in
+  /home/* | /root/* | /run/user/*) EV_KORUMASI="" ;;
+esac
 
 # systemd servisi: çökerse veya VPS yeniden başlarsa bot kendiliğinden açılır
 cat > /etc/systemd/system/voyager.service <<EOF
@@ -85,6 +107,21 @@ Restart=always
 RestartSec=5
 NoNewPrivileges=true
 PrivateTmp=true
+# Bot ele geçirilse bile yapabilecekleri sınırlı kalsın: dosya sistemi salt okunurdur (kendi kodunu
+# da değiştiremez), yalnızca kayıt klasörüne yazabilir; ev klasörlerini ve aygıtları göremez.
+ProtectSystem=strict
+ReadWritePaths=$HEDEF/data
+$EV_KORUMASI
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+RestrictNamespaces=true
+LockPersonality=true
+CapabilityBoundingSet=
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_NETLINK
+UMask=0077
 
 [Install]
 WantedBy=multi-user.target
@@ -95,6 +132,15 @@ systemctl enable voyager >/dev/null
 systemctl restart voyager
 sleep 3
 systemctl --no-pager --lines=5 status voyager || true
+
+if ! systemctl is-active --quiet voyager; then
+  echo
+  echo ">> Bot başlamadı. Kayıtlara bak: sudo journalctl -u voyager -n 50"
+  echo "   Sorun servis kısıtlamalarındaysa /etc/systemd/system/voyager.service içinde"
+  echo "   ProtectSystem satırından UMask satırına kadar olan bölümü sil, sonra şunu çalıştır:"
+  echo "     sudo systemctl daemon-reload && sudo systemctl restart voyager"
+  exit 1
+fi
 
 echo
 echo ">> Bitti. Canlı kayıtları izlemek için: sudo journalctl -u voyager -f"
