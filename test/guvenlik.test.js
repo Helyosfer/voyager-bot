@@ -715,6 +715,22 @@ test('ortak kapasite: aynı sahibin sunucuları birlikte sayılır', () => {
   assert.equal(sahibinToplami(null, hepsi, 'a'), 0);
 });
 
+test('kayıt yazımı: dosya kısa süre kilitliyse (Windows) taşıma yeniden denenir', () => {
+  const asil = fs.renameSync;
+  let deneme = 0;
+  fs.renameSync = (...a) => {
+    if (++deneme <= 2) throw Object.assign(new Error('kilitli'), { code: 'EPERM' });
+    return asil(...a);
+  };
+  try {
+    depo.yaz('tasima-deneme', { tamam: true });
+  } finally {
+    fs.renameSync = asil;
+  }
+  assert.equal(deneme, 3);
+  assert.deepEqual(depo.oku('tasima-deneme', null), { tamam: true });
+});
+
 test('bekleme sayacı', () => {
   const sayac = yardimci.beklemeSayaci(60_000);
   assert.equal(sayac.bekle('x'), 0);

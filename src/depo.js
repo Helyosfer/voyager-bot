@@ -35,13 +35,30 @@ function oku(ad, varsayilan) {
   }
 }
 
+// Windows'ta virüs tarayıcısı ya da dizin oluşturucu yeni yazılan dosyayı kısa bir süre açık
+// tutabilir; o sırada üzerine taşıma EPERM/EACCES/EBUSY verir. Birkaç kez kısa beklemeyle denenir.
+// (Linux'ta bu hatalar oluşmaz.)
+const TASIMA_DENEMESI = 5;
+const kisaBekle = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+
+function tasi(kaynak, hedef) {
+  for (let deneme = 1; ; deneme++) {
+    try {
+      return fs.renameSync(kaynak, hedef);
+    } catch (hata) {
+      if (deneme >= TASIMA_DENEMESI || !['EPERM', 'EACCES', 'EBUSY'].includes(hata.code)) throw hata;
+      kisaBekle(20 * deneme);
+    }
+  }
+}
+
 function yaz(ad, veri) {
   fs.mkdirSync(KLASOR, { recursive: true, mode: 0o700 });
   // Önce geçici dosyaya yaz, sonra yerine taşı: yazma yarıda kesilirse eski dosya sağlam kalır
   const dosya = path.join(KLASOR, `${ad}.json`);
   const gecici = `${dosya}.tmp`;
   fs.writeFileSync(gecici, JSON.stringify(veri, null, 2), { mode: 0o600 });
-  fs.renameSync(gecici, dosya);
+  tasi(gecici, dosya);
 }
 
 // Sunucu başına ayarlar: { [sunucuId]: { logKanali, hosgeldinKanali, otoRol } }
