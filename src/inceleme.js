@@ -155,7 +155,7 @@ async function incele(steamId) {
       return null;
     });
     if (!bilgi) return null;
-    if (!yapayzeka.botIstegiAyir()) return null; // Günlük pay doldu; yarın yeniden denenir
+    if (!yapayzeka.botIstegiAyir('inceleme')) return null; // Günlük pay doldu; yarın yeniden denenir
     const sonuc = await yapayzeka.uret(istekMetni(bilgi), { talimat: TALIMAT, sicaklik: 0.4, json: SEMA, ad: 'Oyun incelemesi', modeller: yapayzeka.ayar.incelemeModelleri, arkaPlan: true });
     const inceleme = sonuc.metin ? cevabiAyikla(sonuc.metin) : null;
     if (!inceleme) {

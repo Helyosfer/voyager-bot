@@ -20,13 +20,16 @@ const GRI = 0x99aab5;
 // Bir kategori açıkça kapatılmadıysa açıktır
 const kategoriAcik = (ayar, kategori) => ayar.logKategorileri?.[kategori] !== false;
 
-async function gunlukGonder(guild, kategori, embed) {
+// files: isteğe bağlı ekler (ör. kanıt resmi). Bot kanala dosya ekleyemiyorsa kayıt eksiz gönderilir.
+async function gunlukGonder(guild, kategori, embed, files = []) {
   const ayar = ayarlariGetir(guild.id);
   if (!ayar.logKanali || !kategoriAcik(ayar, kategori)) return;
   const kanal = await guild.channels.fetch(ayar.logKanali).catch(() => null);
   if (!kanal?.isTextBased()) return;
   // Günlükteki etiketler kimseye bildirim göndermesin
-  await kanal.send({ embeds: [embed.setTimestamp()], allowedMentions: { parse: [] } }).catch(() => {});
+  const mesaj = { embeds: [embed.setTimestamp()], allowedMentions: { parse: [] } };
+  const gitti = files.length ? await kanal.send({ ...mesaj, files }).then(() => true, () => false) : false;
+  if (!gitti) await kanal.send(mesaj).catch(() => {});
 }
 
 const zaman = (ms) => `<t:${Math.floor(ms / 1000)}:R>`;

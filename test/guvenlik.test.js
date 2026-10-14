@@ -816,6 +816,103 @@ test('oyun fırsatları: önemliler anında (@everyone en fazla 6 saatte bir), d
   }
 });
 
+// --- Dolandırıcılık görseli denetimi ---
+test('görsel denetimi: yalnızca Discord sunucusundaki resimler indirilir', () => {
+  const { resimler } = src('gorsel');
+  const ek = (url, contentType = 'image/png', size = 1000) => ({ url, contentType, size });
+  const mesaj = {
+    attachments: new Collection([
+      ['1', ek('https://cdn.discordapp.com/attachments/1/2/a.png')],
+      ['2', ek('https://kotu.example/a.png')],
+      ['3', ek('http://cdn.discordapp.com/a.png')],
+      ['4', ek('https://media.discordapp.net/a.webp', 'image/webp')],
+      ['5', ek('https://cdn.discordapp.com/a.pdf', 'application/pdf')],
+      ['6', ek('https://cdn.discordapp.com/buyuk.png', 'image/png', 50 * 1024 * 1024)],
+    ]),
+  };
+  assert.deepEqual(resimler(mesaj).map((e) => e.url), ['https://cdn.discordapp.com/attachments/1/2/a.png', 'https://media.discordapp.net/a.webp']);
+});
+
+test('görsel denetimi: riskli resim sorulur, yakalanan silinir; aynı resim sorulmadan silinir', async () => {
+  const gorsel = src('gorsel');
+  const yz = src('yapayzeka');
+  const asil = { fetch: global.fetch, log: console.log, modeller: yz.ayar.gorselModelleri };
+  console.log = () => {};
+  const istekler = [];
+  let karar = { dolandiricilik: true, guven: 95, tur: 'sahte çekiliş', sebep: 'Ünlü adına para dağıtılıyor.' };
+  global.fetch = async (adres, secenek) => {
+    if (String(adres).startsWith('https://cdn.discordapp.com/')) {
+      const veri = Buffer.from(String(adres).split('/').pop());
+      return { ok: true, status: 200, headers: new Map(), arrayBuffer: async () => veri };
+    }
+    istekler.push(JSON.parse(secenek.body));
+    return { ok: true, status: 200, json: async () => ({ candidates: [{ content: { parts: [{ text: JSON.stringify(karar) }] } }] }) };
+  };
+  let no = 0;
+  const mesajYap = ({ resimler, kisi = 'k1', kanal = 'c1', metin = '', yeni = false }) => {
+    const m = {
+      id: `m${++no}`,
+      silindi: false,
+      content: metin,
+      channelId: kanal,
+      guild: { id: 'gorsel-1' },
+      author: { id: kisi, tag: kisi, toString: () => `<@${kisi}>` },
+      member: { joinedTimestamp: yeni ? Date.now() : Date.now() - 365 * 864e5, moderatable: true, susturuldu: 0, timeout: async () => m.member.susturuldu++ },
+      channel: { send: async () => ({ delete: async () => {} }), toString: () => `<#${kanal}>` },
+      attachments: new Collection(resimler.map((ad, i) => [String(i), { url: `https://cdn.discordapp.com/attachments/1/${ad}`, contentType: 'image/png', size: 100 }])),
+      delete: async () => {
+        m.silindi = true;
+      },
+    };
+    return m;
+  };
+  const ayar = { gorselKapsam: 'riskli', gorselDakika: 1440 };
+  try {
+    // Eski üye, tek resim, metin yok: riskli değil, yapay zekâya sorulmaz
+    const sakin = mesajYap({ resimler: ['kedi.png'] });
+    await gorsel.denetle(sakin, ayar);
+    assert.equal(istekler.length, 0);
+    assert.equal(sakin.silindi, false);
+
+    // Tek mesajda dört resim: sorulur, dolandırıcılık bulunursa silinir ve susturulur
+    const saldiri = mesajYap({ resimler: ['s1.png', 's2.png', 's3.png', 's4.png'] });
+    await gorsel.denetle(saldiri, ayar);
+    assert.equal(istekler.length, 1);
+    assert.equal(istekler[0].contents[0].parts.filter((p) => p.inlineData).length, 4);
+    assert.equal(istekler[0].contents[0].parts[0].inlineData.mimeType, 'image/png');
+    assert.equal(saldiri.silindi, true);
+    assert.equal(saldiri.member.susturuldu, 1);
+
+    // Başka bir kişi aynı resmi başka kanala atarsa yapay zekâya sorulmadan silinir
+    const tekrar = mesajYap({ resimler: ['s2.png'], kisi: 'k2', kanal: 'c2' });
+    await gorsel.denetle(tekrar, ayar);
+    assert.equal(istekler.length, 1);
+    assert.equal(tekrar.silindi, true);
+
+    // Model emin değilse ya da temiz derse dokunulmaz; temiz bulunan resim yeniden sorulmaz
+    karar = { dolandiricilik: true, guven: 40, tur: 'belirsiz', sebep: 'Emin değilim.' };
+    const belirsiz = mesajYap({ resimler: ['b1.png', 'b2.png'], kisi: 'k3' });
+    await gorsel.denetle(belirsiz, ayar);
+    assert.equal(belirsiz.silindi, false);
+    await gorsel.denetle(mesajYap({ resimler: ['b1.png', 'b2.png'], kisi: 'k3', kanal: 'c3' }), ayar);
+    assert.equal(istekler.length, 2, 'temiz sayılan resim yeniden sorulmaz');
+
+    // Yeni üyenin tek resmi riskli sayılır. Gemma modelinde talimat resimlerle aynı istekte gider.
+    yz.ayar.gorselModelleri = ['gemma-test'];
+    karar = { dolandiricilik: false, guven: 90, tur: 'yok', sebep: 'Sıradan ekran görüntüsü.' };
+    const yeni = mesajYap({ resimler: ['y1.png'], kisi: 'k4', yeni: true });
+    await gorsel.denetle(yeni, ayar);
+    assert.equal(istekler.length, 3);
+    assert.equal(istekler[2].systemInstruction, undefined);
+    assert.ok(istekler[2].contents[0].parts.at(-1).text.startsWith(gorsel.TALIMAT));
+    assert.equal(yeni.silindi, false);
+  } finally {
+    global.fetch = asil.fetch;
+    console.log = asil.log;
+    yz.ayar.gorselModelleri = asil.modeller;
+  }
+});
+
 test('kayda yazılan hata metni kullanıcının yazdığı metni içermez', () => {
   const hata = new DiscordAPIError({ message: 'Missing Permissions', code: 50013 }, 50013, 403, 'PUT', 'https://discord.com/api/v10/guilds/1/bans/2', {
     body: { reason: 'KULLANICI-METNI' },

@@ -34,7 +34,8 @@ Node.js ve [discord.js](https://discord.js.org) ile yazıldı. Kodu alıp kendi 
 
 - **Sunucu kurulumu:** tek komutla roller, kanallar, izinler, üyelik onayı ve destek sistemi.
 - **Moderasyon:** yasaklama, atma, süreli susturma, toplu mesaj silme.
-- **Otomatik koruma:** ele geçirilmiş hesapların spam'ini durdurur, ağır küfürleri siler.
+- **Otomatik koruma:** ele geçirilmiş hesapların spam'ini durdurur, ağır küfürleri siler, sahte çekiliş ve kripto
+  dolandırıcılığı resimlerini yapay zekâyla yakalar.
 - **Acil durum kilidi:** saldırı anında bütün kanalları kilitler, sonra eski haline döndürür.
 - **Sunucu günlüğü:** üye giriş çıkışları, silinen ve düzenlenen mesajlar, ses kanalları ve yönetim işlemleri tek kanalda.
 - **Canlı yayın bildirimleri:** Twitch, Kick ve YouTube'da takip ettiğin yayıncılar yayına geçince haber verir.
@@ -64,7 +65,7 @@ diliyle gösterilir.
 | `/sustur` | Üyeyi belirli dakika susturur (0 = kaldır) | Üyelere Zaman Aşımı Uygula |
 | `/temizle` | Kanaldaki son 1-100 mesajı siler | Mesajları Yönet |
 | `/ayarla` | Log kanalı ve kategorileri, hoş geldin kanalı, oto rol (`sifirla` ile kaldırılır) | Sunucuyu Yönet |
-| `/koruma` | Otomatik spam koruması ve ağır küfür filtresi | Sunucuyu Yönet |
+| `/koruma` | Otomatik spam koruması, ağır küfür filtresi ve dolandırıcılık görseli denetimi | Sunucuyu Yönet |
 | `/sunucukur` | Topluluk sunucusu kurar: roller, kanallar, izinler, üyelik onayı, destek sistemi | Yönetici |
 | `/kitle`, `/kilidiac` | Acil durumda bütün kanalları kilitler ve geri açar | Yönetici |
 | `/yayin` | Canlı yayın bildirimlerini ayarlar (Twitch, Kick, YouTube) | Sunucuyu Yönet |
@@ -124,18 +125,34 @@ ses kanallarına giremez. Her kanalın izinleri saklanır; `/kilidiac` hepsini k
 
 ### Otomatik koruma
 
-`/koruma` ile sunucu başına açılır; ikisi de varsayılan olarak kapalıdır. Mesajları Yönet yetkisi olanlar ve botlar muaftır.
+`/koruma` ile sunucu başına açılır; hepsi varsayılan olarak kapalıdır. Mesajları Yönet yetkisi olanlar ve botlar muaftır.
 
 | Komut | Ne yapar |
 |---|---|
 | `/koruma spam` | 30 saniyede 3 farklı kanala yazan, aynı içeriği 4 kez tekrarlayan ya da yetkisiz `@everyone` ile bağlantı/dosya gönderen üyenin mesajlarını siler ve üyeyi susturur (varsayılan 60 dakika) |
 | `/koruma kufur` | Ağır küfür içeren mesajları siler; istenirse yazanı susturur |
 | `/koruma kelime-ekle` / `kelime-cikar` | Sunucuya özel yasaklı kelime listesi |
+| `/koruma gorsel` | Dolandırıcılık resimlerini (ünlü adına para dağıtma, kripto kumarhane bonusu, bedava Nitro vb.) yapay zekâyla yakalar; mesajı siler, atanı susturur (varsayılan 1 gün), günlüğe kanıtıyla yazar |
 | `/koruma goster` | Ayarları gösterir |
 
 Spam koruması özellikle ele geçirilmiş hesapların bütün kanallara aynı görselleri atmasını hedefler; bu yüzden
 üyeyi banlamaz, susturur. Küfür filtresi yalnızca ağır küfürleri yakalar ve masum kelimelere takılmamak için
 bilerek dardır ("amk", "aq" gibi kısaltmalar hazır listede yoktur). Küfür filtresi için Message Content Intent gerekir.
+
+**Görsel denetimi** metin filtrelerinin göremediği, resmin içindeki dolandırıcılığı yakalar:
+
+- Resimler indirilir (yalnızca Discord'un kendi sunucularından, en fazla 8 MB ve mesaj başına 4 resim) ve parmak izi
+  çıkarılır. Daha önce yakalanmış bir resim yeniden atılırsa yapay zekâya sorulmadan anında silinir; bu saldırılarda
+  aynı resim art arda birçok kanala atıldığı için ilk mesajdan sonrakiler beklemeden temizlenir.
+- Varsayılan kapsam **riskli** mesajlardır: yeni üyeler (son 7 gün), bağlantı ya da toplu etiket içeren mesajlar,
+  tek mesajda birden fazla resim ve aynı resmin birden fazla kanala atılması. `kapsam: Bütün resimler` ile hepsi denetlenir.
+- Model en az %70 emin olduğunda işlem yapılır: mesaj ve aynı kişinin aynı resimli son mesajları silinir, kişi
+  susturulur, kanala kısa bir uyarı yazılır, günlüğe sebep ve bulanık kanıt resmi düşer. Banlamaz; bu hesaplar
+  çoğu zaman sahibinin elinden çalınmıştır.
+- Denetlenen resimler Google'a gönderilir. Model yanılabilir; yanlış alarmda susturma elle kaldırılır.
+- Model `.env` içindeki `GEMINI_GORSEL_MODEL` ile seçilir (önerilen: Gemma; yavaştır ama günlük sınırı yüksektir).
+  Karar Gemma ile 30-70 saniye sürebilir. Botun tamamı için günlük denetim sayısı `GEMINI_GORSEL_GUNLUK` ile
+  sınırlanır (Gemma'da varsayılan 1.000, diğer modellerde 60); bir sunucu günde en fazla 200 denetim kullanır.
 
 ### Sunucu günlüğü
 
@@ -448,6 +465,7 @@ src/
   yardimci.js         Yetki kontrolleri ve log gönderme
   gunluk.js           Sunucu günlüğü
   koruma.js           Spam koruması ve küfür filtresi
+  gorsel.js           Dolandırıcılık görseli denetimi
   topluluk.js         /sunucukur şablonu, üyelik onayı, ilgi rolleri, destek talepleri
   kilit.js            Acil durum kilidi
   haber.js            Haber bildirimleri; haber-ayristir.js ayrı iş parçacığında çalışır

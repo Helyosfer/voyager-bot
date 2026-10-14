@@ -11,7 +11,13 @@
 const { baglantisiz } = require('./yardimci');
 const { oku, yaz } = require('./depo');
 
-const { GEMINI_API_KEY: ANAHTAR, GEMINI_MODEL: MODEL, GEMINI_YEDEK_MODEL: YEDEK, GEMINI_INCELEME_MODEL: INCELEME_MODEL } = process.env;
+const {
+  GEMINI_API_KEY: ANAHTAR,
+  GEMINI_MODEL: MODEL,
+  GEMINI_YEDEK_MODEL: YEDEK,
+  GEMINI_INCELEME_MODEL: INCELEME_MODEL,
+  GEMINI_GORSEL_MODEL: GORSEL_MODEL,
+} = process.env;
 const API = 'https://generativelanguage.googleapis.com/v1beta/models';
 
 const SORU_SINIRI = 500; // karakter
@@ -36,6 +42,8 @@ const ayar = {
   // Oyun incelemeleri: GEMINI_INCELEME_MODEL verilmişse o (virgülle ayrılmış birden fazla model: asıl, yedek),
   // yoksa /sor ile aynı modeller
   incelemeModelleri: modelListesi(INCELEME_MODEL).length ? modelListesi(INCELEME_MODEL) : modelListesi(MODEL, YEDEK),
+  // Dolandırıcılık görseli denetimi (/koruma gorsel): GEMINI_GORSEL_MODEL, yoksa inceleme modelleri
+  gorselModelleri: modelListesi(GORSEL_MODEL).length ? modelListesi(GORSEL_MODEL) : null,
   // /sor modelinin dakikalık istek sınırı (AI Studio > Rate limit > RPM). Payı kalsın diye %90'ı kullanılır.
   dakikalik: Math.max(1, Math.floor(sayiAyari(process.env.GEMINI_DAKIKALIK, 15) * 0.9)),
 };
@@ -52,11 +60,21 @@ const PENCERE = 2 * 60_000;
 const PENCERE_SORU = 4;
 // /sor modelinin Google'daki günlük sınırı (AI Studio > Rate limit > RPD). Payı kalsın diye %90'ı kullanılır.
 const TOPLAM_GUNLUK = Math.floor(sayiAyari(process.env.GEMINI_GUNLUK, 500) * 0.9);
-// Botun kendi işleri (ör. oyun incelemeleri) günde en fazla bu kadar istek kullanır. İncelemeler /sor ile
-// aynı modeldeyse bu pay ortak kotadan düşülür; ayrı modeldeyse o modelin kotasından gider.
-const BOT_PAYI = 60;
-const ORTAK_MODEL = ayar.incelemeModelleri.join() === ayar.modeller.join();
-const SORU_HAVUZU = Math.max(1, TOPLAM_GUNLUK - (ORTAK_MODEL ? BOT_PAYI : 0));
+ayar.gorselModelleri ??= ayar.incelemeModelleri;
+// Botun kendi işleri ve günlük istek payları. Bir iş /sor ile aynı modeldeyse payı ortak kotadan düşülür;
+// ayrı modeldeyse o modelin kotasından gider.
+const GOREVLER = {
+  inceleme: { modeller: ayar.incelemeModelleri, gunluk: 60 },
+  // Görsel denetimi Gemma'daysa (günlük sınırı yüksek) varsayılan pay cömerttir; başka bir modeldeyse
+  // o modelin kotasını yememesi için incelemeler kadar. GEMINI_GORSEL_GUNLUK ile değiştirilebilir.
+  gorsel: {
+    modeller: ayar.gorselModelleri,
+    gunluk: sayiAyari(process.env.GEMINI_GORSEL_GUNLUK, gemmaMi(ayar.gorselModelleri[0] ?? '') ? 1000 : 60),
+  },
+};
+const ortakMi = (gorev) => GOREVLER[gorev].modeller.join() === ayar.modeller.join();
+const ORTAK_GOREVLER = Object.keys(GOREVLER).filter(ortakMi);
+const SORU_HAVUZU = Math.max(1, TOPLAM_GUNLUK - ORTAK_GOREVLER.reduce((t, g) => t + GOREVLER[g].gunluk, 0));
 // Payların alt ve üst sınırları (günlük soru sayısı). Havuz büyüdükçe (daha cömert bir model) genişler.
 const sinirla = (deger, enAz, enCok) => Math.min(enCok, Math.max(enAz, deger));
 const SUNUCU_EN_AZ = Math.max(10, Math.floor(SORU_HAVUZU / 400));
@@ -145,7 +163,8 @@ function sinirMesaji(sunucuId, kisiId, gizli = false) {
   if (sonDakika.length >= ayar.dakikalik) return `⏳ Şu an çok soru soruluyor; yeniden sorabileceğin zaman: <t:${Math.ceil((sonDakika[0] + 60_000) / 1000)}:R>`;
   if ((s.kisi[kisiId] ?? 0) >= pay.kisi) return `⏳ Bugünlük soru hakkın doldu (bugün kişi başı ${pay.kisi}). Yarın yeniden sorabilirsin.`;
   if ((s.sunucu[sunucuId] ?? 0) >= pay.sunucu) return `⏳ Bu sunucunun bugünlük soru hakkı doldu (bugün ${pay.sunucu}). Yarın yeniden deneyin.`;
-  if (s.toplam - (ORTAK_MODEL ? s.bot ?? 0 : 0) >= SORU_HAVUZU) return '⏳ Bugünlük soru kotası doldu. Yarın yeniden dene.';
+  const botKullanimi = ORTAK_GOREVLER.reduce((t, g) => t + (s.gorevler?.[g] ?? 0), 0);
+  if (s.toplam - botKullanimi >= SORU_HAVUZU) return '⏳ Bugünlük soru kotası doldu. Yarın yeniden dene.';
   return null;
 }
 
@@ -176,7 +195,8 @@ function temizle(metin) {
 // Başarılıysa { metin }, değilse { hata } döndürür. hata: 'baglanti' | 'yogun' | 'kota' | 'bos' | 'diger'.
 // json: verilirse model cevabı bu şemaya uyan JSON olarak yazar (Gemini responseSchema biçimi).
 // Kayıtlara yalnızca durum ve süre yazılır; istek ve cevap metni yazılmaz.
-async function uret(metin, { talimat, sicaklik = 0.7, json = null, ad = '/sor', modeller: secilen = null, arkaPlan = false }) {
+// ekler: modele metinle birlikte gönderilecek resimler, [{ mimeType, data (base64) }]
+async function uret(metin, { talimat, sicaklik = 0.7, json = null, ad = '/sor', modeller: secilen = null, arkaPlan = false, ekler = [] }) {
   let yanit;
   let govde;
   const baslangic = Date.now();
@@ -197,7 +217,7 @@ async function uret(metin, { talimat, sicaklik = 0.7, json = null, ad = '/sor', 
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': ANAHTAR },
         body: JSON.stringify({
           ...(!gemma && { systemInstruction: { parts: [{ text: talimat }] } }),
-          contents: [{ role: 'user', parts: [{ text: icerik }] }],
+          contents: [{ role: 'user', parts: [...ekler.map((e) => ({ inlineData: { mimeType: e.mimeType, data: e.data } })), { text: icerik }] }],
           generationConfig: {
             maxOutputTokens: CIKTI_SINIRI,
             temperature: sicaklik,
@@ -270,16 +290,17 @@ async function sor(sunucuId, kisiId, soru, { gizli = false } = {}) {
   return { cevap: temizle(sonuc.metin), kalan };
 }
 
-// Botun kendi işleri (ör. oyun incelemeleri) için ortak kotadan pay: sorulara her zaman yer kalsın
-// diye bu işler günlük kotanın en fazla BOT_PAYI kadarını kullanır.
-function botIstegiAyir() {
+// Botun kendi işleri (gorev: 'inceleme' | 'gorsel') için istek ayırır; işin günlük payı dolduysa false.
+// İş /sor ile aynı modeldeyse ortak kotadan da düşer.
+function botIstegiAyir(gorev = 'inceleme') {
   const s = sayaclar();
-  s.bot ??= 0;
-  if (s.bot >= BOT_PAYI || (ORTAK_MODEL && s.toplam >= TOPLAM_GUNLUK)) return false;
-  s.bot++;
-  if (ORTAK_MODEL) s.toplam++;
+  s.gorevler ??= {};
+  const ortak = ortakMi(gorev);
+  if ((s.gorevler[gorev] ?? 0) >= GOREVLER[gorev].gunluk || (ortak && s.toplam >= TOPLAM_GUNLUK)) return false;
+  s.gorevler[gorev] = (s.gorevler[gorev] ?? 0) + 1;
+  if (ortak) s.toplam++;
   yaz('sor-sayac', s);
   return true;
 }
 
-module.exports = { ayar, sonDakika, gemmaMi, ORTAK_MODEL, hazir, uret, botIstegiAyir, BOT_PAYI, izinli, izinListesi, sor, sinirMesaji, paylar, temizle, SORU_SINIRI, PENCERE_SORU, SORU_HAVUZU, SUNUCU_EN_COK, KISI_EN_COK, TOPLAM_GUNLUK };
+module.exports = { ayar, sonDakika, gemmaMi, GOREVLER, hazir, uret, botIstegiAyir, izinli, izinListesi, sor, sinirMesaji, paylar, temizle, SORU_SINIRI, PENCERE_SORU, SORU_HAVUZU, SUNUCU_EN_COK, KISI_EN_COK, TOPLAM_GUNLUK };

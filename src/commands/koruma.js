@@ -7,6 +7,7 @@ const {
 } = require('discord.js');
 const { ayarlariGetir, ayarKaydet } = require('../depo');
 const koruma = require('../koruma');
+const yapayzeka = require('../yapayzeka');
 
 const KELIME_SINIRI = 100;
 
@@ -23,7 +24,7 @@ const susturmaSecenegi = (aciklama) => (o) =>
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('koruma')
-    .setDescription('Otomatik spam koruması ve ağır küfür filtresi')
+    .setDescription('Otomatik spam koruması, ağır küfür filtresi ve dolandırıcılık görseli denetimi')
     .addSubcommand((s) =>
       s
         .setName('spam')
@@ -49,6 +50,19 @@ module.exports = {
         .setName('kelime-cikar')
         .setDescription('Bu sunucuya özel eklenmiş bir kelimeyi çıkarır')
         .addStringOption((o) => o.setName('kelime').setDescription('Çıkarılacak kelime').setRequired(true).setMaxLength(40)),
+    )
+    .addSubcommand((s) =>
+      s
+        .setName('gorsel')
+        .setDescription('Sahte çekiliş, kripto ve bedava Nitro gibi dolandırıcılık resimlerini yapay zekâyla yakalar')
+        .addStringOption(durumSecenegi)
+        .addStringOption((o) =>
+          o
+            .setName('kapsam')
+            .setDescription('Hangi resimler denetlensin? (varsayılan: yalnızca riskli olanlar)')
+            .addChoices({ name: 'Yalnızca riskli olanlar', value: 'riskli' }, { name: 'Bütün resimler', value: 'hepsi' }),
+        )
+        .addIntegerOption(susturmaSecenegi('Yakalanan kaç dakika susturulsun? 0 = yalnızca mesajı sil (varsayılan 1440 = 1 gün)')),
     )
     .addSubcommand((s) => s.setName('goster').setDescription('Koruma ayarlarını gösterir'))
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
@@ -105,6 +119,39 @@ module.exports = {
       );
     }
 
+    if (alt === 'gorsel') {
+      const acik = interaction.options.getString('durum', true) === 'acik';
+      const kapsam = interaction.options.getString('kapsam');
+      const dakika = interaction.options.getInteger('susturma-dakika');
+      if (acik && !yapayzeka.hazir()) return cevapla('❌ Görsel denetimi yapay zekâ ister, ama bu botta yapay zekâ kurulu değil (botun sahibi .env içinde GEMINI_API_KEY ve GEMINI_MODEL girmeli).');
+      if (acik && !koruma.icerikOkunabilir(interaction.client)) {
+        return cevapla('❌ Görsel denetimi mesajlardaki resimleri görebilmeli, ama botta "Message Content Intent" açık değil. Botun sahibi bunu açmalı.');
+      }
+      ayarKaydet(sunucuId, 'korumaGorsel', acik);
+      if (kapsam) ayarKaydet(sunucuId, 'korumaGorselKapsam', kapsam);
+      if (dakika !== null) ayarKaydet(sunucuId, 'korumaGorselDakika', dakika);
+      if (!acik) return cevapla('✅ Görsel denetimi kapatıldı.');
+      const ayar = koruma.ayarCoz(ayarlariGetir(sunucuId));
+      const eksik = [
+        !ben.permissions.has(PermissionFlagsBits.ManageMessages) && 'Mesajları Yönet',
+        ayar.gorselDakika > 0 && !ben.permissions.has(PermissionFlagsBits.ModerateMembers) && 'Üyelere Zaman Aşımı Uygula',
+      ].filter(Boolean);
+      return cevapla(
+        [
+          `✅ Görsel denetimi açık. Dolandırıcılık resmi yakalanınca mesaj silinir${ayar.gorselDakika ? `, atan ${ayar.gorselDakika} dakika susturulur` : ''} ve günlüğe kanıtıyla yazılır. Aynı resim yeniden atılırsa beklemeden silinir.`,
+          ayar.gorselKapsam === 'hepsi'
+            ? 'Kapsam: **bütün resimler**.'
+            : 'Kapsam: **yalnızca riskli resimler** (yeni üyeler, bağlantılı ya da toplu etiketli mesajlar, tek mesajda birden fazla resim, aynı resmi birden fazla kanala atma).',
+          'ℹ️ Denetlenen resimler Google\'ın yapay zekâsına gönderilir. Yapay zekâ yanılabilir; yanlış alarmda susturmayı elle kaldırabilirsin. Karar 30-60 saniye sürebilir.',
+          'Mesajları Yönet yetkisi olanlar muaftır.',
+          eksik.length ? `⚠️ Bunun çalışması için bana şu izinleri ver: ${eksik.join(', ')}.` : null,
+          ayarlariGetir(sunucuId).logKanali ? null : 'ℹ️ Yakalananları görmek için `/ayarla log-kanali` ile bir log kanalı seç.',
+        ]
+          .filter(Boolean)
+          .join('\n'),
+      );
+    }
+
     if (alt === 'kelime-ekle' || alt === 'kelime-cikar') {
       const kelime = koruma.kelimeBicimi(interaction.options.getString('kelime', true));
       if (kelime.length < 2) return cevapla('❌ En az iki harfli tek bir kelime yaz.');
@@ -130,6 +177,11 @@ module.exports = {
       .addFields(
         { name: 'Spam koruması', value: durum(ayar.spam, ayar.spamDakika), inline: true },
         { name: 'Küfür filtresi', value: durum(ayar.kufur, ayar.kufurDakika), inline: true },
+        {
+          name: 'Görsel denetimi',
+          value: ayar.gorsel ? `${durum(true, ayar.gorselDakika)}\n${ayar.gorselKapsam === 'hepsi' ? 'Bütün resimler' : 'Riskli resimler'}` : '⚫ Kapalı',
+          inline: true,
+        },
         {
           name: `Özel kelimeler · ${ayar.kelimeler.length}`,
           value: ayar.kelimeler.length ? `||${ayar.kelimeler.join(', ').slice(0, 1000)}||` : 'Yok',

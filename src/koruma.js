@@ -1,15 +1,17 @@
 // Otomatik koruma: spam (özellikle ele geçirilmiş hesapların her kanala aynı
-// şeyi atması) ve ağır küfür filtresi. Sunucu başına /koruma ile açılır;
-// ikisi de varsayılan olarak kapalıdır.
+// şeyi atması), ağır küfür filtresi ve dolandırıcılık görseli denetimi (gorsel.js).
+// Sunucu başına /koruma ile açılır; hepsi varsayılan olarak kapalıdır.
 const { EmbedBuilder, Events, GatewayIntentBits, PermissionFlagsBits } = require('discord.js');
 const { ayarlariGetir } = require('./depo');
 const { gunlukGonder, temizlemeBildir } = require('./gunluk');
+const gorsel = require('./gorsel');
 
 // --- Spam ---
 const PENCERE = 30_000; // Bu süre içindeki mesajlara bakılır
 const KANAL_ESIGI = 3; // Bu kadar farklı kanala yazan kişi spam sayılır
 const TEKRAR_ESIGI = 4; // Aynı içeriği bu kadar kez gönderen kişi spam sayılır
 const VARSAYILAN_SUSTURMA = 60; // dakika
+const GORSEL_SUSTURMA = 24 * 60; // dakika; dolandırıcılık görseli atan (çoğu zaman ele geçirilmiş) hesap
 
 // Kayıtlı ayarları varsayılanlarla tamamlar
 function ayarCoz(ayar) {
@@ -19,6 +21,9 @@ function ayarCoz(ayar) {
     kufur: ayar.korumaKufur === true,
     kufurDakika: ayar.korumaKufurDakika ?? 0,
     kelimeler: ayar.korumaKelimeler ?? [],
+    gorsel: ayar.korumaGorsel === true,
+    gorselKapsam: ayar.korumaGorselKapsam === 'hepsi' ? 'hepsi' : 'riskli',
+    gorselDakika: ayar.korumaGorselDakika ?? GORSEL_SUSTURMA,
   };
 }
 
@@ -224,6 +229,7 @@ async function mesajGeldi(mesaj) {
     const kelime = kufurBul(mesaj.content, ayar.kelimeler);
     if (kelime) return kufurUygula(mesaj, kelime, ayar);
   }
+  if (ayar.gorsel && mesaj.attachments?.size) return gorsel.denetle(mesaj, ayar);
 }
 
 // Düzenleyerek filtreyi atlatmaya karşı
@@ -251,6 +257,7 @@ function baslat(client) {
     for (const [anahtar, kayitlar] of sonMesajlar) {
       if (kayitlar.every((k) => simdi - k.zaman >= PENCERE)) sonMesajlar.delete(anahtar);
     }
+    gorsel.temizlik();
   }, 60_000);
 }
 

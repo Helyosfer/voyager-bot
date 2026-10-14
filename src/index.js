@@ -73,7 +73,7 @@ client.once(Events.ClientReady, (c) => {
   if (yapayzeka.hazir()) {
     const { ayar } = yapayzeka;
     const kapsam = yapayzeka.izinListesi().size ? `yalnızca ${yapayzeka.izinListesi().size} sunucuda (GEMINI_SUNUCULAR)` : 'her sunucuda';
-    console.log(`Yapay zekâ: hazır · /sor ${ayar.modeller.join(' > ')} (${kapsam}; günde en fazla ${yapayzeka.TOPLAM_GUNLUK}, dakikada ${ayar.dakikalik}) · incelemeler ${ayar.incelemeModelleri.join(' > ')}`);
+    console.log(`Yapay zekâ: hazır · /sor ${ayar.modeller.join(' > ')} (${kapsam}; günde en fazla ${yapayzeka.TOPLAM_GUNLUK}, dakikada ${ayar.dakikalik}) · incelemeler ${ayar.incelemeModelleri.join(' > ')} · görsel denetimi ${ayar.gorselModelleri.join(' > ')} (günde en fazla ${yapayzeka.GOREVLER.gorsel.gunluk})`);
   } else {
     console.log('Yapay zekâ (/sor ve oyun incelemeleri): kapalı (eksik: GEMINI_API_KEY ve GEMINI_MODEL)');
   }
