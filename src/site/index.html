@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Voyager — Discord botu</title>
-<meta name="description" content="Voyager; topluluk sunucusu kuran, sunucuyu koruyan, yayın, oyun fırsatı ve haber bildirimleri gönderen bir Discord botu.">
-<meta property="og:title" content="Voyager — Discord botu">
-<meta property="og:description" content="Sunucunu kurar, korur, haberdar eder. Başka bota gerek kalmaz.">
+<title>Voyager — Yapay zekâ destekli Discord botu</title>
+<meta name="description" content="Voyager, yapay zekâ destekli bir Discord botu: sorularını cevaplar, oyun fırsatlarını inceler, dolandırıcılık resimlerini yakalar. Sunucu kurar, korur; yayın, oyun fırsatı ve haber bildirimleri gönderir.">
+<meta property="og:title" content="Voyager — Yapay zekâ destekli Discord botu">
+<meta property="og:description" content="Sorunu cevaplar, oyun fırsatlarını inceler, dolandırıcılık resimlerini yakalar. Sunucunu kurar, korur, haberdar eder.">
 <meta property="og:type" content="website">
 <meta name="theme-color" content="#000000">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23000'/%3E%3Cellipse cx='32' cy='32' rx='23' ry='9' fill='none' stroke='%238e8e93' stroke-width='2' transform='rotate(-28 32 32)'/%3E%3Ccircle cx='32' cy='32' r='7' fill='%23fff'/%3E%3C/svg%3E">
@@ -201,8 +201,104 @@
   .yan-link, .dipnot a { color: var(--text); border-bottom: 1px solid rgba(255, 255, 255, 0.3); transition: border-color 0.2s; }
   .yan-link:hover, .dipnot a:hover { border-color: #fff; }
   .yan-link { display: inline-block; margin-top: 20px; font-size: 0.95rem; font-weight: 500; }
+  .yan-link.satir-ici { display: inline; margin: 0; font-size: inherit; font-weight: inherit; }
   .dipnot { max-width: 30rem; margin: 22px auto 0; font-size: 0.9rem; line-height: 1.5; color: var(--muted); }
   .yan-link:focus-visible, .dipnot a:focus-visible { border-radius: 4px; }
+
+  /* Yapay zekâ: her özellik yanında örnek bir Discord mesajıyla */
+  .ozellikler { display: grid; gap: 18px; margin-top: 56px; }
+  .ozellik {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr);
+    gap: clamp(28px, 5vw, 64px);
+    align-items: center;
+    padding: clamp(30px, 4.5vw, 52px);
+  }
+  .ozellik:hover { transform: none; }
+  .ozellik:nth-child(even) .ornek { order: -1; }
+  .ozellik h3 { font-size: clamp(1.7rem, 3.2vw, 2.2rem); letter-spacing: -0.03em; }
+  .maddeler { margin: 22px 0 0; padding: 0; list-style: none; font-size: 0.95rem; color: var(--muted); }
+  .maddeler li { position: relative; padding: 10px 0 10px 22px; border-top: 1px solid var(--border); line-height: 1.5; }
+  .maddeler li::before { content: ""; position: absolute; left: 2px; top: 1.15em; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); }
+  .maddeler b { color: #d2d2d7; font-weight: 500; }
+
+  /* Örnek mesaj: Discord'un koyu temasına benzer, resim kullanmadan */
+  .ornek {
+    position: relative;
+    padding: 20px 20px 22px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    background: #17171a;
+    box-shadow: 0 30px 80px -30px rgba(120, 110, 170, 0.35);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: #dbdbe0;
+  }
+  .ornek .etiket {
+    position: absolute;
+    top: 14px;
+    right: 16px;
+    font: 0.68rem var(--mono);
+    letter-spacing: 0.08em;
+    color: var(--muted);
+  }
+  /* .card p kuralı örnek mesajın yazılarını ezmesin */
+  .ornek p { font-size: inherit; line-height: inherit; color: inherit; }
+  .ornek .cagri { margin: 0 0 14px; padding-right: 58px; font: 0.78rem/1.5 var(--mono); color: var(--muted); }
+  .cagri code { font-size: 1em; color: #c9b5ff; }
+  .mesaj { display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 12px; }
+  .avatar {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 50%, #fff 0 22%, transparent 23%), radial-gradient(circle at 35% 30%, #3a3a44, #0b0b0d 70%);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  }
+  .ornek .ad { margin: 0 0 4px; font-weight: 600; color: #f5f5f7; }
+  .ad small {
+    margin-left: 6px;
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: #5865f2;
+    color: #fff;
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    vertical-align: 2px;
+  }
+  .ornek .mesaj p { margin: 0 0 6px; }
+  .ornek .alinti { padding-left: 10px; border-left: 3px solid #4e4e56; font-weight: 600; color: #f5f5f7; }
+  .alt-yazi { display: block; margin-top: 4px; font-size: 0.74rem; color: var(--muted); }
+  .embed {
+    margin-top: 6px;
+    padding: 12px 14px 14px;
+    border-left: 4px solid #5865f2;
+    border-radius: 6px;
+    background: #202024;
+  }
+  .embed.kirmizi { border-left-color: #ed4245; }
+  .ornek .baslik { margin: 0 0 6px; font-weight: 600; color: #f5f5f7; }
+  .alan { margin-top: 10px; }
+  .alan b { display: block; font-size: 0.8rem; font-weight: 600; color: #f5f5f7; }
+  .alan span { display: block; font-size: 0.84rem; color: #c7c7cc; }
+  .alanlar { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; }
+  .puan { font-weight: 700; color: #f5f5f7 !important; }
+  .kanit {
+    display: grid;
+    place-items: center;
+    height: 92px;
+    margin-top: 12px;
+    border-radius: 8px;
+    background: linear-gradient(120deg, #3a2e5c, #6b3a3a 45%, #2d4a3e);
+    filter: saturate(0.7);
+    font: 600 0.72rem var(--sans);
+    letter-spacing: 0.12em;
+    color: #fff;
+  }
+  .kanit span { padding: 4px 10px; border-radius: 6px; background: rgba(0, 0, 0, 0.6); }
+
+  .not { max-width: 46rem; margin: 30px 0 0; font-size: 0.88rem; line-height: 1.6; color: var(--muted); }
+  .not b { color: #c7c7cc; font-weight: 500; }
 
   /* Komut listesi */
   .gruplar { display: grid; grid-template-columns: repeat(2, 1fr); gap: 44px 56px; margin-top: 56px; }
@@ -253,6 +349,12 @@
   @media (max-width: 720px) {
     .cards, .gruplar { grid-template-columns: 1fr; }
     .card { padding: 28px 24px 30px; }
+    .ozellik { grid-template-columns: 1fr; padding: 28px 20px 22px; }
+    .ozellik:nth-child(even) .ornek { order: 0; }
+    .ornek { padding: 16px 14px 18px; }
+  }
+  @media (max-width: 420px) {
+    .alanlar { grid-template-columns: 1fr; }
   }
   @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
@@ -266,6 +368,7 @@
   <div class="container nav">
     <a class="logo" href="#ust">voyager</a>
     <nav class="nav-right" aria-label="Sayfa">
+      <a class="gizle" href="#yz">Yapay zekâ</a>
       <a class="gizle" href="#kur">Kur</a>
       <a class="gizle" href="#koru">Koru</a>
       <a class="gizle" href="#haber">Haber al</a>
@@ -282,18 +385,115 @@
 
     <div class="hero-content">
       <h1>Voyager</h1>
-      <p class="role">Sunucunu kurar, korur, haberdar eder. Başka bota gerek kalmaz.</p>
+      <p class="role">Yapay zekâ destekli Discord botu. Sorunu cevaplar, dolandırıcılığı resimden tanır; sunucunu kurar, korur, haberdar eder.</p>
       <div class="hero-actions">
         <a class="btn btn-primary" href="{{DAVET}}" rel="noopener">Sunucuna ekle</a>
-        <a class="btn btn-ghost" href="#kur">Neler yapar</a>
+        <a class="btn btn-ghost" href="#yz">Neler yapar</a>
       </div>
     </div>
     <div class="scroll-hint" aria-hidden="true">KAYDIR</div>
   </div>
 
+  <section id="yz">
+    <div class="container">
+      <p class="kicker reveal"><span class="num">01</span>Yapay zekâ</p>
+      <h2 class="reveal">Sorunu cevaplar.<br><span class="dim">Tuzağı resimden tanır.</span></h2>
+      <p class="lead reveal">Voyager, Google'ın Gemini yapay zekâsıyla çalışır. Sorularını cevaplar, kaçırmaman gereken oyunları senin için inceler ve metin filtrelerinin göremediği dolandırıcılık resimlerini yakalar.</p>
+
+      <div class="ozellikler">
+        <article class="card ozellik reveal">
+          <div>
+            <p class="tag">/sor</p>
+            <h3>Aklına takılanı sor</h3>
+            <p>Sorunu yaz, kısa ve Türkçe bir cevap gelsin. Kanalda herkes görsün ya da gizli seçeneğiyle yalnızca sen gör.</p>
+            <ul class="maddeler">
+              <li><b>Adil paylaşım.</b> Günlük haklar sunucu ve kişi sayısına göre kendiliğinden paylaştırılır; cevabın altında kalan hakkın yazar.</li>
+              <li><b>Sınırları belli.</b> Yapay zekâ kimseyi etiketleyemez, sunucunda hiçbir işlem yapamaz. Yalnızca cevap yazar.</li>
+            </ul>
+          </div>
+          <div class="ornek" aria-hidden="true">
+            <span class="etiket">ÖRNEK</span>
+            <p class="cagri"><code>/sor</code> soru: Yavaş mod nasıl açılır?</p>
+            <div class="mesaj">
+              <div class="avatar"></div>
+              <div>
+                <p class="ad">Voyager<small>UYGULAMA</small></p>
+                <p class="alinti">Yavaş mod nasıl açılır?</p>
+                <p>Kanalın ayarlarını aç, Genel Bakış'taki <b>Yavaş Mod</b> kaydırıcısından bekleme süresini seç ve değişiklikleri kaydet.</p>
+                <span class="alt-yazi">Yapay zekâ cevabı; yanlış olabilir · bugün kalan soru hakkın: 9</span>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="card ozellik reveal">
+          <div>
+            <p class="tag">/oyun · fırsat incelemeleri</p>
+            <h3>Fırsatı değil, oyunu gör</h3>
+            <p>Popüler ve yeni çıkmış oyunların bedava ve indirim kartlarına kısa bir inceleme eklenir: spoilersiz konu, kısa yorum, kimlere hitap ettiği ve 10 üzerinden puan.</p>
+            <ul class="maddeler">
+              <li><b>Uydurmaz.</b> Yapay zekâ Steam mağaza bilgileri, Steam kullanıcı oranı ve Metacritic puanıyla beslenir. Bu gerçek puanlar kartta da yazar.</li>
+              <li><b>Gürültü yapmaz.</b> Önemli fırsatlar anında gelir, istersen @everyone ile. Diğerleri 3 saatte bir toplu liste olarak düşer.</li>
+            </ul>
+          </div>
+          <div class="ornek" aria-hidden="true">
+            <span class="etiket">ÖRNEK</span>
+            <div class="mesaj">
+              <div class="avatar"></div>
+              <div>
+                <p class="ad">Voyager<small>UYGULAMA</small></p>
+                <div class="embed">
+                  <p class="baslik">Son Fener</p>
+                  <div class="alan"><b>📖 Konu (spoilersiz)</b><span>Issız bir adada fener bekçiliğine başlayan biri, her gece daha da tuhaflaşan sinyalleri çözmeye çalışır.</span></div>
+                  <div class="alan"><b>💬 Yorum</b><span>Atmosferi ve bulmacaları güçlü; sonlara doğru tempo biraz düşüyor.</span></div>
+                  <div class="alanlar">
+                    <div class="alan"><b>🎯 Kimlere göre</b><span>Hikâyeli bulmaca oyunlarını sevenlere</span></div>
+                    <div class="alan"><b>⭐ Voyager puanı</b><span class="puan">8,6/10</span><span class="alt-yazi">Steam %92 olumlu · Metacritic 86</span></div>
+                  </div>
+                  <span class="alt-yazi">İnceleme yapay zekâ ile yazıldı; yanlış olabilir</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="card ozellik reveal">
+          <div>
+            <p class="tag">/koruma gorsel</p>
+            <h3>Resmin içini okur</h3>
+            <p>Ele geçirilmiş hesaplar "MrBeast 2.500 $ dağıtıyor, siteye gir kodu yaz" gibi sahte çekiliş, kripto kumarhane ve bedava Nitro resimleri atar. Metin filtreleri bunları göremez; Voyager resmin içini okuyarak yakalar.</p>
+            <ul class="maddeler">
+              <li><b>Hızlı müdahale.</b> Mesajı siler, atanı susturur, günlüğe kanıtıyla yazar. Aynı resim yeniden atılırsa beklemeden silinir.</li>
+              <li><b>Yalnızca riskli mesajlara bakar.</b> Yeni üyeler, bağlantılı mesajlar, tek mesajda birden fazla resim, aynı resmin birden fazla kanala atılması. İstersen bütün resimler.</li>
+            </ul>
+          </div>
+          <div class="ornek" aria-hidden="true">
+            <span class="etiket">ÖRNEK</span>
+            <p class="cagri">#moderasyon-günlüğü</p>
+            <div class="mesaj">
+              <div class="avatar"></div>
+              <div>
+                <p class="ad">Voyager<small>UYGULAMA</small></p>
+                <div class="embed kirmizi">
+                  <p class="baslik">🛡️ Dolandırıcılık görseli engellendi</p>
+                  <span class="alan"><span>Bu hesap ele geçirilmiş olabilir. Üyeye ulaşıp şifresini değiştirmesini ve iki adımlı doğrulamayı açmasını söyle.</span></span>
+                  <div class="alan"><b>Tespit</b><span>sahte çekiliş · %97 emin<br>Ünlü adına para dağıtıldığını söyleyip siteye girip kod yazmayı istiyor.</span></div>
+                  <div class="alan"><b>Yapılan</b><span>3 mesaj silindi<br>1440 dakika susturuldu</span></div>
+                  <div class="kanit"><span>SPOILER</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <p class="not reveal"><b>Yapay zekâ yanılabilir.</b> Voyager bunu her cevabında ve her incelemesinde söyler; görsel denetimi yanlış alarm verirse susturmayı elle kaldırabilirsin. <code>/sor</code> soruları ve denetlenen resimler cevap için Google'ın Gemini hizmetine gönderilir. Görsel denetimi sunucu başına açılır; kapalıyken hiçbir resim gönderilmez.</p>
+    </div>
+  </section>
+
   <section id="kur">
     <div class="container">
-      <p class="kicker reveal"><span class="num">01</span>Kur</p>
+      <p class="kicker reveal"><span class="num">02</span>Kur</p>
       <h2 class="reveal">Bir komut yaz.<br><span class="dim">Sunucun hazır.</span></h2>
       <p class="lead reveal">Saatlerce kanal açıp izin ayarlamayı unut. Voyager neyi kuracağını gösterir, sen onaylarsın, gerisini o halleder. Var olan kanallarına ve rollerine dokunmaz.</p>
 
@@ -335,7 +535,7 @@
 
   <section id="koru">
     <div class="container">
-      <p class="kicker reveal"><span class="num">02</span>Koru</p>
+      <p class="kicker reveal"><span class="num">03</span>Koru</p>
       <h2 class="reveal">Sen uyurken de<br><span class="dim">sunucun güvende.</span></h2>
       <p class="lead reveal">Gece üçte başlayan spam dalgasını, sen uyanmadan çoktan durdurmuş olur. Hangi korumanın açık olacağına sen karar verirsin.</p>
 
@@ -346,9 +546,9 @@
           <p>Ban, kick, susturma, toplu mesaj silme. Hepsi tek komut, hepsi saniyeler içinde.</p>
         </article>
         <article class="card reveal">
-          <p class="tag">/koruma spam · kufur</p>
+          <p class="tag">/koruma spam · kufur · gorsel</p>
           <h3>Otomatik koruma</h3>
-          <p>Çalınmış bir hesap bütün kanallara spam atmaya başladığında mesajları siler, hesabı susturur. Sen daha bildirimi görmeden.</p>
+          <p>Çalınmış bir hesap bütün kanallara spam atmaya başladığında mesajları siler, hesabı susturur. Sen daha bildirimi görmeden. Ağır küfürleri siler, dolandırıcılık resimlerini <a class="yan-link satir-ici" href="#yz">yapay zekâyla</a> yakalar.</p>
         </article>
         <article class="card reveal">
           <p class="tag">/kitle · /kilidiac</p>
@@ -366,7 +566,7 @@
 
   <section id="haber">
     <div class="container">
-      <p class="kicker reveal"><span class="num">03</span>Haber al</p>
+      <p class="kicker reveal"><span class="num">04</span>Haber al</p>
       <h2 class="reveal">Hiçbir şeyi<br><span class="dim">kaçırma.</span></h2>
       <p class="lead reveal">Yayınlar, indirimler, haberler ayağına gelsin. Her biri için ayrı kanal seçersin; istersen bir rolü de etiketler.</p>
 
@@ -379,7 +579,7 @@
         <article class="card reveal">
           <p class="tag">/oyun · Steam · Epic · GOG</p>
           <h3>Oyun fırsatları</h3>
-          <p>Bedava oyunu da büyük indirimi de kaçırmazsın. Steam, Epic ve GOG'u senin yerine takip eder, fiyatları Türkiye fiyatıyla gösterir.</p>
+          <p>Bedava oyunu da büyük indirimi de kaçırmazsın. Steam, Epic ve GOG'u senin yerine takip eder, fiyatları Türkiye fiyatıyla gösterir. Popüler oyunların kartında yapay zekâ incelemesi ve puanı da yer alır.</p>
         </article>
         <article class="card reveal">
           <p class="tag">/haber · RSS</p>
@@ -399,7 +599,7 @@
 
   <section id="komutlar">
     <div class="container">
-      <p class="kicker reveal"><span class="num">04</span>Komutlar</p>
+      <p class="kicker reveal"><span class="num">05</span>Komutlar</p>
       <h2 class="reveal">Öğrenmesi<br><span class="dim">beş dakika.</span></h2>
       <p class="lead reveal">Discord'da <code>/</code> yazınca hepsi karşına çıkar. Yetki isteyen komutları yalnızca o yetkiye sahip olanlar görür; tam liste için <code>/yardim</code> yaz.</p>
 
@@ -408,6 +608,7 @@
           <h3>Herkes</h3>
           <ul>
             <li><code>/yardim</code><span>Komutları ve ne işe yaradıklarını listeler</span></li>
+            <li><code>/sor</code><span>Yapay zekâya soru sorar</span></li>
             <li><code>/hatirlat</code><span>Verdiğin süre dolunca seni etiketler</span></li>
             <li><code>/ping</code><span>Botun çalışıp çalışmadığını gösterir</span></li>
           </ul>
@@ -427,7 +628,7 @@
           <ul>
             <li><code>/sunucukur</code><span>Topluluk sunucusunu kurar</span></li>
             <li><code>/ayarla</code><span>Günlük kanalı, hoş geldin kanalı, otomatik rol</span></li>
-            <li><code>/koruma</code><span>Spam koruması ve küfür filtresi</span></li>
+            <li><code>/koruma</code><span>Spam, küfür ve dolandırıcılık görseli koruması</span></li>
             <li><code>/kitle</code><span>Bütün kanalları kilitler</span></li>
             <li><code>/kilidiac</code><span>Kilidi açar, eski izinleri geri getirir</span></li>
           </ul>
@@ -449,7 +650,7 @@
 
   <section class="son">
     <div class="container">
-      <p class="kicker reveal"><span class="num">05</span>Başla</p>
+      <p class="kicker reveal"><span class="num">06</span>Başla</p>
       <h2 class="reveal">Bir dakikada hazır.</h2>
       <ol class="adimlar reveal">
         <li><b>1</b><span>Sunucuna ekle</span></li>
