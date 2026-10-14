@@ -28,7 +28,7 @@ module.exports = {
     if (sonuc.hata) return interaction.editReply({ content: sonuc.hata, allowedMentions: { parse: [] } });
 
     return interaction.editReply({
-      content: `> **${alinti(soru)}**\n${sonuc.cevap}\n-# Yapay zekâ cevabı; yanlış olabilir · bugün kalan soru hakkın: ${sonuc.kalan}`,
+      content: `> **${alinti(soru)}**\n${sonuc.cevap}\n-# Yapay zekâ cevabıdır, yanlış olabilir · bugün kalan soru hakkın: ${sonuc.kalan}`,
       // Modelin yazdığı hiçbir şey kimseyi etiketleyemez; bağlantı önizlemesi de çıkmaz
       allowedMentions: { parse: [] },
       flags: MessageFlags.SuppressEmbeds,

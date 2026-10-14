@@ -153,7 +153,14 @@ function beklemeSayaci(aralik) {
 // "<t:...:R>" Discord'da "5 dakika içinde" gibi canlı bir sayaç gösterir
 const neZaman = (ms) => `<t:${Math.ceil((Date.now() + ms) / 1000)}:R>`;
 
+// Dakikayı okunur süreye çevirir: 1440 → "1 gün", 120 → "2 saat", 90 → "90 dakika"
+function sureMetni(dakika) {
+  if (dakika > 0 && dakika % 1440 === 0) return `${dakika / 1440} gün`;
+  if (dakika > 0 && dakika % 60 === 0) return `${dakika / 60} saat`;
+  return `${dakika} dakika`;
+}
+
 module.exports = {
   mudahaleEngeli, logGonder, yazabilirMi, otoRolEngeli, otoRolVer, yonetimRolu, komutYetkisiVar, etiketEngeli,
-  baglantisiz, hataMetni, beklemeSayaci, neZaman, sahibinToplami,
+  baglantisiz, hataMetni, beklemeSayaci, neZaman, sureMetni, sahibinToplami,
 };

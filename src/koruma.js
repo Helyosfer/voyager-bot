@@ -4,6 +4,7 @@
 const { EmbedBuilder, Events, GatewayIntentBits, PermissionFlagsBits } = require('discord.js');
 const { ayarlariGetir } = require('./depo');
 const { gunlukGonder, temizlemeBildir } = require('./gunluk');
+const { sureMetni } = require('./yardimci');
 const gorsel = require('./gorsel');
 
 // --- Spam ---
@@ -180,15 +181,15 @@ async function spamUygula(mesaj, sebep, ayar) {
   const embed = new EmbedBuilder()
     .setTitle('🛡️ Spam engellendi')
     .setColor(0xed4245)
-    .setDescription('Bu hesap ele geçirilmiş olabilir. Üyeye ulaşıp şifresini değiştirmesini ve iki adımlı doğrulamayı açmasını söyle.')
+    .setDescription('Bu hesap ele geçirilmiş olabilir. Üyeye haber ver: şifresini değiştirsin ve iki adımlı doğrulamayı açsın.')
     .addFields(
       { name: 'Kullanıcı', value: `${mesaj.author} (${mesaj.author.tag})` },
       { name: 'Sebep', value: sebep },
       {
-        name: 'Yapılan',
+        name: 'Yapılanlar',
         value: [
           `${silinen} mesaj silindi (${kanallar.size} kanal)`,
-          susturuldu ? `${ayar.spamDakika} dakika susturuldu` : 'Susturulamadı (yetkim yetmedi ya da susturma kapalı)',
+          susturuldu ? `Üye ${sureMetni(ayar.spamDakika)} susturuldu` : 'Susturulamadı (yetkim yetmedi ya da susturma kapalı)',
         ].join('\n'),
       },
     );
@@ -212,7 +213,7 @@ async function kufurUygula(mesaj, kelime, ayar) {
       { name: 'Kullanıcı', value: `${mesaj.author} (${mesaj.author.tag})` },
       { name: 'Kanal', value: `${mesaj.channel}` },
       { name: 'Yakalanan kelime', value: `||${kelime}||` },
-      { name: 'Yapılan', value: susturuldu ? `Mesaj silindi, ${ayar.kufurDakika} dakika susturuldu` : 'Mesaj silindi' },
+      { name: 'Yapılanlar', value: susturuldu ? `Mesaj silindi, üye ${sureMetni(ayar.kufurDakika)} susturuldu` : 'Mesaj silindi' },
     );
   await gunlukGonder(mesaj.guild, 'moderasyon', embed);
 }

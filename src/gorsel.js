@@ -20,6 +20,7 @@ const { AttachmentBuilder, EmbedBuilder } = require('discord.js');
 const yapayzeka = require('./yapayzeka');
 const { oku, yaz } = require('./depo');
 const { gunlukGonder } = require('./gunluk');
+const { sureMetni } = require('./yardimci');
 
 const TURLER = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif' };
 const EN_BUYUK = 8 * 1024 * 1024; // bayt; daha büyük resimler indirilmez
@@ -220,14 +221,14 @@ async function uygula(mesaj, indirilenler, ayar, karar, kaynak) {
   const embed = new EmbedBuilder()
     .setTitle('🛡️ Dolandırıcılık görseli engellendi')
     .setColor(0xed4245)
-    .setDescription('Bu hesap ele geçirilmiş olabilir. Üyeye ulaşıp şifresini değiştirmesini ve iki adımlı doğrulamayı açmasını söyle.')
+    .setDescription('Bu hesap ele geçirilmiş olabilir. Üyeye haber ver: şifresini değiştirsin ve iki adımlı doğrulamayı açsın.')
     .addFields(
       { name: 'Kullanıcı', value: `${mesaj.author} (${mesaj.author.tag})` },
       { name: 'Kanal', value: `${mesaj.channel}` },
-      { name: 'Tespit', value: kaynak === 'kara' ? 'Daha önce yakalanan bir resim' : `${karar.tur} · %${karar.guven} emin\n${karar.sebep}` },
+      { name: 'Tespit', value: kaynak === 'kara' ? 'Daha önce yakalanan bir görsel' : `${karar.tur} · güven %${karar.guven}\n${karar.sebep}` },
       {
-        name: 'Yapılan',
-        value: [`${silinen} mesaj silindi`, susturuldu ? `${ayar.gorselDakika} dakika susturuldu` : 'Susturulamadı (yetkim yetmedi ya da susturma kapalı)'].join('\n'),
+        name: 'Yapılanlar',
+        value: [`${silinen} mesaj silindi`, susturuldu ? `Üye ${sureMetni(ayar.gorselDakika)} susturuldu` : 'Susturulamadı (yetkim yetmedi ya da susturma kapalı)'].join('\n'),
       },
     )
     .setFooter({ text: 'Yanlış alarmsa üyenin susturmasını kaldır. Kanıt resmi aşağıda, bulanık gösterilir.' });

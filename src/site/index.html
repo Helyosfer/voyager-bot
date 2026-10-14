@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Voyager — Yapay zekâ destekli Discord botu</title>
-<meta name="description" content="Voyager, yapay zekâ destekli bir Discord botu: sorularını cevaplar, oyun fırsatlarını inceler, dolandırıcılık resimlerini yakalar. Sunucu kurar, korur; yayın, oyun fırsatı ve haber bildirimleri gönderir.">
+<meta name="description" content="Voyager, yapay zekâ destekli bir Discord botu. Sorularını cevaplar, oyun fırsatlarını inceler ve dolandırıcılık görsellerini yakalar. Sunucunu kurar, korur; yayın, oyun fırsatı ve haber bildirimleri gönderir.">
 <meta property="og:title" content="Voyager — Yapay zekâ destekli Discord botu">
-<meta property="og:description" content="Sorunu cevaplar, oyun fırsatlarını inceler, dolandırıcılık resimlerini yakalar. Sunucunu kurar, korur, haberdar eder.">
+<meta property="og:description" content="Sorularını cevaplar, oyun fırsatlarını inceler, dolandırıcılık görsellerini yakalar. Sunucunu kurar, korur ve haberdar eder.">
 <meta property="og:type" content="website">
 <meta name="theme-color" content="#000000">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23000'/%3E%3Cellipse cx='32' cy='32' rx='23' ry='9' fill='none' stroke='%238e8e93' stroke-width='2' transform='rotate(-28 32 32)'/%3E%3Ccircle cx='32' cy='32' r='7' fill='%23fff'/%3E%3C/svg%3E">
@@ -385,7 +385,7 @@
 
     <div class="hero-content">
       <h1>Voyager</h1>
-      <p class="role">Yapay zekâ destekli Discord botu. Sorunu cevaplar, dolandırıcılığı resimden tanır; sunucunu kurar, korur, haberdar eder.</p>
+      <p class="role">Yapay zekâ destekli Discord botu. Sorularını cevaplar, dolandırıcılık görsellerini yakalar; sunucunu kurar, korur ve haberdar eder.</p>
       <div class="hero-actions">
         <a class="btn btn-primary" href="{{DAVET}}" rel="noopener">Sunucuna ekle</a>
         <a class="btn btn-ghost" href="#yz">Neler yapar</a>
@@ -397,18 +397,18 @@
   <section id="yz">
     <div class="container">
       <p class="kicker reveal"><span class="num">01</span>Yapay zekâ</p>
-      <h2 class="reveal">Sorunu cevaplar.<br><span class="dim">Tuzağı resimden tanır.</span></h2>
-      <p class="lead reveal">Voyager, Google'ın Gemini yapay zekâsıyla çalışır. Sorularını cevaplar, kaçırmaman gereken oyunları senin için inceler ve metin filtrelerinin göremediği dolandırıcılık resimlerini yakalar.</p>
+      <h2 class="reveal">Sorularını cevaplar.<br><span class="dim">Dolandırıcılığı görselden tanır.</span></h2>
+      <p class="lead reveal">Voyager, Google'ın Gemini yapay zekâsıyla çalışır. Sorularını cevaplar, kaçırmak istemeyeceğin oyunları senin için inceler ve metin filtrelerinin fark edemediği dolandırıcılık görsellerini yakalar.</p>
 
       <div class="ozellikler">
         <article class="card ozellik reveal">
           <div>
             <p class="tag">/sor</p>
             <h3>Aklına takılanı sor</h3>
-            <p>Sorunu yaz, kısa ve Türkçe bir cevap gelsin. Kanalda herkes görsün ya da gizli seçeneğiyle yalnızca sen gör.</p>
+            <p>Merak ettiğin şeyi yaz, kısa ve Türkçe bir cevap al. Cevabı kanaldaki herkes görür; istersen <code>gizli</code> seçeneğiyle yalnızca sen görürsün.</p>
             <ul class="maddeler">
-              <li><b>Adil paylaşım.</b> Günlük haklar sunucu ve kişi sayısına göre kendiliğinden paylaştırılır; cevabın altında kalan hakkın yazar.</li>
-              <li><b>Sınırları belli.</b> Yapay zekâ kimseyi etiketleyemez, sunucunda hiçbir işlem yapamaz. Yalnızca cevap yazar.</li>
+              <li><b>Adil paylaşım.</b> Günlük soru hakları, soru soran sunucu ve kişi sayısına göre kendiliğinden paylaştırılır. Kaç hakkın kaldığını her cevabın altında görürsün.</li>
+              <li><b>Sınırları belli.</b> Yapay zekâ yalnızca cevap yazar: kimseyi etiketleyemez, sunucunda hiçbir işlem yapamaz.</li>
             </ul>
           </div>
           <div class="ornek" aria-hidden="true">
@@ -420,7 +420,7 @@
                 <p class="ad">Voyager<small>UYGULAMA</small></p>
                 <p class="alinti">Yavaş mod nasıl açılır?</p>
                 <p>Kanalın ayarlarını aç, Genel Bakış'taki <b>Yavaş Mod</b> kaydırıcısından bekleme süresini seç ve değişiklikleri kaydet.</p>
-                <span class="alt-yazi">Yapay zekâ cevabı; yanlış olabilir · bugün kalan soru hakkın: 9</span>
+                <span class="alt-yazi">Yapay zekâ cevabıdır, yanlış olabilir · bugün kalan soru hakkın: 9</span>
               </div>
             </div>
           </div>
@@ -429,11 +429,11 @@
         <article class="card ozellik reveal">
           <div>
             <p class="tag">/oyun · fırsat incelemeleri</p>
-            <h3>Fırsatı değil, oyunu gör</h3>
-            <p>Popüler ve yeni çıkmış oyunların bedava ve indirim kartlarına kısa bir inceleme eklenir: spoilersiz konu, kısa yorum, kimlere hitap ettiği ve 10 üzerinden puan.</p>
+            <h3>İndirimi gör, oyunu tanı</h3>
+            <p>Popüler ve yeni çıkan oyunlarda fırsat kartına kısa bir inceleme eklenir. İncelemede spoiler vermeyen bir konu özeti, kısa bir yorum, oyunun kimlere hitap ettiği ve 10 üzerinden bir puan bulunur.</p>
             <ul class="maddeler">
-              <li><b>Uydurmaz.</b> Yapay zekâ Steam mağaza bilgileri, Steam kullanıcı oranı ve Metacritic puanıyla beslenir. Bu gerçek puanlar kartta da yazar.</li>
-              <li><b>Gürültü yapmaz.</b> Önemli fırsatlar anında gelir, istersen @everyone ile. Diğerleri 3 saatte bir toplu liste olarak düşer.</li>
+              <li><b>Gerçek verilere dayanır.</b> İnceleme yazılırken Steam mağaza bilgileri, Steam'deki olumlu değerlendirme oranı ve Metacritic puanı kullanılır. Bu puanlar kartta da yer alır.</li>
+              <li><b>Kanalı boğmaz.</b> Önemli fırsatlar hemen duyurulur; istersen herkes @everyone ile etiketlenir. Diğer fırsatlar üç saatte bir tek bir liste halinde gelir.</li>
             </ul>
           </div>
           <div class="ornek" aria-hidden="true">
@@ -447,10 +447,10 @@
                   <div class="alan"><b>📖 Konu (spoilersiz)</b><span>Issız bir adada fener bekçiliğine başlayan biri, her gece daha da tuhaflaşan sinyalleri çözmeye çalışır.</span></div>
                   <div class="alan"><b>💬 Yorum</b><span>Atmosferi ve bulmacaları güçlü; sonlara doğru tempo biraz düşüyor.</span></div>
                   <div class="alanlar">
-                    <div class="alan"><b>🎯 Kimlere göre</b><span>Hikâyeli bulmaca oyunlarını sevenlere</span></div>
-                    <div class="alan"><b>⭐ Voyager puanı</b><span class="puan">8,6/10</span><span class="alt-yazi">Steam %92 olumlu · Metacritic 86</span></div>
+                    <div class="alan"><b>🎯 Kimlere hitap ediyor</b><span>Hikâyeli bulmaca oyunlarını sevenlere</span></div>
+                    <div class="alan"><b>⭐ Voyager puanı</b><span class="puan">8,6/10</span><span class="alt-yazi">Steam %92 olumlu · Metacritic 86/100</span></div>
                   </div>
-                  <span class="alt-yazi">İnceleme yapay zekâ ile yazıldı; yanlış olabilir</span>
+                  <span class="alt-yazi">İnceleme yapay zekâ ile yazıldı, hata içerebilir</span>
                 </div>
               </div>
             </div>
@@ -460,11 +460,11 @@
         <article class="card ozellik reveal">
           <div>
             <p class="tag">/koruma gorsel</p>
-            <h3>Resmin içini okur</h3>
-            <p>Ele geçirilmiş hesaplar "MrBeast 2.500 $ dağıtıyor, siteye gir kodu yaz" gibi sahte çekiliş, kripto kumarhane ve bedava Nitro resimleri atar. Metin filtreleri bunları göremez; Voyager resmin içini okuyarak yakalar.</p>
+            <h3>Görseldeki yazıyı okur</h3>
+            <p>Ele geçirilmiş hesaplar sık sık "MrBeast 2.500 $ dağıtıyor, siteye gir, kodu yaz" türünden sahte çekiliş, kripto kumar sitesi ve bedava Nitro görselleri paylaşır. Yazı görselin içinde olduğu için metin filtreleri bunu göremez. Voyager ise görseli okuyarak tuzağı yakalar.</p>
             <ul class="maddeler">
-              <li><b>Hızlı müdahale.</b> Mesajı siler, atanı susturur, günlüğe kanıtıyla yazar. Aynı resim yeniden atılırsa beklemeden silinir.</li>
-              <li><b>Yalnızca riskli mesajlara bakar.</b> Yeni üyeler, bağlantılı mesajlar, tek mesajda birden fazla resim, aynı resmin birden fazla kanala atılması. İstersen bütün resimler.</li>
+              <li><b>Hızlı müdahale.</b> Mesajı siler, göndereni susturur ve olayı kanıtıyla birlikte günlüğe kaydeder. Aynı görsel tekrar atılırsa o mesaj beklemeden silinir.</li>
+              <li><b>Riskli mesajlara odaklanır.</b> Varsayılan olarak yeni üyelerin mesajlarını, bağlantı içeren mesajları, birden fazla görsel taşıyan mesajları ve birkaç kanala birden atılan görselleri denetler. İstersen bütün görselleri denetletebilirsin.</li>
             </ul>
           </div>
           <div class="ornek" aria-hidden="true">
@@ -476,10 +476,11 @@
                 <p class="ad">Voyager<small>UYGULAMA</small></p>
                 <div class="embed kirmizi">
                   <p class="baslik">🛡️ Dolandırıcılık görseli engellendi</p>
-                  <span class="alan"><span>Bu hesap ele geçirilmiş olabilir. Üyeye ulaşıp şifresini değiştirmesini ve iki adımlı doğrulamayı açmasını söyle.</span></span>
-                  <div class="alan"><b>Tespit</b><span>sahte çekiliş · %97 emin<br>Ünlü adına para dağıtıldığını söyleyip siteye girip kod yazmayı istiyor.</span></div>
-                  <div class="alan"><b>Yapılan</b><span>3 mesaj silindi<br>1440 dakika susturuldu</span></div>
-                  <div class="kanit"><span>SPOILER</span></div>
+                  <span class="alan"><span>Bu hesap ele geçirilmiş olabilir. Üyeye haber ver: şifresini değiştirsin ve iki adımlı doğrulamayı açsın.</span></span>
+                  <div class="alan"><b>Kullanıcı</b><span>@ornek_uye</span></div>
+                  <div class="alan"><b>Tespit</b><span>sahte çekiliş · güven %97<br>Ünlü biri adına para dağıtıldığını iddia ediyor ve bir siteye girip kod yazılmasını istiyor.</span></div>
+                  <div class="alan"><b>Yapılanlar</b><span>3 mesaj silindi<br>Üye 1 gün susturuldu</span></div>
+                  <div class="kanit"><span>Kanıt görseli · bulanık</span></div>
                 </div>
               </div>
             </div>
@@ -487,7 +488,7 @@
         </article>
       </div>
 
-      <p class="not reveal"><b>Yapay zekâ yanılabilir.</b> Voyager bunu her cevabında ve her incelemesinde söyler; görsel denetimi yanlış alarm verirse susturmayı elle kaldırabilirsin. <code>/sor</code> soruları ve denetlenen resimler cevap için Google'ın Gemini hizmetine gönderilir. Görsel denetimi sunucu başına açılır; kapalıyken hiçbir resim gönderilmez.</p>
+      <p class="not reveal"><b>Yapay zekâ yanılabilir.</b> Voyager bunu her cevabın ve incelemenin altında belirtir. Görsel denetimi yanlış alarm verirse susturmayı elle kaldırabilirsin. <code>/sor</code> ile sorulan sorular ve denetlenen görseller, işlenmek üzere Google'ın Gemini hizmetine gönderilir. Görsel denetimini her sunucu kendisi açar; kapalıyken hiçbir görsel denetime gönderilmez.</p>
     </div>
   </section>
 
@@ -504,7 +505,7 @@
           <li><b>14</b>kategori</li>
           <li><b>55</b>kanal</li>
         </ul>
-        <p>Sohbetten desteğe, oyundan etkinliğe kadar her şey izinleriyle birlikte hazır gelir. Günlük, hoş geldin, yayın ve oyun fırsatı kanalları baştan bağlıdır; ayrıca ayar yapmazsın.</p>
+        <p>Sohbetten desteğe, oyundan etkinliğe kadar her şey izinleriyle birlikte hazır gelir. Günlük, hoş geldin, yayın ve oyun fırsatı kanalları kurulumla birlikte bağlanır; ayrıca ayar yapman gerekmez.</p>
         <a class="yan-link" href="{{DAVET_TAM}}" rel="noopener">Kurulum izinleriyle ekle ›</a>
       </article>
 
@@ -512,22 +513,22 @@
         <article class="card reveal">
           <p class="tag">üyelik-onay</p>
           <h3>Üyelik onayı</h3>
-          <p>Onay vermeyen içeriyi göremez. Yeni gelen yalnızca başlangıç kanallarını görür; onay düğmesine basınca sunucu açılır.</p>
+          <p>Yeni gelen üye önce yalnızca başlangıç kanallarını görür. Kuralları okuyup onay düğmesine bastığında sunucunun geri kalanı açılır.</p>
         </article>
         <article class="card reveal">
           <p class="tag">rol-seçimi</p>
           <h3>İlgi rolleri</h3>
-          <p>Üyeler rollerini menüden kendileri seçer. Sen tek tek rol dağıtmakla uğraşmazsın.</p>
+          <p>Üyeler ilgi alanlarına göre rollerini menüden kendileri seçer; sen tek tek rol dağıtmakla uğraşmazsın.</p>
         </article>
         <article class="card reveal">
           <p class="tag">destek-merkezi</p>
           <h3>Destek talepleri</h3>
-          <p>Her talebe özel oda. Odayı yalnızca talep sahibi ve destek ekibi görür; kapanan talep 30 gün daha kayıt olarak durur.</p>
+          <p>Her talep için özel bir oda açılır. Odayı yalnızca talep sahibi ve destek ekibi görür; kapanan talepler 30 güne kadar kayıt olarak saklanır.</p>
         </article>
         <article class="card reveal">
           <p class="tag">/ayarla hosgeldin-kanali · oto-rol</p>
           <h3>Karşılama</h3>
-          <p>Sunucun zaten kuruluysa sorun değil. Hoş geldin mesajını ve otomatik rolü iki komutla açarsın.</p>
+          <p>Sunucun zaten kuruluysa sorun değil: hoş geldin mesajını ve otomatik rolü iki komutla açabilirsin.</p>
         </article>
       </div>
     </div>
@@ -537,28 +538,28 @@
     <div class="container">
       <p class="kicker reveal"><span class="num">03</span>Koru</p>
       <h2 class="reveal">Sen uyurken de<br><span class="dim">sunucun güvende.</span></h2>
-      <p class="lead reveal">Gece üçte başlayan spam dalgasını, sen uyanmadan çoktan durdurmuş olur. Hangi korumanın açık olacağına sen karar verirsin.</p>
+      <p class="lead reveal">Gece üçte başlayan bir spam dalgasını sen uyanmadan durdurur. Hangi korumaların açık olacağına sen karar verirsin.</p>
 
       <div class="cards">
         <article class="card reveal">
           <p class="tag">/ban · /kick · /sustur · /temizle</p>
           <h3>Moderasyon</h3>
-          <p>Ban, kick, susturma, toplu mesaj silme. Hepsi tek komut, hepsi saniyeler içinde.</p>
+          <p>Yasaklama, atma, susturma ve toplu mesaj silme. Her biri tek komutla, saniyeler içinde.</p>
         </article>
         <article class="card reveal">
           <p class="tag">/koruma spam · kufur · gorsel</p>
           <h3>Otomatik koruma</h3>
-          <p>Çalınmış bir hesap bütün kanallara spam atmaya başladığında mesajları siler, hesabı susturur. Sen daha bildirimi görmeden. Ağır küfürleri siler, dolandırıcılık resimlerini <a class="yan-link satir-ici" href="#yz">yapay zekâyla</a> yakalar.</p>
+          <p>Çalınmış bir hesap bütün kanallara spam atmaya başlarsa mesajları siler ve hesabı susturur; hem de sen bildirimi görmeden. Ağır küfürleri siler, dolandırıcılık görsellerini <a class="yan-link satir-ici" href="#yz">yapay zekâyla</a> yakalar.</p>
         </article>
         <article class="card reveal">
           <p class="tag">/kitle · /kilidiac</p>
           <h3>Acil durum kilidi</h3>
-          <p>Saldırı mı var? Tek komutla bütün sunucu kilitlenir. Ortalık durulunca yine tek komutla her kanal eski izinlerine döner.</p>
+          <p>Saldırı mı var? Tek komutla bütün sunucuyu kilitle. Ortalık durulunca yine tek komutla her kanal eski izinlerine döner.</p>
         </article>
         <article class="card reveal">
           <p class="tag">/ayarla log-kanali · log-kategori</p>
           <h3>Sunucu günlüğü</h3>
-          <p>Sunucunda olan hiçbir şey gözünden kaçmaz. Kim girdi, kim çıktı, hangi mesaj silindi, kim neyi değiştirdi; hepsi kayıtta.</p>
+          <p>Sunucunda olan hiçbir şey gözünden kaçmaz: kim girdi, kim çıktı, hangi mesaj silindi, kim neyi değiştirdi; hepsi kayıt altında.</p>
         </article>
       </div>
     </div>
@@ -568,29 +569,29 @@
     <div class="container">
       <p class="kicker reveal"><span class="num">04</span>Haber al</p>
       <h2 class="reveal">Hiçbir şeyi<br><span class="dim">kaçırma.</span></h2>
-      <p class="lead reveal">Yayınlar, indirimler, haberler ayağına gelsin. Her biri için ayrı kanal seçersin; istersen bir rolü de etiketler.</p>
+      <p class="lead reveal">Yayınlar, indirimler ve haberler ayağına gelsin. Her biri için ayrı bir kanal seçebilir, istersen bir rolü de etiketletebilirsin.</p>
 
       <div class="cards">
         <article class="card reveal">
           <p class="tag">/yayin · Twitch · Kick · YouTube</p>
           <h3>Yayın bildirimleri</h3>
-          <p>Takip ettiğin yayıncı yayın açtığı anda sunucun haberdar olur. Twitch ve Kick'te anında, YouTube'da birkaç dakika içinde.</p>
+          <p>Takip ettiğin yayıncı yayına başladığında sunucun haberdar olur: Twitch ve Kick'te anında, YouTube'da birkaç dakika içinde.</p>
         </article>
         <article class="card reveal">
           <p class="tag">/oyun · Steam · Epic · GOG</p>
           <h3>Oyun fırsatları</h3>
-          <p>Bedava oyunu da büyük indirimi de kaçırmazsın. Steam, Epic ve GOG'u senin yerine takip eder, fiyatları Türkiye fiyatıyla gösterir. Popüler oyunların kartında yapay zekâ incelemesi ve puanı da yer alır.</p>
+          <p>Bedava oyunları da büyük indirimleri de kaçırmazsın. Voyager Steam, Epic ve GOG'u senin yerine takip eder ve fiyatları Türkiye fiyatlarıyla gösterir. Popüler oyunların kartlarında yapay zekâ incelemesi ve puanı da bulunur.</p>
         </article>
         <article class="card reveal">
           <p class="tag">/haber · RSS</p>
           <h3>Haberler</h3>
-          <p>İstediğin haber sitesini ekle, yeni haber çıktıkça kanalına düşsün. Sitenin adresini yazman yeterli.</p>
+          <p>İstediğin haber sitesini ekle; yeni haberler çıktıkça kanalına gelsin. Sitenin adresini yazman yeterli.</p>
         </article>
         <!--instagram-->
         <article class="card reveal">
           <p class="tag">/instagram</p>
           <h3>Instagram</h3>
-          <p>Takip ettiğin hesaplar yeni gönderi paylaştığında sunucun bilir. Herkese açık profesyonel hesaplarda çalışır.</p>
+          <p>Takip ettiğin hesaplar yeni bir gönderi paylaştığında sunucun haberdar olur. Herkese açık profesyonel hesaplarda çalışır.</p>
         </article>
         <!--/instagram-->
       </div>
@@ -601,7 +602,7 @@
     <div class="container">
       <p class="kicker reveal"><span class="num">05</span>Komutlar</p>
       <h2 class="reveal">Öğrenmesi<br><span class="dim">beş dakika.</span></h2>
-      <p class="lead reveal">Discord'da <code>/</code> yazınca hepsi karşına çıkar. Yetki isteyen komutları yalnızca o yetkiye sahip olanlar görür; tam liste için <code>/yardim</code> yaz.</p>
+      <p class="lead reveal">Discord'da <code>/</code> yazdığında bütün komutlar karşına çıkar. Yetki gerektiren komutları yalnızca o yetkiye sahip olanlar görür. Tam liste için <code>/yardim</code> yaz.</p>
 
       <div class="gruplar">
         <div class="grup reveal">
@@ -618,29 +619,29 @@
           <ul>
             <li><code>/ban</code><span>Kullanıcıyı sunucudan yasaklar</span></li>
             <li><code>/unban</code><span>Yasağı kaldırır</span></li>
-            <li><code>/kick</code><span>Üyeyi atar (tekrar katılabilir)</span></li>
-            <li><code>/sustur</code><span>Üyeyi belirlediğin süre boyunca susturur</span></li>
-            <li><code>/temizle</code><span>Kanaldaki son mesajları toplu siler</span></li>
+            <li><code>/kick</code><span>Üyeyi sunucudan atar (tekrar katılabilir)</span></li>
+            <li><code>/sustur</code><span>Üyeyi belirlediğin süre kadar susturur</span></li>
+            <li><code>/temizle</code><span>Kanaldaki son mesajları topluca siler</span></li>
           </ul>
         </div>
         <div class="grup reveal">
           <h3>Kurulum ve koruma</h3>
           <ul>
             <li><code>/sunucukur</code><span>Topluluk sunucusunu kurar</span></li>
-            <li><code>/ayarla</code><span>Günlük kanalı, hoş geldin kanalı, otomatik rol</span></li>
-            <li><code>/koruma</code><span>Spam, küfür ve dolandırıcılık görseli koruması</span></li>
+            <li><code>/ayarla</code><span>Günlük kanalını, hoş geldin kanalını ve otomatik rolü ayarlar</span></li>
+            <li><code>/koruma</code><span>Spam, küfür ve dolandırıcılık görsellerine karşı korur</span></li>
             <li><code>/kitle</code><span>Bütün kanalları kilitler</span></li>
-            <li><code>/kilidiac</code><span>Kilidi açar, eski izinleri geri getirir</span></li>
+            <li><code>/kilidiac</code><span>Kilidi açar ve eski izinleri geri getirir</span></li>
           </ul>
         </div>
         <div class="grup reveal">
           <h3>Bildirimler</h3>
           <ul>
-            <li><code>/yayin</code><span>Yayın bildirimleri (Twitch, Kick, YouTube)</span></li>
-            <li><code>/oyun</code><span>Bedava oyun ve indirim bildirimleri</span></li>
-            <li><code>/haber</code><span>Haber sitelerinden bildirimler</span></li>
+            <li><code>/yayin</code><span>Twitch, Kick ve YouTube yayınlarını duyurur</span></li>
+            <li><code>/oyun</code><span>Bedava oyunları ve indirimleri duyurur</span></li>
+            <li><code>/haber</code><span>Haber sitelerindeki yeni haberleri duyurur</span></li>
             <!--instagram-->
-            <li><code>/instagram</code><span>Instagram gönderi bildirimleri</span></li>
+            <li><code>/instagram</code><span>Instagram hesaplarının yeni gönderilerini duyurur</span></li>
             <!--/instagram-->
           </ul>
         </div>
@@ -655,10 +656,10 @@
       <ol class="adimlar reveal">
         <li><b>1</b><span>Sunucuna ekle</span></li>
         <li><b>2</b><span>/sunucukur</span> ya da <span>/ayarla</span> ile kur</li>
-        <li><b>3</b><span>/yardim</span> ile gerisine bak</li>
+        <li><b>3</b>Gerisi için <span>/yardim</span></li>
       </ol>
       <a class="btn btn-primary btn-large reveal" href="{{DAVET}}" rel="noopener">Sunucuna ekle</a>
-      <p class="dipnot reveal">Bu düğme botu yalnızca temel izinlerle ekler. Sunucu kurulumunu ve acil durum kilidini de kullanacaksan <a href="{{DAVET_TAM}}" rel="noopener">tam izinlerle ekle</a>.</p>
+      <p class="dipnot reveal">Bu düğme botu temel izinlerle ekler. Sunucu kurulumunu ve acil durum kilidini de kullanacaksan <a href="{{DAVET_TAM}}" rel="noopener">tam izinlerle ekle</a>.</p>
     </div>
   </section>
 </main>

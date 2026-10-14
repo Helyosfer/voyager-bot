@@ -175,17 +175,17 @@ async function incele(steamId) {
 
 // İncelemeyi bir fırsat kartına alan olarak ekler
 function karta(embed, inceleme) {
-  const kaynak = [inceleme.olumlu !== null && inceleme.olumlu !== undefined && `Steam %${inceleme.olumlu} olumlu`, inceleme.metacritic && `Metacritic ${inceleme.metacritic}`]
+  const kaynak = [inceleme.olumlu !== null && inceleme.olumlu !== undefined && `Steam %${inceleme.olumlu} olumlu`, inceleme.metacritic && `Metacritic ${inceleme.metacritic}/100`]
     .filter(Boolean)
     .join(' · ');
   embed.addFields(
     { name: '📖 Konu (spoilersiz)', value: inceleme.ozet },
     { name: '💬 Yorum', value: inceleme.yorum },
-    { name: '🎯 Kimlere göre', value: inceleme.kimlere, inline: true },
+    { name: '🎯 Kimlere hitap ediyor', value: inceleme.kimlere, inline: true },
     { name: '⭐ Voyager puanı', value: `**${inceleme.puan.toLocaleString('tr-TR')}/10**${kaynak ? `\n-# ${kaynak}` : ''}`, inline: true },
   );
   const alt = embed.data.footer?.text;
-  embed.setFooter({ text: `${alt ? `${alt} · ` : ''}İnceleme yapay zekâ ile yazıldı; yanlış olabilir` });
+  embed.setFooter({ text: `${alt ? `${alt} · ` : ''}İnceleme yapay zekâ ile yazıldı, hata içerebilir` });
   return embed;
 }
 
