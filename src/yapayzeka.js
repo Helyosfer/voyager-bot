@@ -8,7 +8,7 @@
 // Kota bütün sunucular arasında ortaktır (ücretsiz katmanda günlük istek sınırı vardır).
 // Tek kişi ya da tek sunucu bitiremesin diye sınırlar uygulanır; sınırlar kullanıma göre
 // kendiliğinden ayarlanır (bkz. "Günlük sınırlar").
-const { baglantisiz, beklemeSayaci } = require('./yardimci');
+const { baglantisiz } = require('./yardimci');
 const { oku, yaz } = require('./depo');
 
 const { GEMINI_API_KEY: ANAHTAR, GEMINI_MODEL: MODEL, GEMINI_YEDEK_MODEL: YEDEK, GEMINI_INCELEME_MODEL: INCELEME_MODEL } = process.env;
@@ -46,7 +46,10 @@ const gemmaMi = (model) => /^(models\/)?gemma/i.test(model);
 // Model bu ayarı tanımazsa (HTTP 400) ayar bırakılır ve istek ayarsız yinelenir.
 let dusunme = (process.env.GEMINI_DUSUNME ?? 'minimal').trim();
 const bekle = (ms) => new Promise((coz) => setTimeout(coz, ms));
-const KISI_ARALIGI = 60_000; // Bir kişi bu aralıktan sık soramaz
+// Kanal boğulmasın: bir kişi PENCERE içinde en fazla PENCERE_SORU açık soru sorabilir.
+// Gizli sorular (yalnızca soranın gördüğü) kanalı kirletmediği için bu sınıra girmez.
+const PENCERE = 2 * 60_000;
+const PENCERE_SORU = 4;
 // /sor modelinin Google'daki günlük sınırı (AI Studio > Rate limit > RPD). Payı kalsın diye %90'ı kullanılır.
 const TOPLAM_GUNLUK = Math.floor(sayiAyari(process.env.GEMINI_GUNLUK, 500) * 0.9);
 // Botun kendi işleri (ör. oyun incelemeleri) günde en fazla bu kadar istek kullanır. İncelemeler /sor ile
@@ -94,7 +97,14 @@ const izinli = (sunucuId, liste = IZINLILER) => liste.size === 0 || liste.has(su
 // Sayaçlar ve etkinlik diske yazılır: bot yeniden başlayınca sıfırlanmaz.
 // Google günlük sınırı Pasifik saatiyle gece yarısı sıfırlar; sayaçlar da aynı güne göre tutulur.
 const bugun = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles' }).format(new Date());
-const kisiSayaci = beklemeSayaci(KISI_ARALIGI);
+const acikSorular = new Map(); // "sunucu:kişi" -> son açık soruların zamanları (bellekte)
+// Kişinin PENCERE içindeki açık sorularının zamanları; eskiler atılır
+function penceredekiler(anahtar) {
+  const zamanlar = (acikSorular.get(anahtar) ?? []).filter((t) => Date.now() - t < PENCERE);
+  if (zamanlar.length) acikSorular.set(anahtar, zamanlar);
+  else acikSorular.delete(anahtar);
+  return zamanlar;
+}
 const sonDakika = []; // /sor isteklerinin zamanları (dakikalık sınır için; bellekte)
 
 function sayaclar() {
@@ -124,11 +134,13 @@ function paylar(sunucuId, kisiId, veri = etkinlik()) {
 }
 
 // Soru sorulamıyorsa kullanıcıya gösterilecek mesajı döndürür, sorulabiliyorsa null.
-function sinirMesaji(sunucuId, kisiId) {
+function sinirMesaji(sunucuId, kisiId, gizli = false) {
   const s = sayaclar();
   const pay = paylar(sunucuId, kisiId);
-  const kalan = kisiSayaci.bekle(`${sunucuId}:${kisiId}`);
-  if (kalan) return `⏳ Biraz bekle; yeniden sorabileceğin zaman: <t:${Math.ceil((Date.now() + kalan) / 1000)}:R>`;
+  const acik = gizli ? [] : penceredekiler(`${sunucuId}:${kisiId}`);
+  if (acik.length >= PENCERE_SORU) {
+    return `⏳ Kısa sürede çok soru sordun; yeniden sorabileceğin zaman: <t:${Math.ceil((acik[0] + PENCERE) / 1000)}:R>. Beklemek istemezsen \`gizli\` seçeneğiyle hemen sorabilirsin.`;
+  }
   while (sonDakika.length && Date.now() - sonDakika[0] >= 60_000) sonDakika.shift();
   if (sonDakika.length >= ayar.dakikalik) return `⏳ Şu an çok soru soruluyor; yeniden sorabileceğin zaman: <t:${Math.ceil((sonDakika[0] + 60_000) / 1000)}:R>`;
   if ((s.kisi[kisiId] ?? 0) >= pay.kisi) return `⏳ Bugünlük soru hakkın doldu (bugün kişi başı ${pay.kisi}). Yarın yeniden sorabilirsin.`;
@@ -139,7 +151,7 @@ function sinirMesaji(sunucuId, kisiId) {
 
 // İstek atılmadan önce sayılır: başarısız istekler de kotadan düşer, art arda denenemez.
 // Kişinin bugün kalan hakkını döndürür.
-function say(sunucuId, kisiId) {
+function say(sunucuId, kisiId, gizli = false) {
   const s = sayaclar();
   s.toplam++;
   s.sunucu[sunucuId] = (s.sunucu[sunucuId] ?? 0) + 1;
@@ -148,7 +160,7 @@ function say(sunucuId, kisiId) {
   const veri = etkinlik();
   (veri[sunucuId] ??= {})[kisiId] = bugun();
   yaz('sor-etkinlik', veri);
-  kisiSayaci.isaretle(`${sunucuId}:${kisiId}`);
+  if (!gizli) acikSorular.set(`${sunucuId}:${kisiId}`, [...penceredekiler(`${sunucuId}:${kisiId}`), Date.now()]);
   sonDakika.push(Date.now());
   return Math.max(0, paylar(sunucuId, kisiId, veri).kisi - s.kisi[kisiId]);
 }
@@ -244,14 +256,14 @@ const SOR_HATALARI = {
 };
 
 // Başarılıysa { cevap }, değilse { hata } (kullanıcıya gösterilecek metin) döndürür.
-async function sor(sunucuId, kisiId, soru) {
+async function sor(sunucuId, kisiId, soru, { gizli = false } = {}) {
   if (!hazir()) return { hata: 'Soru cevaplama özelliği bu botta kurulu değil.' };
   if (!izinli(sunucuId)) return { hata: 'Soru cevaplama bu sunucuda açık değil. Botun sahibi sunucuyu izin listesine eklemeli.' };
   const metin = soru.trim().slice(0, SORU_SINIRI);
   if (!metin) return { hata: 'Bir soru yaz.' };
-  const sinir = sinirMesaji(sunucuId, kisiId);
+  const sinir = sinirMesaji(sunucuId, kisiId, gizli);
   if (sinir) return { hata: sinir };
-  const kalan = say(sunucuId, kisiId);
+  const kalan = say(sunucuId, kisiId, gizli);
 
   const sonuc = await uret(metin, { talimat: TALIMAT });
   if (sonuc.hata) return { hata: SOR_HATALARI[sonuc.hata] };
@@ -270,4 +282,4 @@ function botIstegiAyir() {
   return true;
 }
 
-module.exports = { ayar, sonDakika, gemmaMi, ORTAK_MODEL, hazir, uret, botIstegiAyir, BOT_PAYI, izinli, izinListesi, sor, sinirMesaji, paylar, temizle, SORU_SINIRI, SORU_HAVUZU, SUNUCU_EN_COK, KISI_EN_COK, TOPLAM_GUNLUK };
+module.exports = { ayar, sonDakika, gemmaMi, ORTAK_MODEL, hazir, uret, botIstegiAyir, BOT_PAYI, izinli, izinListesi, sor, sinirMesaji, paylar, temizle, SORU_SINIRI, PENCERE_SORU, SORU_HAVUZU, SUNUCU_EN_COK, KISI_EN_COK, TOPLAM_GUNLUK };

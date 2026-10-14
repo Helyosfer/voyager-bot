@@ -24,7 +24,7 @@ module.exports = {
 
     // Model birkaç saniyede cevap verir; Discord 3 saniye içinde yanıt bekler
     await interaction.deferReply(gizli ? { flags: MessageFlags.Ephemeral } : {});
-    const sonuc = await yapayzeka.sor(interaction.guildId, interaction.user.id, soru);
+    const sonuc = await yapayzeka.sor(interaction.guildId, interaction.user.id, soru, { gizli });
     if (sonuc.hata) return interaction.editReply({ content: sonuc.hata, allowedMentions: { parse: [] } });
 
     return interaction.editReply({

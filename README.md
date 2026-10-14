@@ -254,7 +254,7 @@ yalnızca soran görür. Cevaplar yanlış olabilir; her cevabın altında bu no
   payı da orada soru soran kişilere göre ayarlanır. Az sunucu varken paylar geniştir, sunucu ve kişi sayısı arttıkça
   küçülür; hiç soru sormayan sunucular payı küçültmez. Payların alt ve üst sınırları havuzla birlikte büyür: 390'lık
   havuzda sunucu başı 10-150 ve kişi başı 3-20; Gemma'nın 14.400'lük sınırında sunucu başı 32-1.296 ve kişi başı 6-43.
-  Ayrıca kişi başı dakikada en fazla 1 soru ve bütün bot için modelin dakikalık sınırı (`GEMINI_DAKIKALIK`). Sayaçlar diske yazılır, bot yeniden
+  Ayrıca kişi başı 2 dakikada en fazla 4 açık soru (gizli sorular hariç; kanal boğulmasın diye) ve bütün bot için modelin dakikalık sınırı (`GEMINI_DAKIKALIK`). Sayaçlar diske yazılır, bot yeniden
   başlayınca sıfırlanmaz. Cevabın altında kişinin o gün kalan hakkı yazar. Sabitler `src/yapayzeka.js` içindedir.
 - Kurulum: `.env` içinde `GEMINI_API_KEY` (AI Studio'dan, başka anahtarlardan ayrı) ve `GEMINI_MODEL` (modelin
   API'deki adı). İkisi yoksa komut yüklenmez. İsteğe bağlı `GEMINI_YEDEK_MODEL`: asıl model yoğunken ya da kotası
