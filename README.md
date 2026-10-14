@@ -1,6 +1,7 @@
 # Voyager
 
-Sunucunu kuran, koruyan ve haber veren bir Discord botu. Hazır topluluk sunucusu kurulumu, moderasyon, otomatik
+Yapay zekâ destekli bir Discord botu. Sorulara cevap verir, oyun fırsatlarını inceler ve metin filtrelerinin
+göremediği dolandırıcılık resimlerini yakalar. Bunun yanında hazır topluluk sunucusu kurulumu, moderasyon, otomatik
 koruma, acil durum kilidi, sunucu günlüğü; yayın, haber ve oyun fırsatı bildirimleri tek botta.
 
 **Site:** [voyager.helyosfer.me](https://voyager.helyosfer.me) · botu sunucuna eklemek için sitedeki **Sunucuna ekle**
@@ -14,6 +15,7 @@ Node.js ve [discord.js](https://discord.js.org) ile yazıldı. Kodu alıp kendi 
 - [Neler yapar](#neler-yapar)
 - [Komutlar](#komutlar)
 - [Özellikler](#özellikler)
+  - [Yapay zekâ](#yapay-zekâ)
   - [Sunucu kurulumu](#sunucu-kurulumu-sunucukur)
   - [Acil durum kilidi](#acil-durum-kilidi-kitle-kilidiac)
   - [Otomatik koruma](#otomatik-koruma)
@@ -32,10 +34,19 @@ Node.js ve [discord.js](https://discord.js.org) ile yazıldı. Kodu alıp kendi 
 
 ## Neler yapar
 
+**Yapay zekâ** (Google Gemini; [ayrıntılar](#yapay-zekâ)):
+
+- **Soru cevaplama:** `/sor` ile yapay zekâya soru sorulur; kısa, Türkçe cevap gelir. İstenirse cevabı yalnızca soran görür.
+- **Oyun incelemeleri:** popüler ve yeni oyunların fırsat kartlarına spoilersiz konu, kısa yorum, kimlere hitap
+  ettiği ve 10 üzerinden puan eklenir.
+- **Dolandırıcılık görseli denetimi:** "ünlü adına para dağıtılıyor, siteye gir kodu yaz" türü sahte çekiliş, kripto
+  kumarhane ve bedava Nitro resimlerini, resmin içini okuyarak yakalar.
+
+**Diğer özellikler:**
+
 - **Sunucu kurulumu:** tek komutla roller, kanallar, izinler, üyelik onayı ve destek sistemi.
 - **Moderasyon:** yasaklama, atma, süreli susturma, toplu mesaj silme.
-- **Otomatik koruma:** ele geçirilmiş hesapların spam'ini durdurur, ağır küfürleri siler, sahte çekiliş ve kripto
-  dolandırıcılığı resimlerini yapay zekâyla yakalar.
+- **Otomatik koruma:** ele geçirilmiş hesapların spam'ini durdurur, ağır küfürleri siler.
 - **Acil durum kilidi:** saldırı anında bütün kanalları kilitler, sonra eski haline döndürür.
 - **Sunucu günlüğü:** üye giriş çıkışları, silinen ve düzenlenen mesajlar, ses kanalları ve yönetim işlemleri tek kanalda.
 - **Canlı yayın bildirimleri:** Twitch, Kick ve YouTube'da takip ettiğin yayıncılar yayına geçince haber verir.
@@ -44,7 +55,6 @@ Node.js ve [discord.js](https://discord.js.org) ile yazıldı. Kodu alıp kendi 
 - **Oyun fırsatları:** Steam, Epic ve GOG'daki bedava oyunları ve indirimleri Türkiye fiyatlarıyla duyurur.
 - **Karşılama:** yeni üyeye hoş geldin mesajı ve otomatik rol.
 - **Hatırlatıcı:** belirttiğin süre sonra seni etiketler.
-- **Soru cevaplama:** `/sor` ile yapay zekâya soru sorulur (ayrıca kurulum ister).
 
 Her sunucunun ayarları ayrıdır ve bir özellik açılmadıkça kapalı kalır.
 
@@ -78,6 +88,33 @@ bakar: kendinle aynı ya da daha yüksek roldeki bir üyeye işlem yapamazsın. 
 Sunucu Ayarları → Entegrasyonlar'dan başka bir role açılsa bile yalnızca Yönetici yetkisi olanlarca kullanılabilir.
 
 ## Özellikler
+
+### Yapay zekâ
+
+Üç özellik Google'ın Gemini modelleriyle çalışır. Her biri ayrıntılı olarak kendi bölümünde anlatılır:
+
+| Özellik | Nasıl açılır | Ayrıntılar |
+|---|---|---|
+| `/sor`: yapay zekâya soru sorma | Her sunucuda kendiliğinden açık | [Soru cevaplama](#soru-cevaplama-sor) |
+| Oyun fırsatı kartlarına inceleme ve puan | `/oyun kanal` ile fırsat bildirimleri açılınca | [Oyun fırsatları](#oyun-fırsatları) |
+| `/koruma gorsel`: dolandırıcılık görseli denetimi | Sunucu başına; varsayılan olarak kapalı | [Otomatik koruma](#otomatik-koruma) |
+
+Ortak noktalar:
+
+- **Yapay zekâ yanılabilir.** Bot bunu her cevabın ve her incelemenin altında söyler. Görsel denetimi yanlış alarm
+  verirse susturma elle kaldırılır.
+- **Ne Google'a gider:** `/sor` soruları, oyun incelemeleri için Steam mağaza bilgileri ve görsel denetimi açık
+  sunucularda denetlenen resimler. Ücretsiz katmanda Google bu verileri ürünlerini geliştirmek için kullanabilir.
+  Bot soruları kaydetmez. Resimleri de saklamaz, yalnızca parmak izlerini (SHA-256) tutar; yakalanan resmin kanıtı
+  sunucunun kendi günlük kanalına bulanık olarak düşer.
+- **Model yalnızca metin üretir.** Sunucuda hiçbir işlem yapamaz ve yazdığı metin kimseyi etiketleyemez; `/sor`
+  cevaplarında ve incelemelerde bağlantılar da etkisizleştirilir. Görsel denetiminde silme ve susturmayı bot yapar,
+  bunun için model en az %70 emin olmalıdır.
+- **Kota ortaktır.** Günlük haklar sunucu ve kişi sayısına göre kendiliğinden paylaştırılır; incelemeler ve görsel
+  denetiminin ayrı günlük payları vardır.
+- **Kurulum** (kendi botunu çalıştıranlar için): `.env` içinde `GEMINI_API_KEY` ve `GEMINI_MODEL`. İkisi yoksa
+  `/sor` yüklenmez, kartlar incelemesiz gider, görsel denetimi açılamaz. Diğer `GEMINI_*` ayarları isteğe bağlıdır
+  ve `.env.example` içinde açıklanır.
 
 ### Sunucu kurulumu (`/sunucukur`)
 
@@ -294,7 +331,8 @@ kendisi bağlar. Hazır bir sunucuda:
    kişilere işlem yapamaz ve yüksek rolleri veremez.
 2. `/ayarla log-kanali` ile günlük kanalını seç.
 3. İstersen `/ayarla hosgeldin-kanali` ve `/ayarla oto-rol` ile karşılamayı aç.
-4. `/koruma spam` ile otomatik korumayı aç.
+4. `/koruma spam` ile otomatik korumayı aç. Ele geçirilmiş hesapların attığı dolandırıcılık resimlerine karşı
+   `/koruma gorsel` ile görsel denetimini de açabilirsin.
 5. Gerisi için `/yardim`.
 
 Oto rolü, ancak o rolü kendisi de verebilen biri ayarlayabilir (Rolleri Yönet yetkisi ve rol sırası). Yönetim
@@ -443,6 +481,9 @@ Betik commit'i değil, o an klasörde duran `src/` içeriğini gönderir; gönde
 - **Webhook'lar** imzasıyla doğrulanır; 10 dakikadan eski mesajlar reddedilir.
 - **Etiketler:** kullanıcının yazdığı metindeki `@everyone` ve rol etiketleri bildirim göndermez.
 - **Mesaj içeriği** yalnızca `MESAJ_ICERIGI=1` ise okunur ve yalnızca sunucunun kendi log kanalına yazılır.
+- **Yapay zekâ** çıktısına güvenilmez: cevap ve incelemeler etiketler kapalı gönderilir, bağlantılar etkisizleştirilir,
+  uzunluk sınırlanır. Mağaza metni ve resimdeki yazılar modele yalnızca veri olarak verilir. Gemini anahtarı yalnızca
+  istek başlığında gider.
 
 Ayrıntılı kurallar ve yayından önce yapılacak kontroller: [SECURITY_PROTOCOL.md](SECURITY_PROTOCOL.md). Denetim
 bulguları: [SECURITY_AUDIT.md](SECURITY_AUDIT.md). Güvenlik kurallarının testleri `npm test` ile çalışır.
