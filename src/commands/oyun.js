@@ -68,6 +68,12 @@ module.exports = {
         .setDescription('Fırsat geldiğinde etiketlenecek rolü seçer (boş bırakırsan etiketleme kalkar)')
         .addRoleOption((o) => o.setName('rol').setDescription('Etiketlenecek rol')),
     )
+    .addSubcommand((s) =>
+      s
+        .setName('everyone')
+        .setDescription('Popüler oyunlardaki önemli fırsatlarda @everyone etiketlensin mi?')
+        .addStringOption((o) => o.setName('durum').setDescription('Açık mı kapalı mı?').setRequired(true).addChoices(...DURUMLAR)),
+    )
     .addSubcommand((s) => s.setName('goster').setDescription('Fırsat bildirimi ayarlarını gösterir'))
     .addSubcommand((s) => s.setName('simdi').setDescription('Ayarlara uyan güncel fırsatları hemen kanala gönderir'))
     .addSubcommand((s) => s.setName('kapat').setDescription('Fırsat bildirimlerini tamamen kapatır'))
@@ -86,7 +92,12 @@ module.exports = {
       }
       ayarKaydet(sunucuId, 'oyunKanali', kanal.id);
       return cevapla(
-        `✅ Fırsatlar ${kanal} kanalına gönderilecek. Yalnızca bundan sonra çıkanlar bildirilir; şu an yayında olanlar için \`/oyun simdi\` kullan.`,
+        [
+          `✅ Fırsatlar ${kanal} kanalına gönderilecek.`,
+          '• Popüler ve yeni çıkmış oyunlardaki fırsatlar **bulunduğu anda**, kısa bir inceleme ve puanla gelir.',
+          '• Diğer fırsatlar birikir ve **3 saatte bir** tek liste halinde gelir.',
+          'Yalnızca bundan sonra çıkanlar bildirilir; şu an yayında olanlar için `/oyun simdi` kullan.',
+        ].join('\n'),
       );
     }
 
@@ -137,6 +148,26 @@ module.exports = {
       );
     }
 
+    if (alt === 'everyone') {
+      const acik = interaction.options.getString('durum', true) === 'acik';
+      ayarKaydet(sunucuId, 'oyunEveryone', acik);
+      if (!acik) return cevapla('✅ Önemli fırsatlarda artık @everyone atılmayacak.');
+      // Fırsat kanalı seçiliyse izin o kanalda, değilse sunucu genelinde denetlenir
+      const ben = interaction.guild.members.me;
+      const kanalId = firsatlar.ayarCoz(ayarlariGetir(sunucuId)).kanal;
+      const kanal = kanalId ? interaction.guild.channels.cache.get(kanalId) : null;
+      const atabilir = (kanal ? kanal.permissionsFor(ben) : ben.permissions)?.has(PermissionFlagsBits.MentionEveryone);
+      const saat = firsatlar.EVERYONE_ARALIGI / 3_600_000;
+      return cevapla(
+        [
+          `✅ Popüler ve yeni çıkmış oyunlardaki fırsatlarda @everyone atılacak. Kanalı boğmasın diye en fazla ${saat} saatte bir; arada gelenlerde seçtiğin rol etiketlenir.`,
+          atabilir ? null : '⚠️ Bende **@everyone, @here ve Tüm Rollerden Bahset** izni yok. Bu izni Voyager rolüne (ya da fırsat kanalında bana) vermezsen etiket atılmaz.',
+        ]
+          .filter(Boolean)
+          .join('\n'),
+      );
+    }
+
     if (alt === 'kapat') {
       ayarKaydet(sunucuId, 'oyunKanali', null);
       return cevapla('✅ Fırsat bildirimleri kapatıldı. Yeniden açmak için `/oyun kanal` kullan.');
@@ -167,6 +198,9 @@ module.exports = {
         [
           `**Kanal:** ${ayar.kanal ? `<#${ayar.kanal}>` : 'ayarlanmadı (bildirimler kapalı)'}`,
           `**Etiketlenecek rol:** ${ayar.rol ? `<@&${ayar.rol}>` : 'yok'}`,
+          `**Önemli fırsatlarda @everyone:** ${ayar.everyone ? 'açık' : 'kapalı'}`,
+          '',
+          '🔥 Popüler ve yeni çıkmış oyunlar anında, inceleme ve puanla gelir. Diğerleri 3 saatte bir toplu liste olarak gelir.',
         ].join('\n'),
       )
       .addFields(

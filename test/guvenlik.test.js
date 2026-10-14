@@ -681,6 +681,82 @@ test('mağaza servislerinden gelen adresler denetlenir', () => {
   for (const kotu of ['javascript:alert(1)', 'discord://x', 'ornek.com', '', undefined, null]) assert.equal(httpAdresi(kotu), null, String(kotu));
 });
 
+// --- Oyun fırsatları: inceleme ve gönderim zamanlaması ---
+test('oyun incelemesi: modelin yazdığı bağlantı ve etiket karta geçmez, puan sınırlanır', () => {
+  const { cevabiAyikla } = src('inceleme');
+  const sonuc = cevabiAyikla(JSON.stringify({ puan: 14, ozet: 'Konu [tıkla](https://kotu.com) www.kotu.com @everyone', yorum: 'İyi', kimlere: 'Herkese' }));
+  assert.equal(sonuc.puan, 10);
+  assert.ok(!/https?:|www\.|\]\(/.test(sonuc.ozet), sonuc.ozet);
+  assert.ok(!sonuc.ozet.includes('@everyone'));
+  assert.equal(cevabiAyikla('düz metin'), null);
+  assert.equal(cevabiAyikla(JSON.stringify({ puan: 7, ozet: 'x' })), null, 'eksik alan');
+});
+
+test('oyun fırsatları: önemliler anında (@everyone en fazla 6 saatte bir), diğerleri 3 saatte bir toplu', async () => {
+  const firsatlar = src('firsatlar');
+  const asil = { fetch: global.fetch, now: Date.now, log: console.log };
+  let saat = asil.now();
+  Date.now = () => saat;
+  console.log = () => {};
+  // Tek sayılı Steam kimliği popüler oyun (50.000 inceleme), çift sayılı az bilinen oyun
+  global.fetch = async (adres) => {
+    const yanit = (veri) => ({ ok: true, status: 200, json: async () => veri });
+    const id = Number(String(adres).match(/appreviews\/(\d+)|appids=(\d+)/)?.slice(1).find(Boolean));
+    if (adres.includes('appreviews')) return yanit({ query_summary: { total_reviews: id % 2 ? 50_000 : 100, total_positive: id % 2 ? 45_000 : 50 } });
+    if (adres.includes('appdetails')) return yanit({ [id]: { success: true, data: { type: 'game', name: `Oyun ${id}`, short_description: 'kısa', about_the_game: '<p>uzun</p>', release_date: { date: '1 Jan, 2020' } } } });
+    if (adres.includes('generativelanguage')) {
+      return yanit({ candidates: [{ content: { parts: [{ text: JSON.stringify({ puan: 9, ozet: 'Konu', yorum: 'Yorum', kimlere: 'Herkese' }) }] } }] });
+    }
+    throw new Error(`beklenmeyen istek: ${adres}`);
+  };
+  const indirim = (id) => ({ anahtar: `${id}:0`, ad: `Oyun ${id}`, steamId: id, yuzde: 60, eski: '100 TL', yeni: '40 TL', bitis: null, resim: null, url: `https://store.steampowered.com/app/${id}` });
+  const veri = (...idler) => ({ bedava: [], indirim: { steam: idler.map(indirim), epic: null, gog: null } });
+
+  const gonderilen = [];
+  const kanal = { isTextBased: () => true, permissionsFor: () => new PermissionsBitField([P.MentionEveryone]), send: async (m) => gonderilen.push(m) };
+  const guild = { id: 'firsat-1', channels: { fetch: async () => kanal }, members: { me: {} } };
+  depo.ayarKaydet(guild.id, 'oyunKanali', 'k');
+  depo.ayarKaydet(guild.id, 'oyunRol', 'rol');
+  depo.ayarKaydet(guild.id, 'oyunEveryone', true);
+  const embedler = (m) => m.embeds.map((e) => e.toJSON());
+  try {
+    await firsatlar.sunucuyuIsle(guild, veri(1, 2));
+    assert.equal(gonderilen.length, 0, 'ilk kontrol sessiz');
+
+    await firsatlar.sunucuyuIsle(guild, veri(1, 2, 3, 4));
+    assert.equal(gonderilen.length, 2);
+    assert.equal(gonderilen[0].content.startsWith('@everyone'), true);
+    assert.deepEqual(gonderilen[0].allowedMentions, { parse: ['everyone'] });
+    assert.equal(embedler(gonderilen[0])[0].title, '🏷️ Oyun 3');
+    assert.ok(embedler(gonderilen[0])[0].fields.some((f) => f.name.includes('puan')), 'popüler oyunda inceleme');
+    assert.ok(embedler(gonderilen[1])[0].description.includes('Oyun 4'), 'az bilinen oyun listede');
+    assert.equal(gonderilen[1].content, '<@&rol>');
+
+    // Bir saat sonra: yeni popüler oyun anında ama @everyone olmadan; yeni az bilinen oyun bekler
+    saat += 60 * 60_000;
+    await firsatlar.sunucuyuIsle(guild, veri(1, 2, 3, 4, 5, 6));
+    assert.equal(gonderilen.length, 3);
+    assert.equal(gonderilen[2].content, '<@&rol>');
+    assert.equal(embedler(gonderilen[2])[0].title, '🏷️ Oyun 5');
+
+    // Özet aralığı dolunca bekleyen gider, gönderilmiş olan yinelenmez
+    saat += firsatlar.OZET_ARALIGI;
+    await firsatlar.sunucuyuIsle(guild, veri(1, 2, 3, 4, 5, 6));
+    assert.equal(gonderilen.length, 4);
+    assert.ok(embedler(gonderilen[3])[0].description.includes('Oyun 6'));
+    assert.ok(!JSON.stringify(gonderilen[3]).includes('Oyun 5'));
+
+    // @everyone aralığı dolunca yeniden atılır
+    saat += firsatlar.EVERYONE_ARALIGI;
+    await firsatlar.sunucuyuIsle(guild, veri(1, 2, 3, 4, 5, 6, 7));
+    assert.equal(gonderilen.at(-1).content.startsWith('@everyone'), true);
+  } finally {
+    global.fetch = asil.fetch;
+    Date.now = asil.now;
+    console.log = asil.log;
+  }
+});
+
 test('kayda yazılan hata metni kullanıcının yazdığı metni içermez', () => {
   const hata = new DiscordAPIError({ message: 'Missing Permissions', code: 50013 }, 50013, 403, 'PUT', 'https://discord.com/api/v10/guilds/1/bans/2', {
     body: { reason: 'KULLANICI-METNI' },

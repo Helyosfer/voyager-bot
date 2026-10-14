@@ -202,7 +202,14 @@ Sunucu başına 20 hesap. Instagram'ın resmi Business Discovery servisi kullan�
 
 ### Oyun fırsatları
 
-Bot 30 dakikada bir bedava oyunları ve mağaza indirimlerini kontrol eder, yeni çıkanları seçtiğin kanala gönderir.
+Bot 15 dakikada bir bedava oyunları ve mağaza indirimlerini kontrol eder:
+
+- **Önemli fırsatlar anında gelir:** popüler oyunlar (Steam'de en az 20.000 incelemesi olanlar) ve son 6 ayda
+  çıkmış, en az 2.000 incelemesi olan oyunlar. Bunlar resimli büyük kartla ve kısa bir yapay zekâ incelemesiyle
+  (spoilersiz konu, yorum, kimlere hitap ettiği ve 10 üzerinden puan) gönderilir. Bir gönderimde en fazla 5 kart
+  olur; kalan önemli fırsatlar kartların altında listelenir.
+- **Diğer fırsatlar 3 saatte bir** tek liste halinde gelir. Arada süresi biten fırsat listeye girmez.
+- Steam'in DLC ya da ek paket olarak bildirdikleri gösterilmez.
 
 | Ne | Kaynak | Fiyat |
 |---|---|---|
@@ -217,15 +224,21 @@ Bot 30 dakikada bir bedava oyunları ve mağaza indirimlerini kontrol eder, yeni
 | `/oyun bedava` | Bedava oyunları açar/kapatır; mağaza seçer (varsayılan: Steam, Epic ve GOG) |
 | `/oyun indirim` | İndirimleri açar/kapatır; mağaza (varsayılan: Steam, Epic ve GOG) ve en az indirim oranını (varsayılan: %50) belirler |
 | `/oyun rol` | Fırsat geldiğinde etiketlenecek rol |
+| `/oyun everyone` | Önemli fırsatlarda @everyone atılsın mı (en fazla 6 saatte bir; arada gelenlerde rol etiketlenir). Botta **@everyone, @here ve Tüm Rollerden Bahset** izni olmalı |
 | `/oyun simdi` | Şu an yayında olan fırsatları hemen gönderir (sunucu başına 5 dakikada bir) |
 | `/oyun goster` | Ayarları gösterir |
 | `/oyun kapat` | Bildirimleri kapatır |
 
 Kanal ilk seçildiğinde o an yayında olanlar gönderilmez, yalnızca sonradan çıkanlar bildirilir.
 
-Popüler oyunlar (Steam'de en az 20.000 incelemesi olanlar) resimli büyük bir kartla, diğerleri toplu bir
-listede gösterilir. Aynı oyun birden fazla mağazada indirimdeyse tek kayıtta birleştirilir. Eşik
-`src/firsatlar.js` içindeki `POPULER_ESIK` değeridir.
+Aynı oyun birden fazla mağazada indirimdeyse tek kayıtta birleştirilir. Eşikler ve aralıklar
+`src/firsatlar.js` başındaki sabitlerdir (`POPULER_ESIK`, `YENI_ESIK`, `OZET_ARALIGI`, `EVERYONE_ARALIGI`).
+
+**İncelemeler** `/sor` ile aynı Gemini anahtarıyla yazılır; anahtar yoksa kartlar incelemesiz gider. Model, oyunu
+uydurmasın diye Steam mağaza bilgileri, Steam kullanıcı oranı ve Metacritic puanıyla beslenir; kartta bu
+puanlar da yazar. Bir oyunun incelemesi bir kez yazılır, 60 gün saklanır ve bütün sunucularda aynısı gösterilir.
+İncelemeler günlük Gemini kotasından en fazla 60 istek kullanır, kalanı `/sor` içindir. İnceleme yapay zekâ
+ürünüdür ve yanlış olabilir; kartın altında bu not yer alır.
 
 ### Soru cevaplama (`/sor`)
 
@@ -426,7 +439,8 @@ src/
   kilit.js            Acil durum kilidi
   haber.js            Haber bildirimleri; haber-ayristir.js ayrı iş parçacığında çalışır
   instagram.js        Instagram gönderi bildirimleri
-  yapayzeka.js        /sor: Gemini ile soru cevaplama
+  yapayzeka.js        Gemini bağlantısı ve /sor
+  inceleme.js         Oyun fırsatı kartlarındaki yapay zekâ incelemesi
   firsatlar.js        Oyun fırsatları
   hatirlatici.js      Hatırlatıcı zamanlayıcıları
   yayin/              Yayın bildirimleri (Twitch, Kick, YouTube) ve HTTP sunucusu

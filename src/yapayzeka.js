@@ -91,16 +91,11 @@ function temizle(metin) {
   return guvenli.length > CEVAP_SINIRI ? `${guvenli.slice(0, CEVAP_SINIRI - 1)}…` : guvenli;
 }
 
-// Başarılıysa { cevap }, değilse { hata } (kullanıcıya gösterilecek metin) döndürür.
-async function sor(sunucuId, kisiId, soru) {
-  if (!hazir()) return { hata: 'Soru cevaplama özelliği bu botta kurulu değil.' };
-  if (!izinli(sunucuId)) return { hata: 'Soru cevaplama bu sunucuda açık değil. Botun sahibi sunucuyu izin listesine eklemeli.' };
-  const metin = soru.trim().slice(0, SORU_SINIRI);
-  if (!metin) return { hata: 'Bir soru yaz.' };
-  const sinir = sinirMesaji(sunucuId, kisiId);
-  if (sinir) return { hata: sinir };
-  say(sunucuId, kisiId);
-
+// Modele tek bir istek gönderir; yoğunlukta yeniden dener, gerekirse yedek modele geçer.
+// Başarılıysa { metin }, değilse { hata } döndürür. hata: 'baglanti' | 'yogun' | 'kota' | 'bos' | 'diger'.
+// json: verilirse model cevabı bu şemaya uyan JSON olarak yazar (Gemini responseSchema biçimi).
+// Kayıtlara yalnızca durum ve süre yazılır; istek ve cevap metni yazılmaz.
+async function uret(metin, { talimat, sicaklik = 0.7, json = null, ad = '/sor' }) {
   let yanit;
   let govde;
   const baslangic = Date.now();
@@ -116,19 +111,24 @@ async function sor(sunucuId, kisiId, soru) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': ANAHTAR },
         body: JSON.stringify({
-          systemInstruction: { parts: [{ text: TALIMAT }] },
+          systemInstruction: { parts: [{ text: talimat }] },
           contents: [{ role: 'user', parts: [{ text: metin }] }],
-          generationConfig: { maxOutputTokens: CIKTI_SINIRI, temperature: 0.7, ...(dusunme && { thinkingConfig: { thinkingLevel: dusunme } }) },
+          generationConfig: {
+            maxOutputTokens: CIKTI_SINIRI,
+            temperature: sicaklik,
+            ...(json && { responseMimeType: 'application/json', responseSchema: json }),
+            ...(dusunme && { thinkingConfig: { thinkingLevel: dusunme } }),
+          },
         }),
         signal: AbortSignal.timeout(ZAMAN_ASIMI),
       });
     } catch (hata) {
-      console.error('/sor isteği gönderilemedi:', hata.message);
-      return { hata: 'Cevap alınamadı; biraz sonra yeniden dene.' };
+      console.error(`${ad} isteği gönderilemedi:`, hata.message);
+      return { hata: 'baglanti' };
     }
     govde = await yanit.json().catch(() => null);
     if (yanit.status === 400 && dusunmeGonderildi) {
-      console.error(`/sor: model düşünme ayarını (${dusunme}) kabul etmedi; ayarsız devam ediliyor`);
+      console.error(`${ad}: model düşünme ayarını (${dusunme}) kabul etmedi; ayarsız devam ediliyor`);
       dusunme = '';
       deneme--;
       continue;
@@ -139,29 +139,62 @@ async function sor(sunucuId, kisiId, soru) {
     if (yanit.status < 500 && !(yedekVar && [404, 429].includes(yanit.status))) break;
     const tur = Math.floor((deneme + 1) / modeller.length);
     if (tur > ayar.yenidenDeneme.length) break;
-    if (yedekVar) console.error(`/sor: ${model} cevap veremedi (HTTP ${yanit.status}); sıradaki deneniyor`);
+    if (yedekVar) console.error(`${ad}: ${model} cevap veremedi (HTTP ${yanit.status}); sıradaki deneniyor`);
     // Modeller art arda denenir; bekleme yalnızca yeni tura geçerken
     if ((deneme + 1) % modeller.length === 0) await bekle(ayar.yenidenDeneme[tur - 1]);
   }
   if (!yanit.ok) {
-    // Soru metni kayda yazılmaz; yalnızca Google'ın hata durumu
-    console.error(`/sor başarısız: HTTP ${yanit.status} ${govde?.error?.status ?? ''}`);
-    if (yanit.status >= 500) return { hata: 'Google tarafında model şu an yoğun; cevap alınamadı. Birkaç dakika sonra yeniden dene.' };
-    if (yanit.status === 429) return { hata: '⏳ Şu an çok fazla soru soruluyor ya da günlük kota doldu. Biraz sonra yeniden dene.' };
-    return { hata: 'Cevap alınamadı; biraz sonra yeniden dene.' };
+    console.error(`${ad} başarısız: HTTP ${yanit.status} ${govde?.error?.status ?? ''}`);
+    if (yanit.status >= 500) return { hata: 'yogun' };
+    if (yanit.status === 429) return { hata: 'kota' };
+    return { hata: 'diger' };
   }
-  // Yavaşlığın kaynağını görmek için: süre, deneme sayısı ve düşünme miktarı (soru ve cevap yazılmaz)
-  console.log(`/sor: ${((Date.now() - baslangic) / 1000).toFixed(1)} sn, ${deneme + 1} deneme, model ${model}, düşünme ${govde?.usageMetadata?.thoughtsTokenCount ?? 0} token`);
+  // Yavaşlığın kaynağını görmek için: süre, deneme sayısı ve düşünme miktarı
+  console.log(`${ad}: ${((Date.now() - baslangic) / 1000).toFixed(1)} sn, ${deneme + 1} deneme, model ${model}, düşünme ${govde?.usageMetadata?.thoughtsTokenCount ?? 0} token`);
   const aday = govde?.candidates?.[0];
   // Modelin düşünme notları (thought) cevaba katılmaz
   const cevap = (aday?.content?.parts ?? []).filter((p) => !p.thought).map((p) => p.text ?? '').join('');
   if (!cevap.trim()) {
-    // Sebebi görmek için yalnızca Google'ın durum alanları yazılır; soru ve cevap metni yazılmaz
     const neden = [aday?.finishReason, govde?.promptFeedback?.blockReason].filter(Boolean).join(' ') || 'bilinmiyor';
-    console.error(`/sor boş cevap: ${neden} (düşünme: ${govde?.usageMetadata?.thoughtsTokenCount ?? 0} token)`);
-    return { hata: 'Bu soruya cevap üretilemedi (model cevap vermedi ya da içerik filtresine takıldı).' };
+    console.error(`${ad} boş cevap: ${neden} (düşünme: ${govde?.usageMetadata?.thoughtsTokenCount ?? 0} token)`);
+    return { hata: 'bos' };
   }
-  return { cevap: temizle(cevap) };
+  return { metin: cevap };
 }
 
-module.exports = { ayar, hazir, izinli, izinListesi, sor, sinirMesaji, temizle, SORU_SINIRI, KISI_GUNLUK, SUNUCU_GUNLUK, TOPLAM_GUNLUK };
+const SOR_HATALARI = {
+  baglanti: 'Cevap alınamadı; biraz sonra yeniden dene.',
+  yogun: 'Google tarafında model şu an yoğun; cevap alınamadı. Birkaç dakika sonra yeniden dene.',
+  kota: '⏳ Şu an çok fazla soru soruluyor ya da günlük kota doldu. Biraz sonra yeniden dene.',
+  bos: 'Bu soruya cevap üretilemedi (model cevap vermedi ya da içerik filtresine takıldı).',
+  diger: 'Cevap alınamadı; biraz sonra yeniden dene.',
+};
+
+// Başarılıysa { cevap }, değilse { hata } (kullanıcıya gösterilecek metin) döndürür.
+async function sor(sunucuId, kisiId, soru) {
+  if (!hazir()) return { hata: 'Soru cevaplama özelliği bu botta kurulu değil.' };
+  if (!izinli(sunucuId)) return { hata: 'Soru cevaplama bu sunucuda açık değil. Botun sahibi sunucuyu izin listesine eklemeli.' };
+  const metin = soru.trim().slice(0, SORU_SINIRI);
+  if (!metin) return { hata: 'Bir soru yaz.' };
+  const sinir = sinirMesaji(sunucuId, kisiId);
+  if (sinir) return { hata: sinir };
+  say(sunucuId, kisiId);
+
+  const sonuc = await uret(metin, { talimat: TALIMAT });
+  if (sonuc.hata) return { hata: SOR_HATALARI[sonuc.hata] };
+  return { cevap: temizle(sonuc.metin) };
+}
+
+// Botun kendi işleri (ör. oyun incelemeleri) için ortak kotadan pay: sorulara her zaman yer kalsın
+// diye bu işler günlük kotanın en fazla BOT_PAYI kadarını kullanır.
+const BOT_PAYI = 60;
+function botIstegiAyir() {
+  const s = sayaclar();
+  s.bot ??= 0;
+  if (s.bot >= BOT_PAYI || s.toplam >= TOPLAM_GUNLUK) return false;
+  s.bot++;
+  s.toplam++;
+  return true;
+}
+
+module.exports = { ayar, hazir, uret, botIstegiAyir, BOT_PAYI, izinli, izinListesi, sor, sinirMesaji, temizle, SORU_SINIRI, KISI_GUNLUK, SUNUCU_GUNLUK, TOPLAM_GUNLUK };
