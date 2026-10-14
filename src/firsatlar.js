@@ -410,8 +410,8 @@ async function embedleriHazirla(onemli, diger) {
     ...[...(onemli.bedava ?? [])].sort((a, b) => b.yorum - a.yorum).map((o) => ({ kart: () => bedavaEmbed(o), satir: () => bedavaSatiri(o), steamId: o.steamId })),
     ...indirimleriTopla(onemli).sort((a, b) => b.yorum - a.yorum).map((oyun) => ({ kart: () => indirimKarti(oyun), satir: () => indirimSatiri(oyun), steamId: oyun.steamId })),
   ];
-  const kartlar = [];
-  for (const f of sirali.slice(0, KART_SINIRI)) kartlar.push(await incelemeli(f.kart(), f.steamId));
+  // İncelemeler aynı anda yazılır: yavaş bir model (ör. Gemma) kartları sırayla bekletmesin
+  const kartlar = await Promise.all(sirali.slice(0, KART_SINIRI).map((f) => incelemeli(f.kart(), f.steamId)));
   const tasan = sirali.slice(KART_SINIRI).map((f) => f.satir());
 
   const enYuksek = (oyun) => Math.max(...oyun.teklifler.map((t) => t.yuzde));

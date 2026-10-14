@@ -57,7 +57,7 @@ diliyle gösterilir.
 | `/yardim` | Tüm komutları ve ne işe yaradıklarını listeler | Herkes |
 | `/ping` | Bot çalışıyor mu kontrol eder | Herkes |
 | `/hatirlat` | Belirtilen süre sonra hatırlatma yapar (kişi başı en fazla 5) | Herkes |
-| `/sor` | Yapay zekâya soru sorar (yalnızca kurulduysa ve izin verilen sunucularda) | Herkes |
+| `/sor` | Yapay zekâya soru sorar (yalnızca kurulduysa; günlük hak kullanıma göre ayarlanır) | Herkes |
 | `/ban` | Kullanıcıyı yasaklar | Üyeleri Yasakla |
 | `/unban` | Kullanıcının yasağını kaldırır | Üyeleri Yasakla |
 | `/kick` | Üyeyi atar | Üyeleri At |
@@ -248,12 +248,25 @@ yalnızca soran görür. Cevaplar yanlış olabilir; her cevabın altında bu no
 - Model yalnızca metin üretir: sunucuda hiçbir işlem yapamaz ve cevabı kimseyi etiketleyemez.
 - Sorulan metin Google'a gönderilir. Ücretsiz katmanda Google bu metni ürünlerini geliştirmek için kullanabilir;
   kişisel bilgi yazılmamalıdır. Bot soruları kaydetmez.
-- Kota bütün sunucular arasında ortaktır. Sınırlar: kişi başı dakikada 1 ve günde 20 soru, sunucu başı günde 150,
-  toplam günde 450 (`src/yapayzeka.js` içindeki sabitler; modelin Google'daki günlük sınırına göre ayarlanır).
+- Kota bütün sunucular arasında ortaktır ve sınırlar kullanıma göre kendiliğinden ayarlanır. Bot, `/sor`
+  modelinin günlük sınırının (`GEMINI_GUNLUK`, varsayılan 500) %90'ını kullanır; incelemeler aynı modeldeyse
+  bunun 60'ı incelemelere ayrılır. Kalan havuz, son 7 günde soru soran sunucular arasında eşit bölünür; sunucunun
+  payı da orada soru soran kişilere göre ayarlanır. Az sunucu varken paylar geniştir, sunucu ve kişi sayısı arttıkça
+  küçülür; hiç soru sormayan sunucular payı küçültmez. Payların alt ve üst sınırları havuzla birlikte büyür: 390'lık
+  havuzda sunucu başı 10-150 ve kişi başı 3-20; Gemma'nın 14.400'lük sınırında sunucu başı 32-1.296 ve kişi başı 6-43.
+  Ayrıca kişi başı dakikada en fazla 1 soru ve bütün bot için modelin dakikalık sınırı (`GEMINI_DAKIKALIK`). Sayaçlar diske yazılır, bot yeniden
+  başlayınca sıfırlanmaz. Cevabın altında kişinin o gün kalan hakkı yazar. Sabitler `src/yapayzeka.js` içindedir.
 - Kurulum: `.env` içinde `GEMINI_API_KEY` (AI Studio'dan, başka anahtarlardan ayrı) ve `GEMINI_MODEL` (modelin
   API'deki adı). İkisi yoksa komut yüklenmez. İsteğe bağlı `GEMINI_YEDEK_MODEL`: asıl model yoğunken ya da kotası
-  dolduğunda soru bu modele sorulur. Özellik yalnızca `GEMINI_SUNUCULAR` ve `GUILD_IDS` içindeki
-  sunucularda açıktır; ikisi de boşsa her sunucuda açık olur.
+  dolduğunda soru bu modellere sorulur (virgülle ayır, sırayla denenir). `GEMINI_INCELEME_MODEL`: oyun incelemelerini
+  ayrı modellere yazdırır. Özellik her sunucuda açıktır; istenirse `GEMINI_SUNUCULAR` ile belirli sunuculara
+  kısıtlanır (o zaman `GUILD_IDS` içindekiler de izinlidir).
+- Google sınırları her model için ayrı sayar; aynı anahtarla her işe ayrı model vermek yükü dağıtır. Önerilen düzen:
+  sorular hızlı bir Gemini modelinde, incelemeler başka bir Gemini modelinde, en sonda yedek olarak Gemma.
+- Gemma modelleri desteklenir. Bunlar ayrı talimat alanını, JSON şemasını ve düşünme ayarını desteklemediği için
+  bot talimatı soruyla birlikte gönderir ve JSON biçimini talimatla ister. Gemma'nın günlük sınırı yüksektir ama
+  yavaştır: cevaptan önce kendiliğinden düşünür, bu kapatılamaz ve cevap 15-30 saniye sürer. Bu yüzden asıl model
+  olarak değil, yedek olarak uygundur.
 
 ## Sunucuna ekledikten sonra
 

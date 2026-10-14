@@ -10,6 +10,7 @@ const yayin = require('./yayin');
 const koruma = require('./koruma');
 const instagram = require('./instagram');
 const haber = require('./haber');
+const yapayzeka = require('./yapayzeka');
 const topluluk = require('./topluluk');
 const kilit = require('./kilit');
 const { otoRolVer, komutYetkisiVar, hataMetni } = require('./yardimci');
@@ -69,6 +70,13 @@ client.once(Events.ClientReady, (c) => {
   yayin.baslat(client);
   instagram.baslat(client);
   haber.baslat(client);
+  if (yapayzeka.hazir()) {
+    const { ayar } = yapayzeka;
+    const kapsam = yapayzeka.izinListesi().size ? `yalnızca ${yapayzeka.izinListesi().size} sunucuda (GEMINI_SUNUCULAR)` : 'her sunucuda';
+    console.log(`Yapay zekâ: hazır · /sor ${ayar.modeller.join(' > ')} (${kapsam}; günde en fazla ${yapayzeka.TOPLAM_GUNLUK}, dakikada ${ayar.dakikalik}) · incelemeler ${ayar.incelemeModelleri.join(' > ')}`);
+  } else {
+    console.log('Yapay zekâ (/sor ve oyun incelemeleri): kapalı (eksik: GEMINI_API_KEY ve GEMINI_MODEL)');
+  }
   console.log(`Mesaj içeriği günlüğü: ${mesajIcerigi.length ? 'açık' : 'kapalı'}`);
 });
 

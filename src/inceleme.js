@@ -117,7 +117,10 @@ function alan(deger, sinir) {
 function cevabiAyikla(metin) {
   let veri;
   try {
-    veri = JSON.parse(metin);
+    // Şema desteği olmayan modeller JSON'u kod bloğuna ya da açıklamanın içine koyabilir
+    const bas = metin.indexOf('{');
+    const son = metin.lastIndexOf('}');
+    veri = JSON.parse(bas >= 0 && son > bas ? metin.slice(bas, son + 1) : metin);
   } catch {
     return null;
   }
@@ -153,7 +156,7 @@ async function incele(steamId) {
     });
     if (!bilgi) return null;
     if (!yapayzeka.botIstegiAyir()) return null; // Günlük pay doldu; yarın yeniden denenir
-    const sonuc = await yapayzeka.uret(istekMetni(bilgi), { talimat: TALIMAT, sicaklik: 0.4, json: SEMA, ad: 'Oyun incelemesi' });
+    const sonuc = await yapayzeka.uret(istekMetni(bilgi), { talimat: TALIMAT, sicaklik: 0.4, json: SEMA, ad: 'Oyun incelemesi', modeller: yapayzeka.ayar.incelemeModelleri, arkaPlan: true });
     const inceleme = sonuc.metin ? cevabiAyikla(sonuc.metin) : null;
     if (!inceleme) {
       if (sonuc.metin) console.error(`Oyun incelemesi geçersiz biçimde döndü (${steamId})`);

@@ -428,6 +428,8 @@ test('Instagram yalnızca izin verilen sunucularda açık', () => {
 // --- /sor: yapay zekâ ---
 test('/sor: anahtar başlıkta gider, cevap etiket ve gizli bağlantı içeremez, sınırlar uygulanır', async () => {
   const yz = src('yapayzeka');
+  const dakikalik = yz.ayar.dakikalik;
+  yz.ayar.dakikalik = Infinity; // Dakikalık sınır ayrı testte denenir
   const asilFetch = global.fetch;
   const asilLog = console.log;
   console.log = () => {};
@@ -455,9 +457,9 @@ test('/sor: anahtar başlıkta gider, cevap etiket ve gizli bağlantı içeremez
 
     // Sunucu başı günlük sınır: farklı kişilerle sınıra kadar sorulur, sonrası reddedilir
     cevapMetni = 'tamam';
-    for (let i = 0; i < yz.SUNUCU_GUNLUK - 1; i++) assert.ok((await yz.sor('s1', `x${i}`, 'soru')).cevap);
+    for (let i = 0; i < yz.SUNUCU_EN_COK - 1; i++) assert.ok((await yz.sor('s1', `x${i}`, 'soru')).cevap);
     assert.match((await yz.sor('s1', 'yeni-kisi', 'soru')).hata, /sunucunun bugünlük/);
-    assert.equal(istekler.length, yz.SUNUCU_GUNLUK);
+    assert.equal(istekler.length, yz.SUNUCU_EN_COK);
 
     // Google kota hatası ve boş cevap kullanıcıya düzgün bildirilir
     global.fetch = async () => ({ ok: false, status: 429, json: async () => ({ error: { status: 'RESOURCE_EXHAUSTED' } }) });
@@ -488,6 +490,21 @@ test('/sor: anahtar başlıkta gider, cevap etiket ve gizli bağlantı içeremez
     assert.deepEqual(sorulan, ['asil:generateContent', 'yedek:generateContent']);
     yz.ayar.modeller = ['test-modeli'];
 
+    // Gemma: talimat soruyla birlikte gider; talimat alanı, JSON şeması ve düşünme ayarı gönderilmez
+    yz.ayar.modeller = ['gemma-4-31b-it'];
+    let gemmaGovdesi;
+    global.fetch = async (adres, secenek) => {
+      gemmaGovdesi = JSON.parse(secenek.body);
+      return { ok: true, status: 200, json: async () => ({ candidates: [{ content: { parts: [{ text: 'gemma' }] } }] }) };
+    };
+    assert.equal((await yz.uret('soru metni', { talimat: 'TALIMAT', json: { type: 'OBJECT' } })).metin, 'gemma');
+    assert.equal(gemmaGovdesi.systemInstruction, undefined);
+    assert.equal(gemmaGovdesi.generationConfig.thinkingConfig, undefined);
+    assert.equal(gemmaGovdesi.generationConfig.responseSchema, undefined);
+    const gemmaMetni = gemmaGovdesi.contents[0].parts[0].text;
+    assert.ok(gemmaMetni.startsWith('TALIMAT') && gemmaMetni.includes('JSON') && gemmaMetni.endsWith('soru metni'));
+    yz.ayar.modeller = ['test-modeli'];
+
     // Model düşünme ayarını tanımazsa (400) istek ayarsız yinelenir ve ayar bir daha gönderilmez
     const govdeler = [];
     global.fetch = async (adres, secenek) => {
@@ -507,7 +524,43 @@ test('/sor: anahtar başlıkta gider, cevap etiket ve gizli bağlantı içeremez
   } finally {
     global.fetch = asilFetch;
     console.log = asilLog;
+    yz.ayar.dakikalik = dakikalik;
+    yz.sonDakika.length = 0;
   }
+});
+
+test('/sor: dakikalık sınır dolunca istek atılmaz', async () => {
+  const yz = src('yapayzeka');
+  const asil = { fetch: global.fetch, log: console.log, dakikalik: yz.ayar.dakikalik };
+  console.log = () => {};
+  let istek = 0;
+  global.fetch = async () => (istek++, { ok: true, status: 200, json: async () => ({ candidates: [{ content: { parts: [{ text: 'tamam' }] } }] }) });
+  yz.ayar.dakikalik = 2;
+  yz.sonDakika.length = 0;
+  try {
+    assert.ok((await yz.sor('dk', 'a', 'soru')).cevap);
+    assert.ok((await yz.sor('dk', 'b', 'soru')).cevap);
+    assert.match((await yz.sor('dk', 'c', 'soru')).hata, /çok soru soruluyor/);
+    assert.equal(istek, 2);
+  } finally {
+    global.fetch = asil.fetch;
+    console.log = asil.log;
+    yz.ayar.dakikalik = asil.dakikalik;
+  }
+});
+
+test('/sor payları etkin sunucu ve kişi sayısına göre kendiliğinden küçülür', () => {
+  const { paylar, SUNUCU_EN_COK, KISI_EN_COK } = src('yapayzeka');
+  const etkin = (sunucu, kisi) => Object.fromEntries(Array.from({ length: sunucu }, (_, i) => [`s${i}`, Object.fromEntries(Array.from({ length: kisi }, (_, j) => [`k${j}`, '2099-01-01']))]));
+  // İki sunucu: ikisi de en geniş payı alır
+  assert.deepEqual([paylar('s0', 'k0', etkin(2, 1)).sunucu, paylar('s0', 'k0', etkin(2, 1)).kisi], [SUNUCU_EN_COK, KISI_EN_COK]);
+  // Sunucu ve kişi çoğaldıkça paylar küçülür, alt sınırın altına inmez
+  const orta = paylar('s0', 'k0', etkin(10, 10));
+  assert.ok(orta.sunucu < SUNUCU_EN_COK && orta.kisi < KISI_EN_COK, JSON.stringify(orta));
+  const kalabalik = paylar('s0', 'k0', etkin(500, 200));
+  assert.deepEqual([kalabalik.sunucu, kalabalik.kisi], [10, 3]);
+  // Hiç soru sormamış yeni bir sunucu ve kişi de sayılır
+  assert.equal(paylar('yeni', 'yeni', etkin(1, 1)).sunucular, 2);
 });
 
 test('/sor yalnızca izin verilen sunucularda açık; cevap mesajı kimseyi etiketlemez', async () => {
@@ -516,6 +569,7 @@ test('/sor yalnızca izin verilen sunucularda açık; cevap mesajı kimseyi etik
   assert.equal(yz.izinli('111', liste), true);
   assert.equal(yz.izinli('999', liste), false);
   assert.equal(yz.izinli('999', yz.izinListesi({})), true);
+  assert.equal(yz.izinli('999', yz.izinListesi({ GUILD_IDS: '222' })), true, 'GUILD_IDS tek başına kısıtlamaz');
 
   const asilFetch = global.fetch;
   const asilLog = console.log;
@@ -689,6 +743,8 @@ test('oyun incelemesi: modelin yazdığı bağlantı ve etiket karta geçmez, pu
   assert.ok(!/https?:|www\.|\]\(/.test(sonuc.ozet), sonuc.ozet);
   assert.ok(!sonuc.ozet.includes('@everyone'));
   assert.equal(cevabiAyikla('düz metin'), null);
+  // Şema desteği olmayan model (Gemma) JSON'u kod bloğu içinde yazabilir
+  assert.equal(cevabiAyikla('```json\n{"puan": 8, "ozet": "a", "yorum": "b", "kimlere": "c"}\n```').puan, 8);
   assert.equal(cevabiAyikla(JSON.stringify({ puan: 7, ozet: 'x' })), null, 'eksik alan');
 });
 
