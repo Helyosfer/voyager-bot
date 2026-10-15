@@ -488,6 +488,44 @@ Betik commit'i değil, o an klasörde duran `src/` içeriğini gönderir; gönde
   uzunluk sınırlanır. Mağaza metni ve resimdeki yazılar modele yalnızca veri olarak verilir. Gemini anahtarı yalnızca
   istek başlığında gider.
 
+### Bağımsız denetim (Ekim 2026)
+
+Bot 15 Ekim 2026'da bağımsız olarak denetlendi. `npm test`'in yanında ayrı bir test takımı kullanıldı:
+
+- **Tanıtım sayfası, gerçek tarayıcıda (Playwright).** Denenenler:
+  - güvenlik başlıkları (CSP, HSTS, `nosniff`)
+  - yalnızca iki yolun sunulması
+  - davet bağlantılarında Yönetici izninin istenmemesi
+  - hareket azaltma açıkken arka plan filmin indirilmemesi
+  - mobilde taşma ve erişilebilirlik (axe)
+- **`/sor` için kandırılmış model simülasyonu.** Model saldırganın istediğini aynen yazsa bile botun
+  gönderdiği mesajda şunların etkisiz kaldığı denendi:
+  - `@everyone` ve rol etiketleri
+  - gizli bağlantı (`[yazı](adres)`)
+  - sahte başlık ve botun dipnotunu taklit eden `-#` satırı
+  - mesaj sınırını aşan uzunluk
+- **Mutasyon kontrolü.** Şu savunmalar tek tek geçici olarak bozuldu; her birini en az bir test yakaladı:
+  - etiket kapatma (`allowedMentions`)
+  - gizli bağlantı kırıcı
+  - `frame-ancestors`
+  - tanıtım sayfasının yol beyaz listesi
+  - hareket azaltma kontrolü
+- **Statik analiz.** ESLint güvenlik uyarıları (dosya yolları, `require`, `new RegExp`) incelendi; hepsi
+  sabit girdiyle çalışıyor. Haber ayrıştırıcısındaki düzenli ifadeler özel hazırlanmış bir beslemede
+  girdinin karesiyle yavaşlayabiliyor. Ayrıştırma ayrı bir iş parçacığında 5 saniye ve 3 MB sınırıyla
+  yapıldığı için bot kilitlenmiyor.
+- **Bulunan ve düzeltilenler:**
+  - **Güncelleme hesabından root'a yükselme (VGR-29).** Güncelleme kullanıcısı bir sembolik bağ ile root
+    yetkisi alabiliyordu. Artık kod root'a ait, gönderilen dosyalar denetimli bir arşivle alınıyor ve
+    güncellemede çalışan her şey servisle aynı kısıtlamalara tabi.
+  - **`/sor` cevaplarında biçim taklidi.** Kandırılmış model başlık ya da botun dipnotuna benzeyen satır
+    yazabiliyordu; alıntı ve liste içindekiler de dahil artık kaçırılıyor.
+  - **Haber indiricinin iç ağ engel listesi.** İki eski IPv6 aralığı eksikti; eklendi.
+
+Bilinen sınırlar:
+- Yeni komutlar gerçek bir Discord sunucusunda henüz elle denenmedi ([test/DISCORD_DENEME.md](test/DISCORD_DENEME.md)).
+- `/sor` modeli kendi talimatlarını yazabilir. Talimatlar zaten bu depoda açık ve gizli bilgi içermez.
+
 Ayrıntılı kurallar ve yayından önce yapılacak kontroller: [SECURITY_PROTOCOL.md](SECURITY_PROTOCOL.md). Denetim
 bulguları: [SECURITY_AUDIT.md](SECURITY_AUDIT.md). Güvenlik kurallarının testleri `npm test` ile çalışır.
 
