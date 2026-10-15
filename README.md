@@ -454,8 +454,9 @@ Bir kez, sunucuda (`vps/erisim-kur.sh` dosyasını ve bilgisayarında ürettiği
 sudo bash erisim-kur.sh anahtar.pub
 ```
 
-Bu, yalnızca SSH anahtarıyla girebilen ve root olarak tek bir şeyi (botu güncelleyen betiği) çalıştırabilen
-`voyager-deploy` kullanıcısını kurar. Sonra bilgisayarında `vps/.hedef` dosyasına hedefi yaz
+Bu, yalnızca SSH anahtarıyla girebilen ve root olarak yalnızca botu güncelleyen betiği ve bot kayıtlarını
+okuyan iki sabit komutu (`sudo journalctl -u voyager -n 200 --no-pager`, `sudo journalctl -u voyager -f --no-pager`)
+çalıştırabilen `voyager-deploy` kullanıcısını kurar. Önce `kur.sh`'ın son sürümü çalıştırılmış olmalı. Sonra bilgisayarında `vps/.hedef` dosyasına hedefi yaz
 (ör. `voyager-deploy@SUNUCU_ADRESI`; bu dosya repoya girmez) ve her güncellemede:
 
 ```bash

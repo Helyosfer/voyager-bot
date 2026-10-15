@@ -18,7 +18,8 @@ if [[ ! -d /opt/voyager || ! -f /opt/voyager/.env ]]; then
 fi
 # Güncelleme betiği kur.sh'ın kurduğu düzene dayanır: kod root'a ait; komut yükleyici ve bağımlılık
 # kurulumu kısıtlı systemd birimleri
-if [[ "$(stat -c %u:%g /opt/voyager)" != 0:0 || ! -f /etc/systemd/system/voyager-komutlar.service       || ! -f /etc/systemd/system/voyager-bagimliliklar.service ]]; then
+if [[ "$(stat -c %u:%g /opt/voyager)" != 0:0 || ! -f /etc/systemd/system/voyager-komutlar.service \
+      || ! -f /etc/systemd/system/voyager-bagimliliklar.service ]]; then
   echo "/opt/voyager eski düzende kurulu. Önce kur.sh'ın son sürümünü çalıştır: sudo bash kur.sh"
   exit 1
 fi
@@ -38,8 +39,11 @@ fi
 if ! id "$KULLANICI" &>/dev/null; then
   adduser --disabled-password --gecos "" "$KULLANICI"
 fi
-# Bot kayıtlarını sudo'suz okuyabilsin
-usermod -aG systemd-journal "$KULLANICI"
+# Kayıtlar systemd-journal grubuyla değil, aşağıdaki dar sudo kurallarıyla okunur: grup bütün sistem
+# kayıtlarını açar. Eski kurulumda gruba eklenmişse çıkarılır.
+if [[ " $(id -nG "$KULLANICI") " == *" systemd-journal "* ]]; then
+  gpasswd -d "$KULLANICI" systemd-journal >/dev/null
+fi
 
 EV="$(getent passwd "$KULLANICI" | cut -d: -f6)"
 install -d -m 700 -o "$KULLANICI" -g "$KULLANICI" "$EV/.ssh"
@@ -81,21 +85,34 @@ for YOL in src package.json package-lock.json node_modules; do
   fi
 done
 
-if [[ ! -d "$KAYNAK/src" || ! -f "$KAYNAK/package.json" || ! -f "$KAYNAK/package-lock.json" ]]; then
-  echo "$KAYNAK içinde src/, package.json veya package-lock.json yok."
-  exit 1
-fi
-
 # Gönderilenler önce yalnızca root'un girebildiği geçici klasöre alınır ve orada denetlenir; kaynak klasör
 # deploy kullanıcısının elinde olduğu için doğrudan güvenilmez. Geçici klasör hedefle aynı dosya sisteminde
 # durur: her şey yerine "mv" (rename) ile tek adımda geçer. rename hedefteki bir sembolik bağı izlemez,
 # bağın kendisinin yerine geçer; "cp" ise hedefteki bağı izleyip bağın gösterdiği dosyaya yazar.
 GECICI="$(mktemp -d "$HEDEF/.guncelleme.XXXXXX")"
 trap 'rm -rf "$GECICI" "$ARA"' EXIT
+
+# Kaynak klasörü root okumaz: deploy kullanıcısı kendi yetkisiyle bir tar arşivi üretir, root yalnızca
+# arşivi okur. Böylece kaynakta bir sembolik bağ (kopya sırasında konan da) root'un okuyabildiği ama deploy
+# kullanıcısının okuyamadığı bir dosyayı buraya taşıyamaz. Arşiv en fazla 512 MB olabilir (ulimit -f, KB).
+if ! (ulimit -f 524288 && runuser -u voyager-deploy -- tar -C "$KAYNAK" -cf - src package.json package-lock.json) \
+    > "$GECICI/paket.tar"; then
+  echo "$KAYNAK içinden src/, package.json ve package-lock.json okunamadı. Hepsi gönderildi mi?"
+  exit 1
+fi
+# Arşivde yalnızca bu üç yol ve yalnızca sıradan dosya ile klasör olabilir: sembolik bağ, sabit bağ ve özel
+# dosya reddedilir. GNU tar ".." içeren ve mutlak yolları zaten açmaz. Listeler önce değişkene alınır:
+# "grep -q" boruyu erken kapatırsa pipefail yüzünden denetim yanlışlıkla geçebilirdi.
+YOLLAR="$(tar -tf "$GECICI/paket.tar")"
+TURLER="$(tar -tvf "$GECICI/paket.tar" | cut -c1 | sort -u | tr -d '\n')"
+if grep -Evq '^(src(/.*)?|package\.json|package-lock\.json)$' <<<"$YOLLAR" || [[ "$TURLER" =~ [^-d] ]]; then
+  echo "Gönderilen dosyalar arasında sembolik bağ, beklenmeyen yol veya özel dosya var, reddedildi."
+  exit 1
+fi
 mkdir "$GECICI/kod"
-cp -rP "$KAYNAK/src" "$KAYNAK/package.json" "$KAYNAK/package-lock.json" "$GECICI/kod/"
-if [[ -n "$(find "$GECICI/kod" -mindepth 1 ! -type f ! -type d -print -quit)" ]]; then
-  echo "Gönderilen dosyalar arasında sembolik bağ veya özel dosya var, reddedildi."
+tar -C "$GECICI/kod" -xf "$GECICI/paket.tar" --no-same-owner --no-same-permissions
+if [[ ! -d "$GECICI/kod/src" || ! -f "$GECICI/kod/package.json" || ! -f "$GECICI/kod/package-lock.json" ]]; then
+  echo "$KAYNAK içinde src/, package.json veya package-lock.json yok."
   exit 1
 fi
 # Kod root'a ait kalır, bot kullanıcısı yalnızca okur
@@ -177,9 +194,15 @@ EOF
 chown root:root /usr/local/sbin/voyager-guncelle
 chmod 755 /usr/local/sbin/voyager-guncelle
 
-# sudo izni: yalnızca bu betik, argümansız
+# sudo izni: güncelleme betiği argümansız; bot kayıtları için iki sabit journalctl komutu. Kurallarda joker
+# yok ve --no-pager şart: sayfalayıcı (less) root olarak açılırsa içinden kabuk çalıştırılabilir.
+JOURNALCTL="$(command -v journalctl)"
 SUDOERS="$(mktemp)"
-echo "$KULLANICI ALL=(root) NOPASSWD: /usr/local/sbin/voyager-guncelle \"\"" > "$SUDOERS"
+{
+  echo "$KULLANICI ALL=(root) NOPASSWD: /usr/local/sbin/voyager-guncelle \"\""
+  echo "$KULLANICI ALL=(root) NOPASSWD: $JOURNALCTL -u voyager -n 200 --no-pager"
+  echo "$KULLANICI ALL=(root) NOPASSWD: $JOURNALCTL -u voyager -f --no-pager"
+} > "$SUDOERS"
 if ! visudo -cf "$SUDOERS" >/dev/null; then
   rm -f "$SUDOERS"
   echo "sudoers satırı doğrulanamadı, sudo izni eklenmedi."
@@ -190,4 +213,5 @@ rm -f "$SUDOERS"
 
 echo
 echo ">> Hazır. '$KULLANICI' kullanıcısı anahtarla girebilir."
+echo "   Bot kayıtları için (bu kullanıcıyla): sudo $JOURNALCTL -u voyager -n 200 --no-pager"
 echo "   Gönderilen açık anahtar dosyasını artık silebilirsin: rm $ANAHTAR"

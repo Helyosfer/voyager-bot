@@ -599,20 +599,24 @@ Bunlar yetki politikasını, ürün davranışını ya da dağıtımı değişti
     kullanıcısından gelir.
   - `package-lock.json` artık zorunlu; VGR-20'deki "kilit yoksa `npm install`" yolu kaldırıldı.
   - Eski düzendeki bir sunucuda `kur.sh` önce botu durdurur ve bot kullanıcısının geride kalmış süreçlerini sonlandırır.
+  - Root, deploy kullanıcısının klasörünü kendisi okumaz. `voyager-deploy`, kendi yetkisiyle (`runuser`) en fazla
+    512 MB'lık bir tar arşivi üretir. Root yalnızca arşivi okur ve içinde `src/`, `package.json` ve
+    `package-lock.json` dışında yol ya da sıradan dosya ve klasör dışında bir öğe (sembolik bağ, sabit bağ, özel
+    dosya) varsa reddeder. Böylece kopya sırasında konan bir bağ, root'un okuyabildiği bir dosyayı herkesin
+    okuyabildiği `/opt/voyager/src` altına taşıyamaz.
+  - `voyager-deploy` artık `systemd-journal` grubunda değil (eski kurulumda gruptan çıkarılır), çünkü grup bütün
+    sistem kayıtlarını açıyordu. Bot kayıtları için iki sabit sudo kuralı var:
+    `journalctl -u voyager -n 200 --no-pager` ve `journalctl -u voyager -f --no-pager`. Kurallarda joker yok;
+    `--no-pager` şart, yoksa sayfalayıcı (`less`) root olarak açılır ve içinden kabuk çalıştırılabilir.
 - **Doğrulama:** `bash -n`, ShellCheck 0.11.0 (bulgu yok), birim dosyalarının örnek değerlerle üretilmesi,
-  `npm test`. Betikler Linux'ta çalıştırılmadı; bu ortamda systemd ve sembolik bağ izni yok. Deneme adımları: bölüm 7.
+  `npm test`. Arşiv denetimi yerelde GNU tar 1.35 ile dört arşivle denendi: normal arşiv kabul edildi; sembolik
+  bağ, sabit bağ ve fazladan yol içerenler reddedildi. Betikler Linux'ta çalıştırılmadı; bu ortamda systemd ve
+  sembolik bağ izni yok. Deneme adımları: bölüm 7.
 - **İşletim etkisi:** Önce `sudo bash kur.sh`, sonra `sudo bash erisim-kur.sh <açık-anahtar.pub>` yeniden
   çalıştırılmalı. `kur.sh` çalıştırılmadan yeni `voyager-guncelle` eski düzende çalışmayı reddeder.
-- **Kalan risk:**
-  - Root, deploy kullanıcısının klasörünü `cp -r` ile okur. Kopya sırasında bir alt klasör bağla değiştirilirse
-    root'un okuyabildiği bir dosya, herkesin okuyabildiği `/opt/voyager/src` altına gelebilir. Okumanın deploy
-    kullanıcısının yetkisiyle yapılması önerilir (ayrı iş).
-  - Gönderilen kod, servisle aynı kısıtlamalarla bot kullanıcısı olarak çalışır ve `.env`'i okuyabilir. Bu,
-    tasarımın gereğidir: botun kodunu deploy kullanıcısı belirler.
-  - `voyager-deploy` hâlâ `systemd-journal` grubunda ve bütün sistem kayıtlarını okuyabilir. Öneri: kullanıcıyı
-    gruptan çıkarıp argümanları sabit tek bir sudo kuralı vermek, ör.
-    `voyager-deploy ALL=(root) NOPASSWD: /usr/bin/journalctl -u voyager -n 200 --no-pager`. Kuralda joker
-    olmamalı; `--no-pager` da şart, yoksa sayfalayıcı (`less`) içinden root kabuğu açılabilir.
+- **Kalan risk:** Gönderilen kod, servisle aynı kısıtlamalarla bot kullanıcısı olarak çalışır ve `.env`'i
+  okuyabilir. Bu, tasarımın gereğidir: botun kodunu deploy kullanıcısı belirler. `voyager-guncelle` çıktısı,
+  komut yükleyicinin ve bağımlılık kurulumunun kendi kayıtlarını zaten gösterir.
 
 ### Açık kalanlar
 
@@ -818,7 +822,34 @@ sudo rm /opt/voyager/package.json && sudo cp -a /root/package.json.yedek /opt/vo
 
    Beklenen: iki betik de "sembolik bağ; ... durduruldu" yazıp 1 ile çıkar, `/tmp/zararsiz-hedef` oluşmaz.
 
-7. Kayıtlarda kısıtlama hatası olmamalı:
+7. Gönderilen klasörde sembolik bağ ya da fazladan dosya varsa güncelleme reddedilir ve sunucudaki kod değişmez:
+
+```bash
+sudo -u voyager-deploy sh -c 'echo deneme > ~/hedef.txt && ln -sfn ~/hedef.txt ~/voyager/src/bag.js'
+sudo -u voyager-deploy sudo /usr/local/sbin/voyager-guncelle; echo "çıkış: $?"
+sudo -u voyager-deploy rm ~voyager-deploy/voyager/src/bag.js
+sudo -u voyager-deploy touch ~voyager-deploy/voyager/fazla.txt
+sudo -u voyager-deploy sudo /usr/local/sbin/voyager-guncelle; echo "çıkış: $?"
+sudo -u voyager-deploy rm ~voyager-deploy/voyager/fazla.txt
+```
+
+   Beklenen: ilki "sembolik bağ, beklenmeyen yol veya özel dosya var" yazıp 1 ile çıkar. İkincisi geçer,
+   çünkü arşive yalnızca `src`, `package.json` ve `package-lock.json` alınır; `fazla.txt` `/opt/voyager`'a gelmez.
+
+8. Kayıtlara erişim:
+
+```bash
+id voyager-deploy
+sudo -u voyager-deploy sudo -l
+sudo -u voyager-deploy sudo journalctl -u voyager -n 200 --no-pager | tail -3
+sudo -u voyager-deploy sudo -n journalctl -u ssh -n 5 --no-pager; echo "çıkış: $?"
+```
+
+   Beklenen: `id` çıktısında `systemd-journal` yok; `sudo -l` yalnızca güncelleme betiğini ve iki sabit
+   `journalctl` komutunu listeler; üçüncü komut bot kayıtlarını gösterir; dördüncüsü parola ister ya da
+   reddedilir (`-n` ile 1 çıkış kodu).
+
+9. Kayıtlarda kısıtlama hatası olmamalı:
 
 ```bash
 sudo journalctl -u voyager -u voyager-komutlar -u voyager-bagimliliklar --since "30 minutes ago" | grep -E "EROFS|EACCES|EPERM" || echo "sorun yok"
