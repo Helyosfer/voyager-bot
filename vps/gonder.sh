@@ -22,3 +22,8 @@ scp -q "${SSH_AYAR[@]}" -r src package.json package-lock.json "$HEDEF:voyager/"
 
 echo ">> Bot güncelleniyor..."
 ssh "${SSH_AYAR[@]}" "$HEDEF" 'sudo /usr/local/sbin/voyager-guncelle'
+
+# voyager-deploy kayıtları yalnızca sudo'daki iki sabit komutla okuyabilir (erisim-kur.sh)
+echo
+echo ">> Bot kayıtları: ssh -i ~/.ssh/voyager_vps $HEDEF 'sudo journalctl -u voyager -n 200 --no-pager'"
+echo "   Canlı izlemek için -n 200 yerine -f yaz."
