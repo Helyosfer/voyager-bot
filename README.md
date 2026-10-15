@@ -474,10 +474,12 @@ Betik commit'i değil, o an klasörde duran `src/` içeriğini gönderir; gönde
 
 ## Güvenlik
 
-- **Sırlar** `.env` dosyasında durur; dosya repoya girmez ve sunucuda yalnızca bot kullanıcısı okuyabilir.
+- **Sırlar** `.env` dosyasında durur; dosya repoya girmez ve sunucuda root dışında yalnızca bot kullanıcısı okuyabilir.
   `.env` dosyasını ve bot jetonunu kimseyle paylaşma.
 - **Ayarlar ve kayıtlar** `data/` klasöründedir; bu klasör de repoya girmez ve yalnızca bota açıktır.
 - **Servis** (`kur.sh` ile kurulduğunda) kısıtlı çalışır: dosya sistemini salt okunur görür, yalnızca `data/` klasörüne yazabilir.
+  Kod ve bağımlılıklar root'a aittir; güncellemede gönderilen kod (komut yükleme, bağımlılık kurulumu) da aynı
+  kısıtlamalarla çalışır.
 - **Webhook'lar** imzasıyla doğrulanır; 10 dakikadan eski mesajlar reddedilir.
 - **Etiketler:** kullanıcının yazdığı metindeki `@everyone` ve rol etiketleri bildirim göndermez.
 - **Mesaj içeriği** yalnızca `MESAJ_ICERIGI=1` ise okunur ve yalnızca sunucunun kendi log kanalına yazılır.

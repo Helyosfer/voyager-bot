@@ -47,6 +47,7 @@ yeniden çalıştırılınca yansır (bkz. [Yayına alma notları](#7-yayına-al
 | VGR-26 | Bilgilendirme | Otomatik test ve CI yok | Uygulandı: 25 test ve CI (CI ilk push'ta çalışır) |
 | VGR-27 | Orta | Komutlar botun bulunmadığı sunucularda da çalıştırılabiliyor | Düzeltildi (kod); Developer Portal ayarı proje sahibinde |
 | VGR-28 | Orta | `/kitle` hiçbir kanalı kilitlemiyordu | Düzeltildi; Discord üzerinde denendi |
+| VGR-29 | Yüksek | Dağıtım kullanıcısı güncelleme betiği üzerinden root yetkisi alabiliyor | Düzeltildi (`kur.sh`, `vps/erisim-kur.sh`); Linux'ta denenmedi |
 
 ## 1. Kapsam ve mimari
 
@@ -573,6 +574,46 @@ Bunlar yetki politikasını, ürün davranışını ya da dağıtımı değişti
 - **Kalan risk:** model yanlış ya da uygunsuz metin üretebilir; içerik süzgeci Google'ın kendi süzgecidir.
   Sayaçlar bellekte tutulur; bot yeniden başlayınca sıfırlanır (Google'ın kendi günlük sınırı yine geçerlidir).
 
+### Denetimden sonra bulunanlar
+
+#### VGR-29 · Dağıtım kullanıcısı güncelleme betiği üzerinden root yetkisi alabiliyor
+
+- **Önem:** Yüksek
+- **Yer:** `vps/erisim-kur.sh` (`voyager-guncelle`), `kur.sh`
+- **Sorun:** `/opt/voyager` bot kullanıcısına aitti ve `voyager-guncelle`, gönderilen `package.json` betiklerini
+  (`npm run komutlar`) bot kullanıcısıyla, servis kısıtlamaları olmadan çalıştırıyordu. Böylece `voyager-deploy`
+  kod klasörüne sembolik bağ koyabiliyordu. Root sonraki güncellemede bu klasöre `cp -rP` ile kopyalıyordu; `-P`
+  yalnızca kaynağı etkilediği için hedefteki bağ izleniyor ve root, bağın gösterdiği dosyaya yazıyordu. `kur.sh`
+  içindeki `chmod`/`chown`/`cp` adımları da bağları izliyordu.
+- **Düzeltme:**
+  - `/opt/voyager` ve içindeki kod (`src`, `package*.json`, `node_modules`) root'a ait; bot kullanıcısı yalnızca
+    okur. `.env` `root:voyager 640`. Yalnızca `data/` bot kullanıcısına ait; servisin `ReadWritePaths`'i değişmedi.
+  - `kur.sh` ve `voyager-guncelle`, yazdıkları ya da okudukları yollarda sembolik bağ bulursa durur. Güncelleme
+    önce root'a ait geçici bir klasöre alınır, yerine `mv` (rename) ile geçer; rename hedefteki bağı izlemez.
+  - `npm run komutlar` yerine `voyager-komutlar` birimi: `node src/komutlari-yukle.js` servisle aynı
+    kısıtlamalarla çalışır. `package.json` betikleri kullanılmaz.
+  - Bağımlılıklar `voyager-bagimliliklar` biriminde kurulur (`npm ci --omit=dev --ignore-scripts`): bot
+    kullanıcısıyla, aynı kısıtlamalarla, yalnızca ara klasöre yazarak. Birim bitince kurulanlar root'a alınır,
+    setuid/setgid bitleri ve başkalarına yazma izni kaldırılır, sonra yerine taşınır. npm root olarak
+    çalıştırılmaz, çünkü paket arşivindeki izin bitlerini (setuid dahil) korur ve paket listesi deploy
+    kullanıcısından gelir.
+  - `package-lock.json` artık zorunlu; VGR-20'deki "kilit yoksa `npm install`" yolu kaldırıldı.
+  - Eski düzendeki bir sunucuda `kur.sh` önce botu durdurur ve bot kullanıcısının geride kalmış süreçlerini sonlandırır.
+- **Doğrulama:** `bash -n`, ShellCheck 0.11.0 (bulgu yok), birim dosyalarının örnek değerlerle üretilmesi,
+  `npm test`. Betikler Linux'ta çalıştırılmadı; bu ortamda systemd ve sembolik bağ izni yok. Deneme adımları: bölüm 7.
+- **İşletim etkisi:** Önce `sudo bash kur.sh`, sonra `sudo bash erisim-kur.sh <açık-anahtar.pub>` yeniden
+  çalıştırılmalı. `kur.sh` çalıştırılmadan yeni `voyager-guncelle` eski düzende çalışmayı reddeder.
+- **Kalan risk:**
+  - Root, deploy kullanıcısının klasörünü `cp -r` ile okur. Kopya sırasında bir alt klasör bağla değiştirilirse
+    root'un okuyabildiği bir dosya, herkesin okuyabildiği `/opt/voyager/src` altına gelebilir. Okumanın deploy
+    kullanıcısının yetkisiyle yapılması önerilir (ayrı iş).
+  - Gönderilen kod, servisle aynı kısıtlamalarla bot kullanıcısı olarak çalışır ve `.env`'i okuyabilir. Bu,
+    tasarımın gereğidir: botun kodunu deploy kullanıcısı belirler.
+  - `voyager-deploy` hâlâ `systemd-journal` grubunda ve bütün sistem kayıtlarını okuyabilir. Öneri: kullanıcıyı
+    gruptan çıkarıp argümanları sabit tek bir sudo kuralı vermek, ör.
+    `voyager-deploy ALL=(root) NOPASSWD: /usr/bin/journalctl -u voyager -n 200 --no-pager`. Kuralda joker
+    olmamalı; `--no-pager` da şart, yoksa sayfalayıcı (`less`) içinden root kabuğu açılabilir.
+
 ### Açık kalanlar
 
 Hepsi yukarıdaki bölümlerde ayrıntısıyla yazılı; burada toplu halde.
@@ -721,3 +762,66 @@ sudo systemctl revert voyager && sudo systemctl restart voyager
 
 Bir iki gün sorunsuz çalıştıysa kısıtlamalar güvenle kalıcı yapılabilir: `kur.sh` aynı satırları asıl servis
 dosyasına yazar, ek dosya o zaman `sudo systemctl revert voyager` ile kaldırılır.
+
+### VGR-29 düzeltmesini Linux'ta denemek
+
+Canlı sunucuda değil, ayrı bir Ubuntu makinesinde (systemd açık WSL ya da VM) ve ayrı bir deneme jetonuyla yapılır.
+Amaç, kod klasörünün artık bot ve deploy kullanıcılarına kapalı olduğunu ve betiklerin sembolik bağ gördüğünde
+durduğunu göstermek.
+
+1. Önce eski düzeni kur: `main` dalındaki `kur.sh` ve `vps/erisim-kur.sh` ile botu ve `voyager-deploy`
+   kullanıcısını kur (README, "VPS'te 7/24 çalıştırma"). Sonra bu daldaki dosyaları gönderip sırayla
+   `sudo bash kur.sh` ve `sudo bash erisim-kur.sh anahtar.pub` çalıştır. `kur.sh` "Eski kurulum düzeni root'a
+   alınıyor" demeli ve bot sonunda açılmalı.
+
+2. Sahiplikler:
+
+```bash
+sudo stat -c '%U:%G %a %n' /opt/voyager /opt/voyager/src /opt/voyager/package.json /opt/voyager/node_modules /opt/voyager/.env /opt/voyager/data
+sudo find /opt/voyager -path /opt/voyager/data -prune -o ! -user root -print
+sudo find /opt/voyager/node_modules -perm /6000 -print
+```
+
+   Beklenen: `/opt/voyager`, `src`, `package.json` ve `node_modules` `root:root`; `.env` `root:voyager 640`;
+   `data` `voyager:voyager 700`. İkinci ve üçüncü komut hiçbir şey yazmamalı.
+
+3. Bot ve deploy kullanıcıları kod klasörüne yazamıyor (her ikisi de "Permission denied" vermeli):
+
+```bash
+sudo -u voyager touch /opt/voyager/deneme
+sudo -u voyager-deploy touch /opt/voyager/deneme
+```
+
+4. Birimler ve kısıtlamalar:
+
+```bash
+systemctl cat voyager-komutlar voyager-bagimliliklar
+systemctl show -p ProtectSystem,ReadWritePaths,User voyager voyager-komutlar voyager-bagimliliklar
+sudo cat /usr/local/sbin/voyager-guncelle | grep -n "npm run\|sudo -H" || echo "npm run / sudo -u yok"
+```
+
+5. Normal güncelleme: bilgisayarından `bash vps/gonder.sh`. Komut yükleyicinin çıktısı ("... komut yüklendi")
+   görünmeli, bot yeniden başlamalı. Kilit dosyası değişmeden ikinci kez gönderince bağımlılık kurulumu atlanmalı.
+   `package-lock.json` değiştiğinde `voyager-bagimliliklar` çalışmalı ve 2. adımdaki sahiplikler aynı kalmalı.
+
+6. Hedefte sembolik bağ varsa iki betik de durur. Bunu yalnızca deneme makinesinde, root olarak zararsız bir
+   hedefle dene:
+
+```bash
+sudo cp -a /opt/voyager/package.json /root/package.json.yedek
+sudo ln -sfn /tmp/zararsiz-hedef /opt/voyager/package.json
+sudo -u voyager-deploy sudo /usr/local/sbin/voyager-guncelle; echo "çıkış: $?"
+sudo bash kur.sh; echo "çıkış: $?"
+ls -l /tmp/zararsiz-hedef 2>/dev/null || echo "hedef dosya oluşmadı"
+sudo rm /opt/voyager/package.json && sudo cp -a /root/package.json.yedek /opt/voyager/package.json
+```
+
+   Beklenen: iki betik de "sembolik bağ; ... durduruldu" yazıp 1 ile çıkar, `/tmp/zararsiz-hedef` oluşmaz.
+
+7. Kayıtlarda kısıtlama hatası olmamalı:
+
+```bash
+sudo journalctl -u voyager -u voyager-komutlar -u voyager-bagimliliklar --since "30 minutes ago" | grep -E "EROFS|EACCES|EPERM" || echo "sorun yok"
+```
+
+Sonuçları VGR-29'un "Doğrulama" satırına ekle.
