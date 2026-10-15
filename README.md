@@ -454,8 +454,9 @@ Bir kez, sunucuda (`vps/erisim-kur.sh` dosyasını ve bilgisayarında ürettiği
 sudo bash erisim-kur.sh anahtar.pub
 ```
 
-Bu, yalnızca SSH anahtarıyla girebilen ve root olarak tek bir şeyi (botu güncelleyen betiği) çalıştırabilen
-`voyager-deploy` kullanıcısını kurar. Sonra bilgisayarında `vps/.hedef` dosyasına hedefi yaz
+Bu, yalnızca SSH anahtarıyla girebilen ve root olarak yalnızca botu güncelleyen betiği ve bot kayıtlarını
+okuyan iki sabit komutu (`sudo journalctl -u voyager -n 200 --no-pager`, `sudo journalctl -u voyager -f --no-pager`)
+çalıştırabilen `voyager-deploy` kullanıcısını kurar. Önce `kur.sh`'ın son sürümü çalıştırılmış olmalı. Sonra bilgisayarında `vps/.hedef` dosyasına hedefi yaz
 (ör. `voyager-deploy@SUNUCU_ADRESI`; bu dosya repoya girmez) ve her güncellemede:
 
 ```bash
@@ -474,10 +475,12 @@ Betik commit'i değil, o an klasörde duran `src/` içeriğini gönderir; gönde
 
 ## Güvenlik
 
-- **Sırlar** `.env` dosyasında durur; dosya repoya girmez ve sunucuda yalnızca bot kullanıcısı okuyabilir.
+- **Sırlar** `.env` dosyasında durur; dosya repoya girmez ve sunucuda root dışında yalnızca bot kullanıcısı okuyabilir.
   `.env` dosyasını ve bot jetonunu kimseyle paylaşma.
 - **Ayarlar ve kayıtlar** `data/` klasöründedir; bu klasör de repoya girmez ve yalnızca bota açıktır.
 - **Servis** (`kur.sh` ile kurulduğunda) kısıtlı çalışır: dosya sistemini salt okunur görür, yalnızca `data/` klasörüne yazabilir.
+  Kod ve bağımlılıklar root'a aittir; güncellemede gönderilen kod (komut yükleme, bağımlılık kurulumu) da aynı
+  kısıtlamalarla çalışır.
 - **Webhook'lar** imzasıyla doğrulanır; 10 dakikadan eski mesajlar reddedilir.
 - **Etiketler:** kullanıcının yazdığı metindeki `@everyone` ve rol etiketleri bildirim göndermez.
 - **Mesaj içeriği** yalnızca `MESAJ_ICERIGI=1` ise okunur ve yalnızca sunucunun kendi log kanalına yazılır.

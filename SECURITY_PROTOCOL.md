@@ -26,7 +26,8 @@ Denetimde bulunanlar, alınan kararlar ve kalan riskler için: [SECURITY_AUDIT.m
 
 - `.env`, `data/` ve `vps/.hedef` git dışındadır (`.gitignore`). Commit'ten önce `git status` ile bunların listede
   olmadığına bak. Yeni bir sır dosyası eklersen `.gitignore`'a da ekle.
-- Sunucuda `.env` `600`, `data/` `700` izinlidir; `kur.sh` ve `src/depo.js` bunu kendisi ayarlar. Elle gevşetme.
+- Sunucuda kod (`/opt/voyager`) root'a aittir; `.env` `root:voyager 640` (bot okur, değiştiremez), `data/`
+  `voyager 700` izinlidir. `kur.sh` ve `src/depo.js` bunu kendisi ayarlar. Elle gevşetme.
 - Sır değerlerini koda, README'ye, commit mesajına, sohbet mesajına ya da ekran görüntüsüne koyma. `.env.example`
   yalnızca anahtar adlarını ve açıklamaları içerir; değer yazma.
 - Yerelde denerken ayrı bir Discord uygulaması ve ayrı bir jeton kullan. Canlı jetonla yerelde bot başlatma: iki
@@ -292,4 +293,6 @@ for f in src/*.js src/commands/*.js src/yayin/*.js; do node --check "$f"; done
   ve veri yazan bir komutun (ör. `/hatirlat`) çalıştığını doğrula. Kısıtlamaları önce tek başına, geri alınabilir
   biçimde denemek için: `SECURITY_AUDIT.md` bölüm 7.
 - `vps/erisim-kur.sh` (güncelleme betiği) ancak sunucuda `sudo bash erisim-kur.sh <açık-anahtar.pub>` çalıştırılınca
-  yenilenir; o zamana kadar `vps/gonder.sh` eski betiği kullanır.
+  yenilenir; o zamana kadar `vps/gonder.sh` eski betiği kullanır. İkisi birden değiştiyse önce `kur.sh`, sonra
+  `erisim-kur.sh` çalıştırılır: güncelleme betiği `kur.sh`'ın kurduğu birimlere (`voyager-komutlar`,
+  `voyager-bagimliliklar`) dayanır.
