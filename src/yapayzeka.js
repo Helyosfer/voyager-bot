@@ -184,10 +184,22 @@ function say(sunucuId, kisiId, gizli = false) {
   return Math.max(0, paylar(sunucuId, kisiId, veri).kisi - s.kisi[kisiId]);
 }
 
+// Satır başındaki başlık (#, ##, ###) ve dipnot (-#) işaretleri kaçırılır: kandırılmış model
+// "# DUYURU" gibi büyük başlık ya da botun kendi dipnotuna benzeyen satır yazamasın. Discord
+// alıntı (>, >>>) ve liste (-, *, 1.) içindeki başlığı da gösterdiği için bu ön ekler atlanır.
+// Kod blokları (```) olduğu gibi kalır; içindeki "# yorum" satırları bozulmasın.
+// Ön ekler tek yönlü eşleşir (işaret + boşluk); iç içe boşluk niceleyicisi ReDoS'a açıktır.
+const BASLIK = /^([ \t]*(?:(?:>{1,3}|[-*+]|\d{1,9}[.)])[ \t]+)*)(#{1,3}|-#)(?=[ \t ])/gm;
+const basliklariKir = (metin) =>
+  metin
+    .split(/(```[\s\S]*?```)/g)
+    .map((parca, i) => (i % 2 ? parca : parca.replace(BASLIK, '$1\\$2')))
+    .join('');
+
 // Modelin yazdığı metni kanala gönderilebilir hale getirir
 function temizle(metin) {
-  // Önce bağlantılar etkisizleştirilir (metni uzatır), sonra kısaltılır
-  const guvenli = baglantisiz(metin.trim());
+  // Önce bağlantılar ve başlıklar etkisizleştirilir (metni uzatır), sonra kısaltılır
+  const guvenli = basliklariKir(baglantisiz(metin.trim()));
   return guvenli.length > CEVAP_SINIRI ? `${guvenli.slice(0, CEVAP_SINIRI - 1)}…` : guvenli;
 }
 

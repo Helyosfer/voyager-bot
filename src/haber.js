@@ -47,6 +47,9 @@ for (const [ag, onek] of [
   // İçine IPv4 adresi gömülen geçiş adresleri (NAT64, 6to4, Teredo): gömülü adres iç ağı
   // gösterebilir. Ayrıca belgeleme ve çöp ağları.
   ['64:ff9b:1::', 48], ['2002::', 16], ['2001::', 32], ['2001:db8::', 32], ['100::', 64],
+  // Kullanımdan kalkmış ama bazı sistemlerde hâlâ yönlendirilebilen aralıklar: IPv4 uyumlu
+  // adresler (::a.b.c.d, ::/127'yi de kapsar) ve eski site-local ağı
+  ['::', 96], ['fec0::', 10],
 ]) {
   yasakli.addSubnet(ag, onek, 'ipv6');
 }

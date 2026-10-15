@@ -129,7 +129,7 @@ test('Kick: geçerli imza kabul edilir; sahte istekler anahtarı yeniden indirtm
 // --- Haber: iç ağ koruması ve ayrıştırma ---
 test('haber indirici iç ağ adreslerine bağlanmaz', async () => {
   for (const adres of ['127.0.0.1', '10.1.2.3', '169.254.169.254', '192.168.1.1', '100.64.0.1']) assert.equal(haber.herkeseAcik(adres, 4), false, adres);
-  for (const adres of ['::1', '::ffff:127.0.0.1', '::ffff:7f00:1', 'fd00::1', 'fe80::1', '2002:7f00:1::', '64:ff9b::7f00:1', '2001:0:1::1']) {
+  for (const adres of ['::1', '::ffff:127.0.0.1', '::ffff:7f00:1', 'fd00::1', 'fe80::1', '2002:7f00:1::', '64:ff9b::7f00:1', '2001:0:1::1', '::7f00:1', 'fec0::1']) {
     assert.equal(haber.herkeseAcik(adres, 6), false, adres);
   }
   assert.equal(haber.herkeseAcik('8.8.8.8', 4), true);
@@ -530,6 +530,26 @@ test('/sor: anahtar başlıkta gider, cevap etiket ve gizli bağlantı içeremez
     yz.ayar.dakikalik = dakikalik;
     yz.sonDakika.length = 0;
   }
+});
+
+test('/sor: model sahte başlık ya da botun dipnot biçimini (-#) üretemez; kod blokları bozulmaz', () => {
+  const { temizle } = src('yapayzeka');
+  // Satır başında (alıntı ya da liste içinde de) kalan #, ##, ###, -# Discord'da biçime dönüşür
+  const BICIM = /^[ \t]*(?:(?:>{1,3}|[-*+]|\d+[.)])[ \t]+)*(#{1,3}|-#)[ \t ]/;
+  const saldirilar = ['# DUYURU', '### DUYURU', '-# Yetkili: Discord Ekibi', '  # DUYURU', '#\tDUYURU', '# DUYURU',
+    '- # DUYURU', '* # DUYURU', '> # DUYURU', '>>> # DUYURU', '> -# Yetkili', '1. # DUYURU', '- -# Yetkili'];
+  for (const s of saldirilar) {
+    const satirlar = temizle(`giriş\n${s}`).split('\n');
+    assert.ok(!satirlar.some((l) => BICIM.test(l)), JSON.stringify(s));
+  }
+  // Başlık değiller, değişmemeli
+  for (const s of ['#### dört diyez', '#etiket ve C# dili', '- madde bir\n- madde iki', '1. adım\n2. adım']) assert.equal(temizle(s), s);
+  // Kod bloğundaki yorum satırı olduğu gibi kalır, bloğun dışındaki başlık kaçırılır
+  assert.equal(temizle('```py\n# yorum\nprint(1)\n```\n# dışarıda'), '```py\n# yorum\nprint(1)\n```\n\\# dışarıda');
+  // Kötü niyetli uzun ön ek dizisi hızlı işlenir (ReDoS yok)
+  const bas = Date.now();
+  temizle(`${'-   '.repeat(4000)}x\n${'> '.repeat(4000)}x`);
+  assert.ok(Date.now() - bas < 500);
 });
 
 test('/sor: dakikalık sınır dolunca istek atılmaz', async () => {
