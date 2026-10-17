@@ -419,11 +419,11 @@ voyager.ornek.com {
 ```
 
 Film dosyaları hazır olarak `vps/film/` klasöründe durur; durum ve sunucu düzeni `vps/film/README.md`'de.
-Yeniden üretmek için `vps/film-hazirla.sh` (sonuç ~4 MB, 1080p, sessiz). Betik patlamayı yumuşatır,
+Yeniden üretmek için `vps/film-hazirla.sh` (sonuç ~9 MB, 1080p, sessiz). Betik patlamayı yumuşatır,
 döngüyü keser ve sayfanın sardığı saniyeye anahtar kare koyar; ayrıntılar betiğin başında:
 
 ```bash
-bash vps/film-hazirla.sh            # kaynak: vps/film/kaynak-bigbang.mp4
+bash vps/film-hazirla.sh            # kaynak: NASA'nın 4K dosyası, yoksa indirir
 sudo mkdir -p /var/www/voyager && sudo cp film.mp4 film.jpg /var/www/voyager/
 ```
 
