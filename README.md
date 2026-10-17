@@ -569,7 +569,9 @@ voyager.ornek.com {
 		header Cache-Control "public, max-age=604800"
 		file_server
 	}
-	reverse_proxy 127.0.0.1:8788
+	handle {
+		reverse_proxy 127.0.0.1:8788
+	}
 }
 ```
 
