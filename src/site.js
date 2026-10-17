@@ -31,9 +31,11 @@ const BASLIKLAR = {
   'Content-Type': 'text/html; charset=utf-8',
   'Cache-Control': 'no-cache',
   // Yalnızca kendi betiğini çalıştırır; dışarıdan yalnızca yazı tipini yükler. Arka plan filmi
-  // (/film.mp4, /film.jpg) aynı alan adından gelir; onları web sunucusu verir (README)
+  // (/film.mp4, /film.jpg) aynı alan adından gelir; onları web sunucusu verir (README). film.js filmi
+  // fetch ile indirip bellekten (blob:) oynatır; connect-src ve media-src'deki blob: bunun için
+
   'Content-Security-Policy':
-    "default-src 'none'; script-src 'self'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; media-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+    "default-src 'none'; script-src 'self'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; media-src 'self' blob:; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'no-referrer',
   // Site bir kez https ile açıldıysa tarayıcı bir yıl boyunca bu alan adında http kullanmaz.

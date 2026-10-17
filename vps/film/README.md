@@ -6,16 +6,15 @@ galaksilerin uçuştuğu 6 saniyelik döngü. Bu klasör filmi ve kaynağını t
 
 | Dosya | Ne |
 |---|---|
-| `film.mp4` | Sitedeki film: 1920x1080, 30 fps, 13.5 sn, sessiz, H.264 High level 4.0 (~4 MB) |
+| `film.mp4` | Sitedeki film: 1920x1080, 30 fps, 13.5 sn, sessiz, H.264 High level 4.0, crf 19 (~8.5 MB) |
 | `film.jpg` | Filmin ilk karesi; film inene kadar poster olarak görünür |
-| `kaynak-bigbang.mp4` | Animasyonun ilk 15 saniyesi, 1080p60, yeniden kodlanmadan kesildi (film bundan üretilir) |
 
 Kaynak: [NASA SVS 12656](https://svs.gsfc.nasa.gov/12656), NASA's Goddard Space Flight Center/CI Lab
 (NASA içeriği, kaynak göstererek serbestçe kullanılabilir; sayfanın altındaki satır bunu yapar).
-`kaynak-bigbang.mp4` bu animasyonun YouTube'daki bir kopyasından alındı; kopyanın 27. saniyeden sonraki,
-yükleyene ait "Thanks for watching" ekranı dışarıda bırakıldı. NASA'nın orijinal 4K dosyası
-(`12656_Big_Bang_4k.m4v`, 93.5 MB) kullanılacaksa önce zamanlamayı karşılaştır: `film-hazirla.sh`'taki
-süreler, patlamanın en parlak anı ~3. saniyede olan bu sürüme göre ayarlı.
+Film NASA'nın orijinal 4K dosyasından (`12656_Big_Bang_4k.m4v`, 93.5 MB, ~29 Mbps) üretilir.
+`film-hazirla.sh` dosyayı ilk çalıştırmada `vps/film/kaynak-4k.m4v` olarak indirir (repoya girmez) ve
+sha256'sını denetler. Önceki kaynak animasyonun YouTube kopyasıydı (1080p, ~4 Mbps); zamanlaması 4K
+dosyayla birebir aynı (iki sürümde de patlamanın en parlak anı ~3. saniyede), betikteki süreler değişmedi.
 
 ## Sunucudaki düzen
 
@@ -32,32 +31,37 @@ süreler, patlamanın en parlak anı ~3. saniyede olan bu sürüme göre ayarlı
 ## Durum (17 Ekim 2026)
 
 - **Canlıda:** `?v=3` filmi. Ziyaretçi filmin takılarak oynadığını ("dona dona") söyledi.
-- **Bu dalda hazır, canlıda değil:** takılma için iki düzeltme ve `?v=4`.
-  1. **Film yeniden kodlandı.** Canlıdaki film `-preset veryslow` ile 1080p'de 16 referans kare ve
-     H.264 level 5.1 kullanıyor. Birçok ekran kartı bunu donanımda çözemez; tarayıcı işlemcide çözmeye
+- **Bu dalda hazır, canlıda değil:** `?v=5`. (`?v=4` hiç yayına alınmadı; değişikliklerini v=5 içerir.)
+  1. **Kolay çözülen kodlama (v=4'ten).** Canlıdaki film `-preset veryslow` ile 1080p'de 16 referans kare
+     ve H.264 level 5.1 kullanıyor. Birçok ekran kartı bunu donanımda çözemez; tarayıcı işlemcide çözmeye
      düşer ve kare atlar. Yeni film level 4.0, en fazla 3 referans ve 3 B karesi kullanıyor.
-     Görüntü aynı (SSIM 0.989).
-  2. **Döngü durmadan sarıyor.** Eskiden film bitince (`ended`) 7.5. saniyeye sarılıp yeniden
-     başlatılıyordu; bu her 6 sn'de kısa bir donma yaratabilir. `film.js` artık
-     `requestVideoFrameCallback` ile son 0.1 sn'ye gelince, film durmadan sarıyor; `ended` yedek olarak
-     duruyor. Headless Chromium'da (VP9 kopyayla) üç tur boyunca hiç `ended` olmadan sardığı görüldü.
-  Takılmanın gerçek sebebi ziyaretçinin tarayıcısında ölçülmedi; bu iki değişiklik en olası iki sebebi
-  hedefliyor.
+  2. **Döngü durmadan sarıyor (v=4'ten).** `film.js`, `requestVideoFrameCallback` ile son 0.1 sn'ye
+     gelince filmi durmadan 7.5. saniyeye sarar; `ended` yedek olarak duruyor.
+  3. **Daha yüksek kalite (v=5).** Kaynak NASA'nın 4K dosyası; crf 28 yerine crf 19 (ortalama ~5 Mbps,
+     anlık en fazla ~8 Mbps). crf 28 küçük yıldızları siliyor, galaksileri bulanıklaştırıyordu.
+  4. **CSS filtresi ve maskesi kalktı (v=5).** `brightness(0.82) contrast(1.05)` filme gömüldü
+     (`lutyuv`); alttaki siyaha geçiş `mask-image` yerine `.hero::before`'daki gradyanla yapılıyor.
+     Tam ekran videoda ikisi de her karede ekran kartına iş çıkarıyordu.
+  5. **Film tamamen indikten sonra oynar (v=5).** `film.js` filmi `fetch` ile indirip bellekten
+     (`blob:`) oynatır; o sırada ilk kare (poster) görünür. Akarak oynayan film bağlantı yetişmezse
+     yarıda bekliyordu; geri sarma da ağa gitmez. İndirme olmazsa eskisi gibi akarak oynar. CSP'ye
+     `connect-src 'self'` ve `media-src blob:` eklendi.
+  Ölçüm (yerelde, Chromium, 1080p): 612 karede 0 atlanan kare; iki sarmada `ended` yok; kareler arası en
+  büyük boşluk 35 ms (normali 33 ms), sarma anında 5 ms.
 - **Dal `main`'e birleştirilmedi** (`claude/gifted-hamilton-3krezm`). `main`'den yayına alınırsa site
   eski NASA helyosfer filmine (doğrudan NASA'nın sunucusundan, yavaş) döner.
 
-## v=4'ü yayına almak (sunucuda, root)
+## v=5'i yayına almak (sunucuda, root)
 
-Önce film, sonra kod; ikisi aynı anda yayına girmeli (kod `?v=4` ister, aynı dosya adını kullanır).
+Önce film, sonra kod; ikisi aynı anda yayına girmeli (kod `?v=5` ister, aynı dosya adını kullanır).
+Caddy ayarı değişmez.
 
 ```bash
 rm -rf /tmp/voyager-yeni
 git clone --depth 1 -b claude/gifted-hamilton-3krezm https://github.com/Helyosfer/voyager-bot /tmp/voyager-yeni
 
 # Film
-echo "fd251943a9573ad8ce6c18e1ee606fb33929c6171d4acab70ddce4407ff3d4ff  /tmp/voyager-yeni/vps/film/film.mp4" | sha256sum -c \
-  && cp /tmp/voyager-yeni/vps/film/film.mp4 /tmp/voyager-yeni/vps/film/film.jpg /var/www/voyager/ \
-  && chmod 644 /var/www/voyager/*
+echo "146850a8aca48ad90d115ccc031722ed4c53e395b8d8a0ff1170c0da4d5ab8ef  /tmp/voyager-yeni/vps/film/film.mp4" | sha256sum -c   && cp /tmp/voyager-yeni/vps/film/film.mp4 /tmp/voyager-yeni/vps/film/film.jpg /var/www/voyager/   && chmod 644 /var/www/voyager/*
 
 # Kod
 rm -rf /home/voyager-deploy/voyager/src
@@ -66,8 +70,8 @@ chown -R voyager-deploy:voyager-deploy /home/voyager-deploy/voyager
 /usr/local/sbin/voyager-guncelle
 rm -rf /tmp/voyager-yeni
 
-# Kontrol: content-length 4137015 ve data-src="/film.mp4?v=4"
-curl -sI "https://voyager.helyosfer.me/film.mp4?v=4" | grep -iE '^(content-length|cf-cache-status)'
+# Kontrol: content-length 8916358 ve data-src="/film.mp4?v=5"
+curl -sI "https://voyager.helyosfer.me/film.mp4?v=5" | grep -iE '^(content-length|cf-cache-status)'
 curl -s https://voyager.helyosfer.me/ | grep -o 'data-src="[^"]*"'
 ```
 
@@ -77,10 +81,7 @@ curl -s https://voyager.helyosfer.me/ | grep -o 'data-src="[^"]*"'
    `kVideoDecoderName` ve `kIsPlatformVideoDecoder`. Donanım çözücü (ör. `D3D11VideoDecoder`,
    `VaapiVideoDecoder`) yerine `FFmpegVideoDecoder` görünüyorsa film işlemcide çözülüyor.
    Aynı yerde atlanan kare sayısı (dropped frames) da görünür.
-2. **720p'ye düş:** `YUKSEKLIK=720 bash vps/film-hazirla.sh` (~1.5 MB). Önceki 720p helyosfer filmi
+2. **720p'ye düş:** `YUKSEKLIK=720 bash vps/film-hazirla.sh`. Önceki 720p helyosfer filmi
    takılmıyordu. Sonra `index.html`'de `?v=` sayısını artır.
-3. **CSS'i dene:** `.film` üzerindeki `filter` ve `mask-image`, tam ekran videoda her karede ekran kartına
-   iş çıkarır. DevTools'ta ikisini kapatıp farkı gör; fark büyükse karartmayı filme gömmek (ffmpeg `eq`
-   ve gradyan katmanı) daha ucuz olur.
-4. **Döngü dikişi:** Sarma noktasında (13.4 → 7.5 sn) görüntü normal iki kare arasından biraz daha fazla
+3. **Döngü dikişi:** Sarma noktasında (13.4 → 7.5 sn) görüntü normal iki kare arasından biraz daha fazla
    değişir (SSIM 0.90, normalde ~0.95); bu takılma değil, küçük bir sıçramadır.
