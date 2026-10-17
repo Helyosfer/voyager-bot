@@ -575,11 +575,12 @@ voyager.ornek.com {
 }
 ```
 
-Film dosyaları `vps/film-hazirla.sh` ile hazırlanır (sonuç ~4 MB, 1080p, sessiz). Betik patlamayı
-yumuşatır, döngüyü keser ve sayfanın sardığı saniyeye anahtar kare koyar; ayrıntılar betiğin başında:
+Film dosyaları hazır olarak `vps/film/` klasöründe durur; durum ve sunucu düzeni `vps/film/README.md`'de.
+Yeniden üretmek için `vps/film-hazirla.sh` (sonuç ~4 MB, 1080p, sessiz). Betik patlamayı yumuşatır,
+döngüyü keser ve sayfanın sardığı saniyeye anahtar kare koyar; ayrıntılar betiğin başında:
 
 ```bash
-bash vps/film-hazirla.sh <kaynak-video>
+bash vps/film-hazirla.sh            # kaynak: vps/film/kaynak-bigbang.mp4
 sudo mkdir -p /var/www/voyager && sudo cp film.mp4 film.jpg /var/www/voyager/
 ```
 
@@ -716,6 +717,7 @@ kur.sh                VPS kurulum betiği
 vps/
   erisim-kur.sh       Sunucuda güncelleme kullanıcısını kurar
   film-hazirla.sh     Sitenin arka plan filmini NASA videosundan hazırlar
+  film/               Sitenin arka plan filmi, kaynağı ve durum notu
   gonder.sh           Kodu sunucuya gönderir ve botu yeniden başlatır
 src/
   index.js            Botun başlangıç noktası

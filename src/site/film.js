@@ -13,6 +13,16 @@
 
   const dongu = Number(film.dataset.dongu);
   if (dongu > 0) {
+    // Film bitip durduktan sonra yeniden başlatmak her turda kısa bir donma yaratır. Destekleyen
+    // tarayıcıda son kare ekrana gelince, film durmadan sarılır.
+    if ('requestVideoFrameCallback' in film) {
+      const izle = (_simdi, kare) => {
+        if (film.duration && kare.mediaTime >= film.duration - 0.1) film.currentTime = dongu;
+        film.requestVideoFrameCallback(izle);
+      };
+      film.requestVideoFrameCallback(izle);
+    }
+    // Yedek: desteklemeyen tarayıcıda ya da son kare atlanırsa
     film.addEventListener('ended', () => {
       film.currentTime = dongu;
       film.play().catch(() => {});

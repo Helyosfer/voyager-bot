@@ -10,14 +10,19 @@
 # anahtar kare vardır, sarma takılmadan olur. Süreleri değiştirirsen data-dongu'yu da güncelle.
 #
 # Süreler, patlamanın en parlak anı ~3. saniyede olan 33 sn'lik sürüme göre ayarlandı.
-# Kullanım: bash vps/film-hazirla.sh <kaynak-video>   (film.mp4 ve film.jpg bulunduğun klasöre yazılır)
+# Kaynak verilmezse depodaki vps/film/kaynak-bigbang.mp4 kullanılır (animasyonun yalnızca NASA'ya ait ilk
+# 15 saniyesi, 1080p60, yeniden kodlanmadan kesildi).
+# Kullanım: bash vps/film-hazirla.sh [kaynak-video]   (film.mp4 ve film.jpg bulunduğun klasöre yazılır)
+# Çözünürlük: YUKSEKLIK=720 bash vps/film-hazirla.sh   (varsayılan 1080)
 set -euo pipefail
 
-KAYNAK="${1:?Kullanım: bash vps/film-hazirla.sh <kaynak-video>}"
+KAYNAK="${1:-$(dirname "${BASH_SOURCE[0]}")/film/kaynak-bigbang.mp4}"
+Y="${YUKSEKLIK:-1080}"
+G=$(( Y * 16 / 9 / 2 * 2 ))
 
-GRAF="[0:v]fps=30,scale=-2:1080,format=yuv420p,split[a][b];"
+GRAF="[0:v]fps=30,scale=${G}:${Y},format=yuv420p,split[a][b];"
 # Patlamayı yumuşatan siyah katman: 1.6 sn'de belirir, 2.2'de %60'a ulaşır, 4–6 sn arasında kaybolur
-GRAF+="color=black:s=1920x1080:r=30:d=40,format=rgba,fade=t=in:st=1.6:d=0.6:alpha=1,"
+GRAF+="color=black:s=${G}x${Y}:r=30:d=40,format=rgba,fade=t=in:st=1.6:d=0.6:alpha=1,"
 GRAF+="fade=t=out:st=4.0:d=2.0:alpha=1,colorchannelmixer=aa=0.6[k];"
 GRAF+="[a][k]overlay=shortest=1,trim=0.5:8.0,setpts=PTS-STARTPTS[giris];"
 # Döngü: kaynağın 8–14 sn'si; son 1.5 sn'si kaynağın 6.5–8 sn'siyle karışarak başa bağlanır
@@ -26,8 +31,11 @@ GRAF+="[c]trim=1.5:7.5,setpts=PTS-STARTPTS[p1];[d]trim=0:1.5,setpts=PTS-STARTPTS
 GRAF+="[p1][p2]xfade=transition=fade:duration=1.5:offset=4.5[dongu];"
 GRAF+="[giris][dongu]concat=n=2:v=1:a=0,format=yuv420p"
 
+# Çözmesi kolay ayarlar: level 4.0, en fazla 3 referans ve 3 B karesi. "veryslow" 1080p'de 16 referansla
+# level 5.1 üretir; bunu birçok ekran kartı donanımda çözemez, tarayıcı işlemciye düşer ve film takılır.
 # faststart: tarayıcı dosyanın tamamını beklemeden oynatmaya başlar
 nice -n 19 ffmpeg -hide_banner -y -i "$KAYNAK" -an -filter_complex "$GRAF" \
-  -c:v libx264 -preset veryslow -crf 28 -force_key_frames 7.5 -movflags +faststart film.mp4
+  -c:v libx264 -preset slow -profile:v high -level:v 4.0 -x264-params ref=3:bframes=3 -crf 28 \
+  -force_key_frames 7.5 -movflags +faststart film.mp4
 ffmpeg -hide_banner -loglevel error -y -i film.mp4 -frames:v 1 -q:v 4 -update 1 film.jpg
 ls -lh film.mp4 film.jpg
