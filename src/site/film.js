@@ -5,7 +5,7 @@
   const film = document.getElementById('film');
   if (!film?.dataset.src) return;
 
-  // ~9 MB'lık bir dosya: istemeyene, veri tasarrufu açık olana ya da yavaş bağlantıya yükleme;
+  // ~10 MB'lık bir dosya: istemeyene, veri tasarrufu açık olana ya da yavaş bağlantıya yükleme;
   // onlar yalnızca durağan ilk kareyi görür
   const baglanti = navigator.connection;
   const yavas = /(^|-)2g$|^3g$/.test(baglanti?.effectiveType ?? '');

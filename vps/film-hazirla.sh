@@ -44,15 +44,13 @@ GRAF+="[a][k]overlay=shortest=1,trim=0.5:8.0,setpts=PTS-STARTPTS[giris];"
 GRAF+="[b]trim=6.5:14,setpts=PTS-STARTPTS,split[c][d];"
 GRAF+="[c]trim=1.5:7.5,setpts=PTS-STARTPTS[p1];[d]trim=0:1.5,setpts=PTS-STARTPTS[p2];"
 GRAF+="[p1][p2]xfade=transition=fade:duration=1.5:offset=4.5[dongu];"
-GRAF+="[giris][dongu]concat=n=2:v=1:a=0,"
-# Karartma filme gömülü: CSS'teki filter: brightness(0.82) contrast(1.05) ile aynı sonuç
-# (x · 0.861 − 0.025). Tam ekran videoda CSS filtresi her karede ekran kartına ek iş çıkarıyordu.
-GRAF+="lutyuv=y='clip(16+0.861*(val-16)-5.475,16,235)':u='128+0.861*(val-128)':v='128+0.861*(val-128)',"
-GRAF+="format=yuv420p"
+# Film NASA'nın parlaklığında kalır; yazıların okunması için gereken karartmayı sayfa yapar
+# (index.html'deki .hero::before). Filme CSS filter vermek her karede ekran kartına iş çıkarır.
+GRAF+="[giris][dongu]concat=n=2:v=1:a=0,format=yuv420p"
 
 # Çözmesi kolay ayarlar: level 4.0, en fazla 3 referans ve 3 B karesi. "veryslow" 1080p'de 16 referansla
 # level 5.1 üretir; bunu birçok ekran kartı donanımda çözemez, tarayıcı işlemciye düşer ve film takılır.
-# Kalite: crf 19 (~8 MB). crf 28 (~2.5 Mbps) küçük yıldızları siliyor, galaksileri bulanıklaştırıyordu.
+# Kalite: crf 19 (~10 MB). crf 28 (~2.5 Mbps) küçük yıldızları siliyor, galaksileri bulanıklaştırıyordu.
 # tune film ve aq-mode 3 koyu zemindeki ince ayrıntıyı korur; vbv anlık bit hızını 8 Mbps'ta tutar:
 # faststart: dosyanın başındaki bilgiyle tarayıcı oynatmaya hemen hazırlanır
 nice -n 19 ffmpeg -hide_banner -y -i "$KAYNAK" -an -filter_complex "$GRAF" \

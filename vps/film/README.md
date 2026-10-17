@@ -6,7 +6,7 @@ galaksilerin uçuştuğu 6 saniyelik döngü. Bu klasör filmi ve kaynağını t
 
 | Dosya | Ne |
 |---|---|
-| `film.mp4` | Sitedeki film: 1920x1080, 30 fps, 13.5 sn, sessiz, H.264 High level 4.0, crf 19 (~8.5 MB) |
+| `film.mp4` | Sitedeki film: 1920x1080, 30 fps, 13.5 sn, sessiz, H.264 High level 4.0, crf 19 (~10 MB) |
 | `film.jpg` | Filmin ilk karesi; film inene kadar poster olarak görünür |
 
 Kaynak: [NASA SVS 12656](https://svs.gsfc.nasa.gov/12656), NASA's Goddard Space Flight Center/CI Lab
@@ -39,15 +39,17 @@ dosyayla birebir aynı (iki sürümde de patlamanın en parlak anı ~3. saniyede
      gelince filmi durmadan 7.5. saniyeye sarar; `ended` yedek olarak duruyor.
   3. **Daha yüksek kalite (v=5).** Kaynak NASA'nın 4K dosyası; crf 28 yerine crf 19 (ortalama ~5 Mbps,
      anlık en fazla ~8 Mbps). crf 28 küçük yıldızları siliyor, galaksileri bulanıklaştırıyordu.
-  4. **CSS filtresi ve maskesi kalktı (v=5).** `brightness(0.82) contrast(1.05)` filme gömüldü
-     (`lutyuv`); alttaki siyaha geçiş `mask-image` yerine `.hero::before`'daki gradyanla yapılıyor.
-     Tam ekran videoda ikisi de her karede ekran kartına iş çıkarıyordu.
+  4. **CSS filtresi ve maskesi kalktı, film daha belirgin (v=5).** Filme verilen `brightness(0.82)
+     contrast(1.05)` kaldırıldı; film NASA'nın parlaklığında. Yazıların okunması için ortadaki koyu
+     katman %66'dan %45'e indi. Alttaki siyaha geçiş `mask-image` yerine `.hero::before`'daki
+     gradyanla yapılıyor. Tam ekran videoda filter ve mask her karede ekran kartına iş çıkarıyordu.
   5. **Film tamamen indikten sonra oynar (v=5).** `film.js` filmi `fetch` ile indirip bellekten
      (`blob:`) oynatır; o sırada ilk kare (poster) görünür. Akarak oynayan film bağlantı yetişmezse
      yarıda bekliyordu; geri sarma da ağa gitmez. İndirme olmazsa eskisi gibi akarak oynar. CSP'ye
      `connect-src 'self'` ve `media-src blob:` eklendi.
   Ölçüm (yerelde, Chromium, 1080p): 612 karede 0 atlanan kare; iki sarmada `ended` yok; kareler arası en
-  büyük boşluk 35 ms (normali 33 ms), sarma anında 5 ms.
+  büyük boşluk 35 ms (normali 33 ms), sarma anında 5 ms. Parlak film (10 MB) baştan oynatılınca da
+  483 karede 0 atlanan kare.
 - **Dal `main`'e birleştirilmedi** (`claude/gifted-hamilton-3krezm`). `main`'den yayına alınırsa site
   eski NASA helyosfer filmine (doğrudan NASA'nın sunucusundan, yavaş) döner.
 
@@ -61,7 +63,9 @@ rm -rf /tmp/voyager-yeni
 git clone --depth 1 -b claude/gifted-hamilton-3krezm https://github.com/Helyosfer/voyager-bot /tmp/voyager-yeni
 
 # Film
-echo "146850a8aca48ad90d115ccc031722ed4c53e395b8d8a0ff1170c0da4d5ab8ef  /tmp/voyager-yeni/vps/film/film.mp4" | sha256sum -c   && cp /tmp/voyager-yeni/vps/film/film.mp4 /tmp/voyager-yeni/vps/film/film.jpg /var/www/voyager/   && chmod 644 /var/www/voyager/*
+echo "1c7679f31abc6bab2ce7c1437e340975a954884d0b189a9d22ecd640a08fbd5d  /tmp/voyager-yeni/vps/film/film.mp4" | sha256sum -c \
+  && cp /tmp/voyager-yeni/vps/film/film.mp4 /tmp/voyager-yeni/vps/film/film.jpg /var/www/voyager/ \
+  && chmod 644 /var/www/voyager/*
 
 # Kod
 rm -rf /home/voyager-deploy/voyager/src
@@ -70,7 +74,7 @@ chown -R voyager-deploy:voyager-deploy /home/voyager-deploy/voyager
 /usr/local/sbin/voyager-guncelle
 rm -rf /tmp/voyager-yeni
 
-# Kontrol: content-length 8916358 ve data-src="/film.mp4?v=5"
+# Kontrol: content-length 10428043 ve data-src="/film.mp4?v=5"
 curl -sI "https://voyager.helyosfer.me/film.mp4?v=5" | grep -iE '^(content-length|cf-cache-status)'
 curl -s https://voyager.helyosfer.me/ | grep -o 'data-src="[^"]*"'
 ```
