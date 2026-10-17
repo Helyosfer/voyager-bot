@@ -553,8 +553,8 @@ Bot `127.0.0.1:8788` üzerinde küçük bir HTTP sunucusu açar. Bu sunucu iki i
 
 - **Tanıtım sayfası** (`src/site/`): başlık, özellikler, komut listesi ve "Sunucuna ekle" düğmesi.
   [voyager.helyosfer.me](https://voyager.helyosfer.me) bu sayfadır. Arka planda NASA'nın
-  [helyosfer animasyonu](https://svs.gsfc.nasa.gov/20363) oynar (kaynak: NASA's Goddard Space Flight Center
-  Conceptual Image Lab). Film (`/film.mp4`) ve ilk karesi (`/film.jpg`) botun sunucusundan değil, web
+  [Big Bang animasyonu](https://svs.gsfc.nasa.gov/12656) oynar (kaynak: NASA's Goddard Space Flight
+  Center/CI Lab): patlama bir kez, ardından galaksilerin uçuştuğu kısa bir döngü. Film (`/film.mp4`) ve ilk karesi (`/film.jpg`) botun sunucusundan değil, web
   sunucusundan verilir (aşağıdaki Caddy örneği); dosyalar yoksa zemin siyah kalır.
 - **Twitch ve Kick webhook'ları** (`/twitch`, `/kick`): yayın başladığında platformlar buraya haber verir.
   Gelen her istek imzasıyla doğrulanır.
@@ -575,16 +575,16 @@ voyager.ornek.com {
 }
 ```
 
-Film dosyaları NASA'nın 4K kaynağından şöyle hazırlanır (sonuç ~5 MB, 720p, sessiz; `faststart` tarayıcının
-dosyanın tamamını beklemeden oynatmasını sağlar):
+Film dosyaları `vps/film-hazirla.sh` ile hazırlanır (sonuç ~4 MB, 1080p, sessiz). Betik patlamayı
+yumuşatır, döngüyü keser ve sayfanın sardığı saniyeye anahtar kare koyar; ayrıntılar betiğin başında:
 
 ```bash
-curl -fLO https://svs.gsfc.nasa.gov/vis/a020000/a020300/a020363/H_0322_HeliopauseCycle_v01.mp4
-ffmpeg -i H_0322_HeliopauseCycle_v01.mp4 -an -vf "scale=-2:720" -fpsmax 30 \
-  -c:v libx264 -preset veryslow -crf 28 -pix_fmt yuv420p -movflags +faststart film.mp4
-ffmpeg -i film.mp4 -frames:v 1 -q:v 5 film.jpg
+bash vps/film-hazirla.sh <kaynak-video>
 sudo mkdir -p /var/www/voyager && sudo cp film.mp4 film.jpg /var/www/voyager/
 ```
+
+Film değişince `src/site/index.html`'deki `?v=` sayısını artır; yoksa tarayıcılar ve Cloudflare bir hafta
+boyunca eski dosyayı verebilir.
 
 `.env` içinde `YAYIN_ADRESI=https://voyager.ornek.com` olur; Kick uygulamasının webhook adresi
 `https://voyager.ornek.com/kick` olarak girilir.
@@ -715,6 +715,7 @@ Bir güvenlik sorunu bulursan herkese açık bir kayıt açmak yerine [helyosfer
 kur.sh                VPS kurulum betiği
 vps/
   erisim-kur.sh       Sunucuda güncelleme kullanıcısını kurar
+  film-hazirla.sh     Sitenin arka plan filmini NASA videosundan hazırlar
   gonder.sh           Kodu sunucuya gönderir ve botu yeniden başlatır
 src/
   index.js            Botun başlangıç noktası
