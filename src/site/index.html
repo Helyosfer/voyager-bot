@@ -10,8 +10,6 @@
 <meta property="og:type" content="website">
 <meta name="theme-color" content="#000000">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23000'/%3E%3Cellipse cx='32' cy='32' rx='23' ry='9' fill='none' stroke='%238e8e93' stroke-width='2' transform='rotate(-28 32 32)'/%3E%3Ccircle cx='32' cy='32' r='7' fill='%23fff'/%3E%3C/svg%3E">
-<!-- Arka plan filmi NASA'nın sunucusundan gelir; bağlantıyı sayfa okunurken açmaya başla -->
-<link rel="preconnect" href="https://svs.gsfc.nasa.gov">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
@@ -91,14 +89,17 @@
     overflow: hidden;
     isolation: isolate;
   }
+  /* Film renkli ve parlak; yazılar okunsun diye ortayı biraz daha karart */
   .hero::before {
     content: "";
     position: absolute;
     inset: 0;
     z-index: -1;
-    background: radial-gradient(60% 50% at 50% 46%, rgba(120, 110, 170, 0.2) 0%, rgba(0, 0, 0, 0) 70%);
+    background:
+      radial-gradient(52% 40% at 50% 50%, rgba(0, 0, 0, 0.66) 0%, rgba(0, 0, 0, 0) 100%),
+      linear-gradient(180deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0) 22%);
   }
-  /* Arka planda oynayan film (NASA). Oynamaya başlayınca belirir; o zamana kadar zemin siyahtır. */
+  /* Arka planda oynayan film (NASA). Film inene kadar ilk karesi (poster) görünür. */
   .film {
     position: absolute;
     inset: 0;
@@ -106,18 +107,9 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
-    opacity: 0;
     filter: brightness(0.82) contrast(1.05);
-    transition: opacity 0.6s ease;
     -webkit-mask-image: linear-gradient(180deg, #000 70%, transparent 100%);
     mask-image: linear-gradient(180deg, #000 70%, transparent 100%);
-  }
-  .film-oynuyor .film { opacity: 1; }
-  /* Film renkli ve parlak; yazılar okunsun diye ortayı biraz daha karart */
-  .hero.film-oynuyor::before {
-    background:
-      radial-gradient(52% 40% at 50% 50%, rgba(0, 0, 0, 0.66) 0%, rgba(0, 0, 0, 0) 100%),
-      linear-gradient(180deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0) 22%);
   }
 
   h1 {
@@ -383,7 +375,7 @@
 
 <main id="ust">
   <div class="hero">
-    <video id="film" class="film" muted loop playsinline preload="none" aria-hidden="true" tabindex="-1" data-src="https://svs.gsfc.nasa.gov/vis/a020000/a020300/a020363/H_0322_HeliopauseCycle_v01.mp4"></video>
+    <video id="film" class="film" muted loop playsinline preload="none" aria-hidden="true" tabindex="-1" poster="/film.jpg" data-src="/film.mp4"></video>
     <!-- Filmi başlatan betik hemen filmden sonra ve async: defer olsaydı sayfanın sonunu ve yazı tipi
          stilinin inmesini bekler, film birkaç saniye geç başlardı -->
     <script src="/film.js" async></script>

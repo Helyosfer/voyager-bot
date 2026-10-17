@@ -34,9 +34,10 @@ const FILM_BETIGI = fs.readFileSync(path.join(__dirname, 'site', 'film.js'), 'ut
 const BASLIKLAR = {
   'Content-Type': 'text/html; charset=utf-8',
   'Cache-Control': 'no-cache',
-  // Yalnızca kendi betiğini çalıştırır; dışarıdan yalnızca yazı tipi ve NASA'nın arka plan filmini yükler
+  // Yalnızca kendi betiğini çalıştırır; dışarıdan yalnızca yazı tipini yükler. Arka plan filmi
+  // (/film.mp4, /film.jpg) aynı alan adından gelir; onları web sunucusu verir (README)
   'Content-Security-Policy':
-    "default-src 'none'; script-src 'self'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; media-src https://svs.gsfc.nasa.gov; img-src data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+    "default-src 'none'; script-src 'self'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; media-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'no-referrer',
   // Site bir kez https ile açıldıysa tarayıcı bir yıl boyunca bu alan adında http kullanmaz.

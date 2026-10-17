@@ -397,7 +397,8 @@ Bot `127.0.0.1:8788` üzerinde küçük bir HTTP sunucusu açar. Bu sunucu iki i
 - **Tanıtım sayfası** (`src/site/`): başlık, özellikler, komut listesi ve "Sunucuna ekle" düğmesi.
   [voyager.helyosfer.me](https://voyager.helyosfer.me) bu sayfadır. Arka planda NASA'nın
   [helyosfer animasyonu](https://svs.gsfc.nasa.gov/20363) oynar (kaynak: NASA's Goddard Space Flight Center
-  Conceptual Image Lab); dosya NASA'nın sunucusundan yüklenir.
+  Conceptual Image Lab). Film (`/film.mp4`) ve ilk karesi (`/film.jpg`) botun sunucusundan değil, web
+  sunucusundan verilir (aşağıdaki Caddy örneği); dosyalar yoksa zemin siyah kalır.
 - **Twitch ve Kick webhook'ları** (`/twitch`, `/kick`): yayın başladığında platformlar buraya haber verir.
   Gelen her istek imzasıyla doğrulanır.
 
@@ -405,8 +406,25 @@ Sunucu yalnızca kendi makinesinden erişilir; internete web sunucunla açarsın
 
 ```
 voyager.ornek.com {
+	@film path /film.mp4 /film.jpg
+	handle @film {
+		root * /var/www/voyager
+		header Cache-Control "public, max-age=604800"
+		file_server
+	}
 	reverse_proxy 127.0.0.1:8788
 }
+```
+
+Film dosyaları NASA'nın 4K kaynağından şöyle hazırlanır (sonuç ~5 MB, 720p, sessiz; `faststart` tarayıcının
+dosyanın tamamını beklemeden oynatmasını sağlar):
+
+```bash
+curl -fLO https://svs.gsfc.nasa.gov/vis/a020000/a020300/a020363/H_0322_HeliopauseCycle_v01.mp4
+ffmpeg -i H_0322_HeliopauseCycle_v01.mp4 -an -vf "scale=-2:720" -fpsmax 30 \
+  -c:v libx264 -preset veryslow -crf 28 -pix_fmt yuv420p -movflags +faststart film.mp4
+ffmpeg -i film.mp4 -frames:v 1 -q:v 5 film.jpg
+sudo mkdir -p /var/www/voyager && sudo cp film.mp4 film.jpg /var/www/voyager/
 ```
 
 `.env` içinde `YAYIN_ADRESI=https://voyager.ornek.com` olur; Kick uygulamasının webhook adresi
