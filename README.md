@@ -18,6 +18,7 @@ Node.js ve [discord.js](https://discord.js.org) ile yazıldı. Kodu alıp kendi 
   - [Yapay zekâ](#yapay-zekâ)
   - [Sunucu kurulumu](#sunucu-kurulumu-sunucukur)
   - [Acil durum kilidi](#acil-durum-kilidi-kitle-kilidiac)
+  - [Uyarılar](#uyarılar-uyari)
   - [Otomatik koruma](#otomatik-koruma)
   - [Sunucu günlüğü](#sunucu-günlüğü)
   - [Canlı yayın bildirimleri](#canlı-yayın-bildirimleri)
@@ -45,7 +46,7 @@ Node.js ve [discord.js](https://discord.js.org) ile yazıldı. Kodu alıp kendi 
 **Diğer özellikler:**
 
 - **Sunucu kurulumu:** tek komutla roller, kanallar, izinler, üyelik onayı ve destek sistemi.
-- **Moderasyon:** yasaklama, atma, süreli susturma, toplu mesaj silme.
+- **Moderasyon:** yasaklama, atma, süreli susturma, toplu mesaj silme; kalıcı uyarılar ve uyarı sayısına göre otomatik ceza.
 - **Otomatik koruma:** ele geçirilmiş hesapların spam'ini durdurur, ağır küfürleri siler.
 - **Acil durum kilidi:** saldırı anında bütün kanalları kilitler, sonra eski haline döndürür.
 - **Sunucu günlüğü:** üye giriş çıkışları, silinen ve düzenlenen mesajlar, ses kanalları ve yönetim işlemleri tek kanalda.
@@ -74,6 +75,7 @@ diliyle gösterilir.
 | `/kick` | Üyeyi atar | Üyeleri At |
 | `/sustur` | Üyeyi belirli dakika susturur (0 = kaldır) | Üyelere Zaman Aşımı Uygula |
 | `/temizle` | Kanaldaki son 1-100 mesajı siler | Mesajları Yönet |
+| `/uyari` | Üyeye kalıcı uyarı verir; uyarı sayısına göre otomatik susturma, atma ya da yasaklama | Üyelere Zaman Aşımı Uygula (kurallar için Sunucuyu Yönet) |
 | `/ayarla` | Log kanalı ve kategorileri, hoş geldin kanalı, oto rol (`sifirla` ile kaldırılır) | Sunucuyu Yönet |
 | `/koruma` | Otomatik spam koruması, ağır küfür filtresi ve dolandırıcılık görseli denetimi | Sunucuyu Yönet |
 | `/sunucukur` | Topluluk sunucusu kurar: roller, kanallar, izinler, üyelik onayı, destek sistemi | Yönetici |
@@ -83,7 +85,7 @@ diliyle gösterilir.
 | `/instagram` | Instagram hesaplarının yeni gönderilerini duyurur | Sunucuyu Yönet |
 | `/oyun` | Bedava oyun ve indirim bildirimlerini ayarlar (Steam, Epic, GOG) | Sunucuyu Yönet |
 
-Yetki gerektiren komutlar yalnızca o yetkisi olanlara görünür. `/ban`, `/kick` ve `/sustur` ayrıca rol sırasına
+Yetki gerektiren komutlar yalnızca o yetkisi olanlara görünür. `/ban`, `/kick`, `/sustur` ve `/uyari ver` ayrıca rol sırasına
 bakar: kendinle aynı ya da daha yüksek roldeki bir üyeye işlem yapamazsın. `/sunucukur`, `/kitle` ve `/kilidiac`
 Sunucu Ayarları → Entegrasyonlar'dan başka bir role açılsa bile yalnızca Yönetici yetkisi olanlarca kullanılabilir.
 
@@ -160,6 +162,26 @@ ses kanallarına giremez. Her kanalın izinleri saklanır; `/kilidiac` hepsini k
   elle kurulmuş ya da eski bir kurulumdan kalan ses kanallarında izin yoksa komut o kanalları "erişimim yok" diye bildirir.
 - Bot **Yönetici** olmak zorunda değildir. Kilit, botun kanalda elinde olan izinlerle uygulanır.
 
+### Uyarılar (`/uyari`)
+
+Moderatörlerin verdiği uyarılar kalıcı olarak saklanır; bot yeniden başlasa da kaybolmaz.
+
+| Komut | Ne yapar |
+|---|---|
+| `/uyari ver` | Üyeye sebebiyle birlikte uyarı verir; üyeye özel mesajla da bildirilir |
+| `/uyari liste` | Üyenin uyarılarını numaralarıyla gösterir (yalnızca komutu kullanan görür) |
+| `/uyari sil` / `temizle` | Tek bir uyarıyı ya da bütün uyarıları siler |
+| `/uyari kural-ekle` / `kural-sil` | Uyarı sayısı bir eşiğe gelince uygulanacak işlemi belirler: susturma, atma ya da yasaklama (Sunucuyu Yönet gerekir) |
+| `/uyari kurallar` | Kuralları gösterir |
+
+- Kural, üyenin uyarı sayısı **tam** eşiğe geldiğinde bir kez uygulanır (ör. 3. uyarıda 1 gün susturma, 5. uyarıda
+  atma). En fazla 5 kural olabilir; eşik en fazla 20'dir. Bir üyenin en fazla 50 uyarısı saklanır.
+- Kural bot üzerinden yetki aşmaya yaramaz: uyarıyı veren yetkili kuralın işlemini kendisi yapamıyorsa (ör. yalnızca
+  susturma yetkisi varken atma kuralı) işlem uygulanmaz, bu durum cevapta ve günlükte söylenir. Kural ekleyen de
+  işlemi kendisi yapabiliyor olmalıdır.
+- Uyarılar, susturma gibi rol sırasına bakar: kendinle aynı ya da daha yüksek roldeki üyeye uyarı veremezsin.
+- Verilen, silinen ve temizlenen uyarılar günlüğün Moderasyon kategorisine yazılır.
+
 ### Otomatik koruma
 
 `/koruma` ile sunucu başına açılır; hepsi varsayılan olarak kapalıdır. Mesajları Yönet yetkisi olanlar ve botlar muaftır.
@@ -198,7 +220,7 @@ tek tek açılıp kapatılır; hepsi varsayılan olarak açıktır.
 
 | Kategori | Neler yazılır |
 |---|---|
-| Moderasyon | Ban, yasak kaldırma, kick, susturma, `/temizle` (bot komutuyla ya da elle yapılanlar) |
+| Moderasyon | Ban, yasak kaldırma, kick, susturma, uyarılar, `/temizle` (bot komutuyla ya da elle yapılanlar) |
 | Üyeler | Katılma, ayrılma, takma ad ve rol değişikliği |
 | Mesajlar | Silinen ve düzenlenen mesajlar, toplu silme |
 | Ses kanalları | Girme, çıkma, kanal değiştirme |
@@ -547,6 +569,7 @@ src/
   yardimci.js         Yetki kontrolleri ve log gönderme
   gunluk.js           Sunucu günlüğü
   koruma.js           Spam koruması ve küfür filtresi
+  uyari.js            Uyarı kayıtları ve otomatik ceza kuralları
   gorsel.js           Dolandırıcılık görseli denetimi
   topluluk.js         /sunucukur şablonu, üyelik onayı, ilgi rolleri, destek talepleri
   kilit.js            Acil durum kilidi

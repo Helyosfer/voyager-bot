@@ -60,6 +60,14 @@ Her satırda beklenen sonuç yazıyor. Farklı bir şey görürsen terminaldeki 
 - [ ] Moderatör hesabı kendinden yüksek roldeki üyeye `/ban` uygulayamıyor.
 - [ ] Elle (Discord arayüzünden) yapılan yasaklama da log kanalında görünüyor.
 
+## Uyarılar
+
+- [ ] `/uyari ver` ile verilen uyarı üyeye özel mesajla geliyor ve log kanalına düşüyor; `/uyari liste` numaralarıyla gösteriyor.
+- [ ] `/uyari kural-ekle esik:2 islem:Sustur dakika:5` sonrası 2. uyarıda üye 5 dakika susturuluyor, 3. uyarıda yeniden susturulmuyor.
+- [ ] Yalnızca **Üyelere Zaman Aşımı Uygula** yetkisi olan ikinci hesap: `/uyari kural-ekle` göremiyor ya da reddediliyor;
+      atma kuralının eşiğine geldiğinde verdiği uyarı üyeyi atmıyor, cevapta "uygulanmadı" yazıyor.
+- [ ] `/uyari sil` ve `/uyari temizle` uyarıları siliyor ve log kanalına düşüyor.
+
 ## Oto rol (yetki denetimi)
 
 - [ ] Yalnızca **Sunucuyu Yönet** yetkisi olan ikinci hesap `/ayarla oto-rol` ile rol ayarlayamıyor

@@ -17,8 +17,9 @@ const BOLUMLER = [
     id: 'moderasyon',
     simge: '🛡️',
     ad: 'Moderasyon',
-    ozet: 'Üyeleri susturma, atma, yasaklama ve mesaj temizleme',
-    komutlar: ['sustur', 'kick', 'ban', 'unban', 'temizle'],
+    ozet: 'Üyeleri uyarma, susturma, atma, yasaklama ve mesaj temizleme',
+    komutlar: ['uyari', 'sustur', 'kick', 'ban', 'unban', 'temizle'],
+    ilkAdim: { uyari: 'ver' },
   },
   {
     id: 'guvenlik',
