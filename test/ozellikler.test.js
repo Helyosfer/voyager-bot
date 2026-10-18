@@ -142,3 +142,87 @@ test('uyarı: kişi başı sınır aşılınca eskiler düşer', () => {
   assert.equal(liste[0].sebep, '5');
   assert.ok(uyari.ESIK_SINIRI < uyari.KISI_BASI_SINIR, 'sınırdaki üyede kural yeniden tetiklenmesin');
 });
+
+// --- Rol menüsü ---
+const rolmenu = src('rolmenu');
+const rolmenuKomutu = src('commands/rolmenu');
+
+const sahteRol = (id, position, izinler = []) => ({ id, name: `Rol ${id}`, managed: false, position, permissions: izinli(...izinler), toString: () => `<@&${id}>` });
+
+test('rol menüsü: yönetim yetkili, botun üstündeki ve kurucunun veremeyeceği rol eklenemez', async () => {
+  const gonderilen = [];
+  const kanal = { guild: { members: { me: {} } }, isTextBased: () => true, permissionsFor: () => izinli(P.ViewChannel, P.SendMessages, P.EmbedLinks), send: async (m) => (gonderilen.push(m), { url: 'https://discord.com/x' }) };
+  const dene = async (roller, { kim = 'mod', enYuksek = 8 } = {}) => {
+    const e = etkilesim({ sunucu: 'r1', kim, izinler: [P.ManageRoles], botIzinleri: [P.ManageRoles], secenekler: { baslik: 'Roller', kanal } });
+    e.options.getRole = (ad) => roller[Number(ad.slice(3)) - 1] ?? null;
+    e.options.getBoolean = () => null;
+    e.guild.members.me.roles = { highest: { position: 10 } };
+    e.member.permissions = izinli(P.ManageRoles);
+    e.member.roles.highest.position = enYuksek;
+    await rolmenuKomutu.execute(e);
+    return e.cevaplar[0].content;
+  };
+  assert.match(await dene([sahteRol('a', 3), sahteRol('yetkili', 2, [P.KickMembers])]), /yönetim yetkisi/);
+  assert.match(await dene([sahteRol('ust', 11)]), /benim rolümden yüksek/);
+  assert.match(await dene([sahteRol('esit', 8)]), /sen de veremiyorsun/);
+  assert.equal(gonderilen.length, 0);
+
+  assert.match(await dene([sahteRol('a', 3), sahteRol('a', 3), sahteRol('b', 4)]), /^✅/);
+  const dugmeler = gonderilen[0].components.flatMap((s) => s.toJSON().components.map((d) => d.custom_id));
+  assert.deepEqual(dugmeler, ['rm:c:a', 'rm:c:b'], 'aynı rol iki kez eklenmez');
+});
+
+function rolTiklamasi({ customId, uyeRolleri = [], sunucuRolleri, kim = `k-${Math.random()}` }) {
+  const roller = new Set(uyeRolleri);
+  const cevaplar = [];
+  const dugmeler = [...sunucuRolleri.keys()].map((id) => ({ customId: `${customId.slice(0, 5)}${id}` }));
+  return {
+    roller,
+    cevaplar,
+    customId,
+    guildId: 'r2',
+    user: { id: kim },
+    isButton: () => true,
+    message: { components: [{ components: dugmeler }] },
+    guild: { roles: { cache: sunucuRolleri }, members: { me: { roles: { highest: { position: 10 } } } } },
+    member: {
+      roles: {
+        cache: { has: (id) => roller.has(id) },
+        add: async (r) => roller.add(r.id),
+        remove: async (r) => [r].flat().forEach((x) => roller.delete(x.id ?? x)),
+      },
+    },
+    reply: async (m) => cevaplar.push(m.content),
+  };
+}
+
+test('rol menüsü: düğme rolü verir ve bırakır; tek seçimde diğeri bırakılır; sonradan yetki alan rol verilmez', async () => {
+  const sunucuRolleri = new Map([['a', sahteRol('a', 3)], ['b', sahteRol('b', 4)], ['y', sahteRol('y', 5)]]);
+  const al = rolTiklamasi({ customId: 'rm:c:a', sunucuRolleri, uyeRolleri: ['b'] });
+  await rolmenu.etkilesim(al);
+  assert.deepEqual([...al.roller].sort(), ['a', 'b'], 'çoklu seçimde diğeri kalır');
+
+  const birak = rolTiklamasi({ customId: 'rm:c:a', sunucuRolleri, uyeRolleri: ['a'] });
+  await rolmenu.etkilesim(birak);
+  assert.deepEqual([...birak.roller], []);
+
+  const tek = rolTiklamasi({ customId: 'rm:t:a', sunucuRolleri, uyeRolleri: ['b', 'baska'] });
+  await rolmenu.etkilesim(tek);
+  assert.deepEqual([...tek.roller].sort(), ['a', 'baska'], 'menü dışındaki rol bırakılmaz');
+
+  sunucuRolleri.get('y').permissions = izinli(P.BanMembers);
+  const yetkili = rolTiklamasi({ customId: 'rm:c:y', sunucuRolleri });
+  await rolmenu.etkilesim(yetkili);
+  assert.deepEqual([...yetkili.roller], []);
+  assert.match(yetkili.cevaplar[0], /^❌/);
+});
+
+test('rol menüsü: art arda basmak beklemeye takılır', async () => {
+  const sunucuRolleri = new Map([['a', sahteRol('a', 3)]]);
+  const ilk = rolTiklamasi({ customId: 'rm:c:a', sunucuRolleri, kim: 'hizli' });
+  await rolmenu.etkilesim(ilk);
+  const ikinci = rolTiklamasi({ customId: 'rm:c:a', sunucuRolleri, kim: 'hizli', uyeRolleri: ['a'] });
+  await rolmenu.etkilesim(ikinci);
+  assert.deepEqual([...ikinci.roller], ['a'], 'ikinci basış işlenmez');
+  assert.match(ikinci.cevaplar[0], /yavaş/);
+});

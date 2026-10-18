@@ -17,6 +17,7 @@ Node.js ve [discord.js](https://discord.js.org) ile yazıldı. Kodu alıp kendi 
 - [Özellikler](#özellikler)
   - [Yapay zekâ](#yapay-zekâ)
   - [Sunucu kurulumu](#sunucu-kurulumu-sunucukur)
+  - [Rol menüsü](#rol-menüsü-rolmenu)
   - [Acil durum kilidi](#acil-durum-kilidi-kitle-kilidiac)
   - [Uyarılar](#uyarılar-uyari)
   - [Otomatik koruma](#otomatik-koruma)
@@ -55,6 +56,7 @@ Node.js ve [discord.js](https://discord.js.org) ile yazıldı. Kodu alıp kendi 
 - **Instagram:** seçtiğin hesapların yeni gönderilerini duyurur (ayrıca kurulum ister).
 - **Oyun fırsatları:** Steam, Epic ve GOG'daki bedava oyunları ve indirimleri Türkiye fiyatlarıyla duyurur.
 - **Karşılama:** yeni üyeye hoş geldin mesajı ve otomatik rol.
+- **Rol menüsü:** üyeler düğmeye basarak seçtiğin rolleri alıp bırakır.
 - **Hatırlatıcı:** belirttiğin süre sonra seni etiketler.
 
 Her sunucunun ayarları ayrıdır ve bir özellik açılmadıkça kapalı kalır.
@@ -78,6 +80,7 @@ diliyle gösterilir.
 | `/uyari` | Üyeye kalıcı uyarı verir; uyarı sayısına göre otomatik susturma, atma ya da yasaklama | Üyelere Zaman Aşımı Uygula (kurallar için Sunucuyu Yönet) |
 | `/ayarla` | Log kanalı ve kategorileri, hoş geldin kanalı, oto rol (`sifirla` ile kaldırılır) | Sunucuyu Yönet |
 | `/koruma` | Otomatik spam koruması, ağır küfür filtresi ve dolandırıcılık görseli denetimi | Sunucuyu Yönet |
+| `/rolmenu` | Üyelerin düğmeyle rol alıp bırakabildiği bir menü mesajı kurar (en fazla 10 rol) | Rolleri Yönet |
 | `/sunucukur` | Topluluk sunucusu kurar: roller, kanallar, izinler, üyelik onayı, destek sistemi | Yönetici |
 | `/kitle`, `/kilidiac` | Acil durumda bütün kanalları kilitler ve geri açar | Yönetici |
 | `/yayin` | Canlı yayın bildirimlerini ayarlar (Twitch, Kick, YouTube) | Sunucuyu Yönet |
@@ -148,6 +151,18 @@ olanlar atlanır, komut yeniden çalıştırılırsa yalnızca eksikler tamamlan
 Botta **Kanalları Yönet** ve **Rolleri Yönet** izinleri olmalı; bot yalnızca kendisinde olan izinleri kanal kurallarına
 yazabildiği için **Bağlan**, **Konuş**, **Video** ve **Dosya Ekle** izinleri de önerilir. Kurulumdan sonra Voyager rolü
 yeni rollerin üstüne taşınmalıdır.
+
+### Rol menüsü (`/rolmenu`)
+
+`/rolmenu` seçtiğin kanala başlık, açıklama ve her rol için bir düğme içeren bir mesaj koyar. Üye düğmeye basınca
+rolü alır, yeniden basınca bırakır. `tek-secim` açıksa üye o menüden yalnızca bir rol taşıyabilir; yenisini seçince
+eskisi bırakılır (renk ya da takım rolleri için). Menüyü kaldırmak için mesajı silmek yeterlidir; bot ayrıca bir kayıt
+tutmaz, hangi rollerin menüde olduğunu mesajın düğmelerinden okur.
+
+- Menüye oto rolle aynı kurallar uygulanır: yönetim yetkisi taşıyan (ör. üye atma, mesaj ya da rol yönetme), botun
+  rolünden yüksek ya da menüyü kuranın kendisinin veremeyeceği roller eklenemez.
+- Menü kurulduktan sonra role yönetim yetkisi verilirse ya da rol botun üstüne taşınırsa düğme o rolü vermez.
+- Bot için **Rolleri Yönet** izni gerekir.
 
 ### Acil durum kilidi (`/kitle`, `/kilidiac`)
 
@@ -570,6 +585,7 @@ src/
   gunluk.js           Sunucu günlüğü
   koruma.js           Spam koruması ve küfür filtresi
   uyari.js            Uyarı kayıtları ve otomatik ceza kuralları
+  rolmenu.js          Rol menüsü düğmeleri
   gorsel.js           Dolandırıcılık görseli denetimi
   topluluk.js         /sunucukur şablonu, üyelik onayı, ilgi rolleri, destek talepleri
   kilit.js            Acil durum kilidi

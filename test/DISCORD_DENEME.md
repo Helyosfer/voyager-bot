@@ -76,6 +76,12 @@ Her satırda beklenen sonuç yazıyor. Farklı bir şey görürsen terminaldeki 
 - [ ] Yetkisiz bir rol oto rol yapılabiliyor ve yeni gelene veriliyor.
 - [ ] Oto rol ayarlıyken o role **Mesajları Yönet** yetkisi ver: yeni gelen rolü almıyor, log kanalına uyarı düşüyor.
 
+## Rol menüsü
+
+- [ ] `/rolmenu` ile iki rollü menü kuruluyor; ikinci hesap düğmeye basınca rolü alıyor, yeniden basınca bırakıyor.
+- [ ] `tek-secim: Evet` menüde ikinci rolü seçince ilki bırakılıyor.
+- [ ] **Üyeleri At** yetkisi olan bir rol menüye eklenemiyor; menü kurulduktan sonra role bu yetki verilince düğme rolü vermiyor.
+
 ## Acil durum kilidi
 
 - [ ] `/kitle`: ikinci hesap hiçbir kanala yazamıyor, sese giremiyor; sunucu sahibi yazabiliyor.

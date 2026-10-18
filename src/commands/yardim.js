@@ -41,8 +41,8 @@ const BOLUMLER = [
     id: 'sunucu',
     simge: '⚙️',
     ad: 'Sunucu ayarları',
-    ozet: 'Kayıt kanalı, hoş geldin mesajı, otomatik rol ve hazır sunucu kurulumu',
-    komutlar: ['ayarla', 'sunucukur'],
+    ozet: 'Kayıt kanalı, hoş geldin mesajı, otomatik rol, rol menüsü ve hazır sunucu kurulumu',
+    komutlar: ['ayarla', 'rolmenu', 'sunucukur'],
     ilkAdim: { ayarla: 'goster' },
   },
 ];
