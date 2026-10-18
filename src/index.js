@@ -13,6 +13,9 @@ const haber = require('./haber');
 const yapayzeka = require('./yapayzeka');
 const topluluk = require('./topluluk');
 const kilit = require('./kilit');
+const rolmenu = require('./rolmenu');
+const cekilis = require('./cekilis');
+const seviye = require('./seviye');
 const { otoRolVer, komutYetkisiVar, hataMetni } = require('./yardimci');
 
 // Yakalanmamış bir hata botu kapatır; systemd birkaç saniyede yeniden başlatır. Bu davranış
@@ -66,6 +69,7 @@ client.once(Events.ClientReady, (c) => {
   console.log(`Bot hazır: ${c.user.tag} · ${c.guilds.cache.size} sunucuda`);
   for (const sunucu of c.guilds.cache.values()) console.log(`  · ${sunucu.name} (${sunucu.id}) · ${sunucu.memberCount} üye`);
   hatirlatici.hepsiniYukle(client);
+  cekilis.hepsiniYukle(client);
   firsatlar.baslat(client);
   yayin.baslat(client);
   instagram.baslat(client);
@@ -87,6 +91,13 @@ client.on(Events.GuildDelete, (sunucu) => console.log(`Sunucudan çıkarıldı: 
 // Dinleyici olmazsa bağlantı hatası botu çökertir
 client.on(Events.Error, (hata) => console.error('Discord bağlantı hatası:', hata));
 
+// Kalıcı düğmelerin önekleri. /sunucukur akışları (üyelik onayı, ilgi rolleri, destek), rol menüleri, çekilişler
+const KALICI = new Map([
+  ['tp:', topluluk.etkilesim],
+  ['rm:', rolmenu.etkilesim],
+  ['ck:', cekilis.etkilesim],
+]);
+
 client.on(Events.InteractionCreate, async (interaction) => {
   // Botun bulunmadığı bir sunucudan gelen etkileşim (bot bir kullanıcının hesabına kurulmuşsa
   // olur). Komutlar sunucunun üyelerine, kanallarına ve rollerine eriştiği için orada çalışamaz.
@@ -97,10 +108,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
     return;
   }
 
-  // /sunucukur ile kurulan kalıcı düğme, menü ve formlar (üyelik onayı, roller, destek)
-  if ((interaction.isMessageComponent() || interaction.isModalSubmit()) && interaction.customId.startsWith('tp:')) {
+  // Kalıcı düğme, menü ve formlar: customId'nin önekine göre ilgili modüle gider
+  const isleyici = (interaction.isMessageComponent() || interaction.isModalSubmit()) && KALICI.get(interaction.customId.slice(0, 3));
+  if (isleyici) {
     try {
-      await topluluk.etkilesim(interaction);
+      await isleyici(interaction);
     } catch (hata) {
       console.error(`${interaction.customId} hatası:`, hataMetni(hata));
       const cevap = { content: 'İşlem sırasında bir hata oluştu.', flags: MessageFlags.Ephemeral };
@@ -132,6 +144,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 gunluk.baslat(client);
 koruma.baslat(client);
 kilit.baslat(client);
+seviye.baslat(client);
 
 // Yeni üye: hoş geldin mesajı + otomatik rol
 client.on(Events.GuildMemberAdd, async (uye) => {

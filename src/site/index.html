@@ -542,14 +542,14 @@
 
       <div class="cards">
         <article class="card reveal">
-          <p class="tag">/ban · /kick · /sustur · /temizle</p>
+          <p class="tag">/ban · /kick · /sustur · /uyari · /temizle</p>
           <h3>Moderasyon</h3>
-          <p>Yasaklama, atma, susturma ve toplu mesaj silme. Her biri tek komutla, saniyeler içinde.</p>
+          <p>Yasaklama, atma, susturma, uyarı ve toplu mesaj silme. Her biri tek komutla, saniyeler içinde. Uyarılar birikince ceza kendiliğinden uygulanır.</p>
         </article>
         <article class="card reveal">
-          <p class="tag">/koruma spam · kufur · gorsel</p>
+          <p class="tag">/koruma spam · kufur · baglanti · gorsel</p>
           <h3>Otomatik koruma</h3>
-          <p>Çalınmış bir hesap bütün kanallara spam atmaya başlarsa mesajları siler ve hesabı susturur; hem de sen bildirimi görmeden. Ağır küfürleri siler, dolandırıcılık görsellerini <a class="yan-link satir-ici" href="#yz">yapay zekâyla</a> yakalar.</p>
+          <p>Çalınmış bir hesap bütün kanallara spam atmaya başlarsa mesajları siler ve hesabı susturur; hem de sen bildirimi görmeden. Ağır küfürleri ve Discord ya da Steam taklidi sahte bağlantıları siler, dolandırıcılık görsellerini <a class="yan-link satir-ici" href="#yz">yapay zekâyla</a> yakalar.</p>
         </article>
         <article class="card reveal">
           <p class="tag">/kitle · /kilidiac</p>
@@ -610,6 +610,7 @@
           <ul>
             <li><code>/yardim</code><span>Komutları ve ne işe yaradıklarını listeler</span></li>
             <li><code>/sor</code><span>Yapay zekâya soru sorar</span></li>
+            <li><code>/ozetle</code><span>Kanaldaki son mesajları yapay zekâyla özetler</span></li>
             <li><code>/hatirlat</code><span>Verdiğin süre dolunca seni etiketler</span></li>
             <li><code>/ping</code><span>Botun çalışıp çalışmadığını gösterir</span></li>
           </ul>
@@ -622,13 +623,27 @@
             <li><code>/kick</code><span>Üyeyi sunucudan atar (tekrar katılabilir)</span></li>
             <li><code>/sustur</code><span>Üyeyi belirlediğin süre kadar susturur</span></li>
             <li><code>/temizle</code><span>Kanaldaki son mesajları topluca siler</span></li>
+            <li><code>/uyari</code><span>Uyarı verir; uyarı sayısına göre otomatik ceza uygular</span></li>
           </ul>
         </div>
         <div class="grup reveal">
-          <h3>Kurulum ve koruma</h3>
+          <h3>Kurulum</h3>
           <ul>
             <li><code>/sunucukur</code><span>Topluluk sunucusunu kurar</span></li>
             <li><code>/ayarla</code><span>Günlük kanalını, hoş geldin kanalını ve otomatik rolü ayarlar</span></li>
+          </ul>
+        </div>
+        <div class="grup reveal">
+          <h3>Topluluk</h3>
+          <ul>
+            <li><code>/seviye</code><span>Mesaj yazdıkça seviye atlatır, sıralamayı ve ödül rollerini gösterir</span></li>
+            <li><code>/cekilis</code><span>Düğmeyle katılınan çekiliş başlatır, kazananı kendisi seçer</span></li>
+            <li><code>/rolmenu</code><span>Üyelerin düğmeyle rol alıp bıraktığı menü kurar</span></li>
+          </ul>
+        </div>
+        <div class="grup reveal">
+          <h3>Koruma</h3>
+          <ul>
             <li><code>/koruma</code><span>Spam, küfür ve dolandırıcılık görsellerine karşı korur</span></li>
             <li><code>/kitle</code><span>Bütün kanalları kilitler</span></li>
             <li><code>/kilidiac</code><span>Kilidi açar ve eski izinleri geri getirir</span></li>

@@ -9,6 +9,8 @@ const {
 const { ayarlariGetir, ayarKaydet } = require('../depo');
 const { yazabilirMi, otoRolEngeli } = require('../yardimci');
 const { KATEGORILER, kategoriAcik } = require('../gunluk');
+const { icerikOkunabilir } = require('../koruma');
+const yapayzeka = require('../yapayzeka');
 
 // /ayarla sifirla seçenekleri: görünen ad -> depodaki anahtar
 const AYARLAR = {
@@ -81,6 +83,18 @@ module.exports = {
             .addChoices({ name: 'Açık', value: 'acik' }, { name: 'Kapalı', value: 'kapali' }),
         ),
     )
+    .addSubcommand((s) =>
+      s
+        .setName('ozet')
+        .setDescription('/ozetle ile kanal özetlerini açar (mesajlar özetlenmek için Google\'a gönderilir)')
+        .addStringOption((o) =>
+          o
+            .setName('durum')
+            .setDescription('Açık mı kapalı mı?')
+            .setRequired(true)
+            .addChoices({ name: 'Açık', value: 'acik' }, { name: 'Kapalı', value: 'kapali' }),
+        ),
+    )
     .addSubcommand((s) => s.setName('goster').setDescription('Mevcut ayarları gösterir'))
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
     .setContexts(InteractionContextType.Guild),
@@ -122,6 +136,22 @@ module.exports = {
       const ayar = interaction.options.getString('ayar', true);
       ayarKaydet(sunucuId, AYARLAR[ayar], null);
       mesaj = `✅ ${ayar} ayarı kaldırıldı.`;
+    } else if (alt === 'ozet') {
+      const acik = interaction.options.getString('durum', true) === 'acik';
+      if (acik && !yapayzeka.hazir()) {
+        mesaj = '❌ Özetleme yapay zekâ ister, ama bu botta yapay zekâ kurulu değil (botun sahibi .env içinde GEMINI_API_KEY ve GEMINI_MODEL girmeli).';
+      } else if (acik && !icerikOkunabilir(interaction.client)) {
+        mesaj = '❌ Özetleme mesajların metnini okuyabilmeli, ama botta "Message Content Intent" açık değil. Botun sahibi bunu açmalı.';
+      } else {
+        ayarKaydet(sunucuId, 'ozetAcik', acik);
+        mesaj = acik
+          ? [
+              '✅ Özetleme açık. Üyeler `/ozetle` ile bulundukları kanalın son mesajlarını özetletebilir.',
+              'ℹ️ Özetlenen mesajlar Google\'ın yapay zekâsına gönderilir; bot mesajları saklamaz. Yalnızca kanalın mesaj geçmişini okuyabilenler özet alabilir. Özet varsayılan olarak yalnızca isteyene görünür.',
+              'Her özet, kişinin günlük `/sor` hakkından bir tane kullanır.',
+            ].join('\n')
+          : '✅ Özetleme kapatıldı.';
+      }
     } else if (alt === 'oto-rol') {
       const rol = interaction.options.getRole('rol', true);
       const engel = otoRolEngeli(interaction, rol);
@@ -140,6 +170,7 @@ module.exports = {
           { name: 'Log kanalı', value: a.logKanali ? `<#${a.logKanali}>` : 'Ayarlanmadı', inline: true },
           { name: 'Hoş geldin kanalı', value: a.hosgeldinKanali ? `<#${a.hosgeldinKanali}>` : 'Ayarlanmadı', inline: true },
           { name: 'Oto rol', value: a.otoRol ? `<@&${a.otoRol}>` : 'Ayarlanmadı', inline: true },
+          { name: 'Kanal özetleri (/ozetle)', value: a.ozetAcik ? '🟢 Açık' : '⚫ Kapalı', inline: true },
           {
             name: 'Log kategorileri',
             value: Object.entries(KATEGORILER)

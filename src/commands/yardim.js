@@ -11,14 +11,15 @@ const BOLUMLER = [
     simge: '🧭',
     ad: 'Genel',
     ozet: 'Herkesin kullanabildiği komutlar',
-    komutlar: ['hatirlat', 'ping', 'yardim'],
+    komutlar: ['sor', 'ozetle', 'hatirlat', 'ping', 'yardim'],
   },
   {
     id: 'moderasyon',
     simge: '🛡️',
     ad: 'Moderasyon',
-    ozet: 'Üyeleri susturma, atma, yasaklama ve mesaj temizleme',
-    komutlar: ['sustur', 'kick', 'ban', 'unban', 'temizle'],
+    ozet: 'Üyeleri uyarma, susturma, atma, yasaklama ve mesaj temizleme',
+    komutlar: ['uyari', 'sustur', 'kick', 'ban', 'unban', 'temizle'],
+    ilkAdim: { uyari: 'ver' },
   },
   {
     id: 'guvenlik',
@@ -35,6 +36,14 @@ const BOLUMLER = [
     ozet: 'Oyun fırsatları, canlı yayınlar ve haberler kanalına gelsin',
     komutlar: ['oyun', 'yayin', 'haber', 'instagram'],
     ilkAdim: { oyun: 'kanal', yayin: 'kanal', haber: 'kanal', instagram: 'kanal' },
+  },
+  {
+    id: 'topluluk',
+    simge: '🎉',
+    ad: 'Topluluk',
+    ozet: 'Seviyeler ve sıralama, çekilişler, düğmeyle rol alma menüleri',
+    komutlar: ['seviye', 'cekilis', 'rolmenu'],
+    ilkAdim: { seviye: 'goster', cekilis: 'baslat' },
   },
   {
     id: 'sunucu',

@@ -4,7 +4,7 @@ const { AuditLogEvent, EmbedBuilder, Events } = require('discord.js');
 const { ayarlariGetir } = require('./depo');
 
 const KATEGORILER = {
-  moderasyon: 'Moderasyon (ban, kick, susturma, mesaj temizleme)',
+  moderasyon: 'Moderasyon (ban, kick, susturma, uyarı, mesaj temizleme)',
   uyeler: 'Üyeler (katılma, ayrılma, takma ad ve rol değişikliği)',
   mesajlar: 'Mesajlar (silinen ve düzenlenen mesajlar)',
   ses: 'Ses kanalları (girme, çıkma, kanal değiştirme)',
