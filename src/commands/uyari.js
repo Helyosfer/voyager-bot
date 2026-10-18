@@ -4,6 +4,7 @@ const uyari = require('../uyari');
 
 const RENK = 0xfee75c;
 const LISTE_SINIRI = 15; // /uyari liste en son bu kadar uyarıyı gösterir
+const SEBEP_SINIRI = 200; // Listede sebebin gösterilen kısmı (tamamı günlükte)
 
 const kullaniciSecenegi = (aciklama) => (o) => o.setName('kullanici').setDescription(aciklama).setRequired(true);
 
@@ -81,15 +82,22 @@ function liste(interaction) {
   const kayitlar = uyari.uyarilar(interaction.guildId, hedef.id);
   if (!kayitlar.length) return interaction.reply({ content: `✅ **${hedef.tag}** hiç uyarı almamış.`, flags: MessageFlags.Ephemeral });
 
-  const baslangic = Math.max(kayitlar.length - LISTE_SINIRI, 0);
-  const satirlar = kayitlar
-    .slice(baslangic)
-    .map((k, i) => `**${baslangic + i + 1}.** ${k.sebep}\n-# <@${k.yetkiliId}> · <t:${Math.floor(k.zaman / 1000)}:R>`);
+  // En yeniden geriye: en fazla LISTE_SINIRI uyarı, Discord'un kutu açıklaması sınırına (4096) sığdığı kadar
+  const satirlar = [];
+  let uzunluk = 0;
+  for (let i = kayitlar.length - 1; i >= 0 && satirlar.length < LISTE_SINIRI; i--) {
+    const k = kayitlar[i];
+    const sebep = k.sebep.length > SEBEP_SINIRI ? `${k.sebep.slice(0, SEBEP_SINIRI - 1)}…` : k.sebep;
+    const satir = `**${i + 1}.** ${sebep}\n-# <@${k.yetkiliId}> · <t:${Math.floor(k.zaman / 1000)}:R>`;
+    if (uzunluk + satir.length + 1 > 4000) break;
+    satirlar.unshift(satir);
+    uzunluk += satir.length + 1;
+  }
   const embed = new EmbedBuilder()
     .setTitle(`⚠️ ${hedef.tag} · ${kayitlar.length} uyarı`)
     .setColor(RENK)
     .setDescription(satirlar.join('\n'))
-    .setFooter({ text: baslangic ? `Son ${LISTE_SINIRI} uyarı gösteriliyor. Silmek için /uyari sil.` : 'Silmek için /uyari sil.' });
+    .setFooter({ text: satirlar.length < kayitlar.length ? `Son ${satirlar.length} uyarı gösteriliyor. Silmek için /uyari sil.` : 'Silmek için /uyari sil.' });
   return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } });
 }
 

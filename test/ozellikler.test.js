@@ -610,3 +610,12 @@ test('/koruma alan: engel ve izin listeleri; bir alan iki listede birden durmaz'
   assert.match(await calistir('kotu.site', 'cikar'), /^❌/);
   assert.match(await calistir('gecersiz', 'engel'), /^❌/);
 });
+
+test('/uyari liste: uzun sebepler Discord\'un 4096 karakterlik sınırını aşmaz', async () => {
+  for (let i = 0; i < 20; i++) uyari.ekle('u5', 'h8', { id: String(i), sebep: `${i} ${'ş'.repeat(398)}`, yetkiliId: '123456789012345678', zaman: Date.now() });
+  const e = etkilesim({ sunucu: 'u5', alt: 'liste', secenekler: { kullanici: { id: 'h8', tag: 'h8#0' } } });
+  await uyariKomutu.execute(e);
+  const aciklama = e.cevaplar[0].embeds[0].toJSON().description;
+  assert.ok(aciklama.length <= 4096, String(aciklama.length));
+  assert.ok(aciklama.includes('**20.**'), 'en yeni uyarı görünür');
+});
