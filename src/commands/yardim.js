@@ -38,11 +38,19 @@ const BOLUMLER = [
     ilkAdim: { oyun: 'kanal', yayin: 'kanal', haber: 'kanal', instagram: 'kanal' },
   },
   {
+    id: 'topluluk',
+    simge: '🎉',
+    ad: 'Topluluk',
+    ozet: 'Çekilişler ve düğmeyle rol alma menüleri',
+    komutlar: ['cekilis', 'rolmenu'],
+    ilkAdim: { cekilis: 'baslat' },
+  },
+  {
     id: 'sunucu',
     simge: '⚙️',
     ad: 'Sunucu ayarları',
-    ozet: 'Kayıt kanalı, hoş geldin mesajı, otomatik rol, rol menüsü ve hazır sunucu kurulumu',
-    komutlar: ['ayarla', 'rolmenu', 'sunucukur'],
+    ozet: 'Kayıt kanalı, hoş geldin mesajı, otomatik rol ve hazır sunucu kurulumu',
+    komutlar: ['ayarla', 'sunucukur'],
     ilkAdim: { ayarla: 'goster' },
   },
 ];

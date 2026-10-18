@@ -82,6 +82,13 @@ Her satırda beklenen sonuç yazıyor. Farklı bir şey görürsen terminaldeki 
 - [ ] `tek-secim: Evet` menüde ikinci rolü seçince ilki bırakılıyor.
 - [ ] **Üyeleri At** yetkisi olan bir rol menüye eklenemiyor; menü kurulduktan sonra role bu yetki verilince düğme rolü vermiyor.
 
+## Çekiliş
+
+- [ ] `/cekilis baslat dakika:2` sonrası ikinci hesap **Katıl** ile katılıyor; süre dolunca kazanan duyuruluyor, mesaj "bitti" oluyor.
+- [ ] Çekiliş sürerken bot yeniden başlatılıyor; süre dolunca yine de bitiyor.
+- [ ] `gereken-rol` ile başlatılan çekilişe rolü olmayan hesap katılamıyor.
+- [ ] `/cekilis yeniden` önceki kazananı seçmiyor; `/cekilis iptal` mesajı "iptal edildi" yapıyor.
+
 ## Acil durum kilidi
 
 - [ ] `/kitle`: ikinci hesap hiçbir kanala yazamıyor, sese giremiyor; sunucu sahibi yazabiliyor.

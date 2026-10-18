@@ -14,6 +14,7 @@ const yapayzeka = require('./yapayzeka');
 const topluluk = require('./topluluk');
 const kilit = require('./kilit');
 const rolmenu = require('./rolmenu');
+const cekilis = require('./cekilis');
 const { otoRolVer, komutYetkisiVar, hataMetni } = require('./yardimci');
 
 // Yakalanmamış bir hata botu kapatır; systemd birkaç saniyede yeniden başlatır. Bu davranış
@@ -67,6 +68,7 @@ client.once(Events.ClientReady, (c) => {
   console.log(`Bot hazır: ${c.user.tag} · ${c.guilds.cache.size} sunucuda`);
   for (const sunucu of c.guilds.cache.values()) console.log(`  · ${sunucu.name} (${sunucu.id}) · ${sunucu.memberCount} üye`);
   hatirlatici.hepsiniYukle(client);
+  cekilis.hepsiniYukle(client);
   firsatlar.baslat(client);
   yayin.baslat(client);
   instagram.baslat(client);
@@ -88,10 +90,11 @@ client.on(Events.GuildDelete, (sunucu) => console.log(`Sunucudan çıkarıldı: 
 // Dinleyici olmazsa bağlantı hatası botu çökertir
 client.on(Events.Error, (hata) => console.error('Discord bağlantı hatası:', hata));
 
-// Kalıcı düğmelerin önekleri. /sunucukur akışları (üyelik onayı, ilgi rolleri, destek), rol menüleri
+// Kalıcı düğmelerin önekleri. /sunucukur akışları (üyelik onayı, ilgi rolleri, destek), rol menüleri, çekilişler
 const KALICI = new Map([
   ['tp:', topluluk.etkilesim],
   ['rm:', rolmenu.etkilesim],
+  ['ck:', cekilis.etkilesim],
 ]);
 
 client.on(Events.InteractionCreate, async (interaction) => {

@@ -18,6 +18,7 @@ Node.js ve [discord.js](https://discord.js.org) ile yazıldı. Kodu alıp kendi 
   - [Yapay zekâ](#yapay-zekâ)
   - [Sunucu kurulumu](#sunucu-kurulumu-sunucukur)
   - [Rol menüsü](#rol-menüsü-rolmenu)
+  - [Çekilişler](#çekilişler-cekilis)
   - [Acil durum kilidi](#acil-durum-kilidi-kitle-kilidiac)
   - [Uyarılar](#uyarılar-uyari)
   - [Otomatik koruma](#otomatik-koruma)
@@ -57,6 +58,7 @@ Node.js ve [discord.js](https://discord.js.org) ile yazıldı. Kodu alıp kendi 
 - **Oyun fırsatları:** Steam, Epic ve GOG'daki bedava oyunları ve indirimleri Türkiye fiyatlarıyla duyurur.
 - **Karşılama:** yeni üyeye hoş geldin mesajı ve otomatik rol.
 - **Rol menüsü:** üyeler düğmeye basarak seçtiğin rolleri alıp bırakır.
+- **Çekiliş:** düğmeyle katılınan, süre dolunca kazananı kendiliğinden seçip duyuran çekilişler.
 - **Hatırlatıcı:** belirttiğin süre sonra seni etiketler.
 
 Her sunucunun ayarları ayrıdır ve bir özellik açılmadıkça kapalı kalır.
@@ -80,6 +82,7 @@ diliyle gösterilir.
 | `/uyari` | Üyeye kalıcı uyarı verir; uyarı sayısına göre otomatik susturma, atma ya da yasaklama | Üyelere Zaman Aşımı Uygula (kurallar için Sunucuyu Yönet) |
 | `/ayarla` | Log kanalı ve kategorileri, hoş geldin kanalı, oto rol (`sifirla` ile kaldırılır) | Sunucuyu Yönet |
 | `/koruma` | Otomatik spam koruması, ağır küfür filtresi ve dolandırıcılık görseli denetimi | Sunucuyu Yönet |
+| `/cekilis` | Düğmeyle katılınan çekiliş başlatır, erken bitirir, yeniden çeker ya da iptal eder | Sunucuyu Yönet |
 | `/rolmenu` | Üyelerin düğmeyle rol alıp bırakabildiği bir menü mesajı kurar (en fazla 10 rol) | Rolleri Yönet |
 | `/sunucukur` | Topluluk sunucusu kurar: roller, kanallar, izinler, üyelik onayı, destek sistemi | Yönetici |
 | `/kitle`, `/kilidiac` | Acil durumda bütün kanalları kilitler ve geri açar | Yönetici |
@@ -163,6 +166,23 @@ tutmaz, hangi rollerin menüde olduğunu mesajın düğmelerinden okur.
   rolünden yüksek ya da menüyü kuranın kendisinin veremeyeceği roller eklenemez.
 - Menü kurulduktan sonra role yönetim yetkisi verilirse ya da rol botun üstüne taşınırsa düğme o rolü vermez.
 - Bot için **Rolleri Yönet** izni gerekir.
+
+### Çekilişler (`/cekilis`)
+
+| Komut | Ne yapar |
+|---|---|
+| `/cekilis baslat` | Ödül, süre (en fazla 14 gün), kazanan sayısı (en fazla 20) ve isteğe bağlı rol şartıyla çekiliş başlatır |
+| `/cekilis bitir` | Çekilişi süresi dolmadan bitirir ve kazananları seçer |
+| `/cekilis yeniden` | Biten çekilişte daha önce kazanmamış katılımcılar arasından yeniden seçer |
+| `/cekilis iptal` | Çekilişi kimseyi seçmeden iptal eder |
+
+- Üyeler mesajdaki **Katıl** düğmesiyle katılır, yeniden basınca çekilir. Süre dolunca kazananlar rastgele seçilir,
+  mesaj güncellenir ve kanalda yalnızca kazananlar etiketlenerek duyurulur.
+- Kazananlar yalnızca hâlâ sunucuda olan katılımcılar arasından seçilir.
+- Çekilişler kaydedilir; bot yeniden başlarsa süren çekilişler kaldığı yerden devam eder. Biten çekilişler yeniden
+  çekiliş için 7 gün saklanır.
+- Bir sunucuda aynı anda en fazla 10 çekiliş sürebilir; bir çekilişe en fazla 5.000 kişi katılabilir.
+- `bitir`, `yeniden` ve `iptal` çekiliş mesajının bağlantısını (Mesaj → Bağlantıyı Kopyala) ya da kimliğini ister.
 
 ### Acil durum kilidi (`/kitle`, `/kilidiac`)
 
@@ -586,6 +606,7 @@ src/
   koruma.js           Spam koruması ve küfür filtresi
   uyari.js            Uyarı kayıtları ve otomatik ceza kuralları
   rolmenu.js          Rol menüsü düğmeleri
+  cekilis.js          Çekiliş kayıtları, zamanlayıcıları ve kazanan seçimi
   gorsel.js           Dolandırıcılık görseli denetimi
   topluluk.js         /sunucukur şablonu, üyelik onayı, ilgi rolleri, destek talepleri
   kilit.js            Acil durum kilidi

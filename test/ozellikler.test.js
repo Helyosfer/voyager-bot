@@ -226,3 +226,84 @@ test('rol menüsü: art arda basmak beklemeye takılır', async () => {
   assert.deepEqual([...ikinci.roller], ['a'], 'ikinci basış işlenmez');
   assert.match(ikinci.cevaplar[0], /yavaş/);
 });
+
+// --- Çekiliş ---
+const cekilis = src('cekilis');
+const cekilisKomutu = src('commands/cekilis');
+
+function cekilisOrtami(sunucuId, uyeler) {
+  const gonderilen = [];
+  const duzenlenen = [];
+  const kanal = { isTextBased: () => true, messages: { fetch: async () => ({ edit: async (m) => duzenlenen.push(m) }) }, send: async (m) => gonderilen.push(m) };
+  const guild = { members: { fetch: async (id) => (uyeler.includes(id) ? { id } : Promise.reject(new Error('Unknown Member'))) } };
+  const client = { guilds: { cache: new Map([[sunucuId, guild]]) }, channels: { fetch: async () => kanal } };
+  return { client, gonderilen, duzenlenen };
+}
+
+const yeniCekilis = (id, sunucuId, ek = {}) => ({
+  id, sunucuId, kanalId: 'k', odul: 'Nitro', kazananSayisi: 1, bitis: Date.now() + 3_600_000, baslatanId: 'mod', gerekenRol: null, katilanlar: [], bitti: false, kazananlar: [], ...ek,
+});
+
+function katilmaTiklamasi(mesajId, kim, roller = []) {
+  const cevaplar = [];
+  return {
+    cevaplar,
+    customId: 'ck:katil',
+    guildId: 'c1',
+    user: { id: kim },
+    isButton: () => true,
+    message: { id: mesajId },
+    member: { roles: { cache: { has: (id) => roller.includes(id) } } },
+    reply: async (m) => cevaplar.push(m.content),
+  };
+}
+
+test('çekiliş: düğmeyle katılınır ve çekilinir; rol şartı uygulanır', async () => {
+  const { client } = cekilisOrtami('c1', []);
+  cekilis.ekle(client, yeniCekilis('100000000000000001', 'c1', { gerekenRol: 'vip' }));
+  await cekilis.etkilesim(katilmaTiklamasi('100000000000000001', 'a', ['vip']));
+  await cekilis.etkilesim(katilmaTiklamasi('100000000000000001', 'b'));
+  assert.deepEqual(cekilis.bul('100000000000000001').katilanlar, ['a'], 'rolü olmayan katılamaz');
+
+  // Aynı kişi beklemeye takılmasın diye farklı sunucu anahtarıyla tekrar basar
+  const cik = katilmaTiklamasi('100000000000000001', 'a', ['vip']);
+  cik.guildId = 'c1-ikinci';
+  await cekilis.etkilesim(cik);
+  assert.deepEqual(cekilis.bul('100000000000000001').katilanlar, []);
+  await cekilis.iptal(client, '100000000000000001');
+  assert.equal(cekilis.bul('100000000000000001'), null);
+});
+
+test('çekiliş: kazanan yalnızca hâlâ sunucudakilerden seçilir; aynı anda iki bitirme tek sonuç verir', async () => {
+  const { client, gonderilen } = cekilisOrtami('c2', ['kalan1', 'kalan2']);
+  cekilis.ekle(client, yeniCekilis('100000000000000002', 'c2', { kazananSayisi: 3, katilanlar: ['ayrilan', 'kalan1', 'kalan2'] }));
+  const [ilk, ikinci] = await Promise.all([cekilis.bitir(client, '100000000000000002'), cekilis.bitir(client, '100000000000000002')]);
+  assert.ok(ilk);
+  assert.equal(ikinci, null);
+  assert.deepEqual([...ilk.kazananlar].sort(), ['kalan1', 'kalan2']);
+  assert.equal(gonderilen.length, 1, 'tek duyuru');
+  assert.deepEqual([...gonderilen[0].allowedMentions.users].sort(), ['kalan1', 'kalan2'], 'yalnızca kazananlar etiketlenir');
+});
+
+test('çekiliş: yeniden çekilişte önceki kazananlar seçilmez', async () => {
+  const { client } = cekilisOrtami('c3', ['a', 'b']);
+  cekilis.ekle(client, yeniCekilis('100000000000000003', 'c3', { katilanlar: ['a', 'b'] }));
+  const { kazananlar } = await cekilis.bitir(client, '100000000000000003');
+  const yeni = await cekilis.yenidenCek(client, '100000000000000003', 5);
+  assert.deepEqual([...kazananlar, ...yeni].sort(), ['a', 'b']);
+  assert.deepEqual(await cekilis.yenidenCek(client, '100000000000000003', 1), [], 'aday kalmadı');
+});
+
+test('çekiliş: başka sunucunun çekilişi komutla yönetilemez', async () => {
+  const { client } = cekilisOrtami('c4', []);
+  cekilis.ekle(client, yeniCekilis('100000000000000004', 'c4'));
+  const e = etkilesim({ sunucu: 'baska', alt: 'iptal', secenekler: { mesaj: 'https://discord.com/channels/c4/k/100000000000000004' } });
+  await cekilisKomutu.execute(e);
+  assert.match(e.cevaplar[0].content, /^❌/);
+  assert.ok(cekilis.bul('100000000000000004'));
+
+  const sahibi = etkilesim({ sunucu: 'c4', alt: 'iptal', secenekler: { mesaj: 'https://discord.com/channels/c4/k/100000000000000004' } });
+  sahibi.client = client;
+  await cekilisKomutu.execute(sahibi);
+  assert.equal(cekilis.bul('100000000000000004'), null);
+});
