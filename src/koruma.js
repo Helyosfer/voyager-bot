@@ -255,21 +255,36 @@ async function baglantiUygula(mesaj, bulgu, ayar) {
   await gunlukGonder(mesaj.guild, 'moderasyon', embed);
 }
 
+// Silinmek üzere yakalanan mesajlar. Seviye sistemi bunlara XP vermez (bkz. seviye.js).
+// Spam, küfür ve bağlantı kararı mesaj geldiği anda, ilk beklemeden önce verilip işaretlenir.
+// Görsel denetiminin kararı 30-60 saniye sürdüğü için o mesajlar işaretlenemez.
+const yakalananlar = new WeakSet();
+const yakalandi = (mesaj) => yakalananlar.has(mesaj);
+
 async function mesajGeldi(mesaj) {
   if (muaf(mesaj)) return;
   const ayar = ayarCoz(ayarlariGetir(mesaj.guild.id));
 
   if (ayar.spam) {
     const sebep = spamSebebi(mesaj);
-    if (sebep) return spamUygula(mesaj, sebep, ayar);
+    if (sebep) {
+      yakalananlar.add(mesaj);
+      return spamUygula(mesaj, sebep, ayar);
+    }
   }
   if (ayar.kufur && mesaj.content) {
     const kelime = kufurBul(mesaj.content, ayar.kelimeler);
-    if (kelime) return kufurUygula(mesaj, kelime, ayar);
+    if (kelime) {
+      yakalananlar.add(mesaj);
+      return kufurUygula(mesaj, kelime, ayar);
+    }
   }
   if (ayar.baglanti && mesaj.content) {
     const bulgu = zararliBaglanti(mesaj.content, ayar);
-    if (bulgu) return baglantiUygula(mesaj, bulgu, ayar);
+    if (bulgu) {
+      yakalananlar.add(mesaj);
+      return baglantiUygula(mesaj, bulgu, ayar);
+    }
   }
   if (ayar.gorsel && mesaj.attachments?.size) return gorsel.denetle(mesaj, ayar);
 }
@@ -307,4 +322,4 @@ function baslat(client) {
 // Küfür filtresi mesaj metnini okuyabilmeli; bu ayrıcalıklı izin açık mı?
 const icerikOkunabilir = (client) => client.options.intents.has(GatewayIntentBits.MessageContent);
 
-module.exports = { baslat, ayarCoz, kufurBul, kelimeBicimi, icerikOkunabilir, mesajGeldi, mesajDuzenlendi, KANAL_ESIGI, PENCERE };
+module.exports = { baslat, ayarCoz, kufurBul, kelimeBicimi, icerikOkunabilir, mesajGeldi, mesajDuzenlendi, yakalandi, KANAL_ESIGI, PENCERE };

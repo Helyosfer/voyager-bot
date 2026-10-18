@@ -619,3 +619,42 @@ test('/uyari liste: uzun sebepler Discord\'un 4096 karakterlik sınırını aşm
   assert.ok(aciklama.length <= 4096, String(aciklama.length));
   assert.ok(aciklama.includes('**20.**'), 'en yeni uyarı görünür');
 });
+
+test('seviye: otomatik korumanın sildiği mesaj XP kazandırmaz (gerçek dinleyici sırasıyla)', async () => {
+  const { EventEmitter } = require('node:events');
+  const koruma = src('koruma');
+  const istemci = new EventEmitter();
+  // Korumanın temizlik zamanlayıcısı test sürecini açık tutmasın
+  const asilAralik = global.setInterval;
+  global.setInterval = (...a) => asilAralik(...a).unref();
+  try {
+    koruma.baslat(istemci);
+    seviye.baslat(istemci);
+  } finally {
+    global.setInterval = asilAralik;
+  }
+  depo.ayarKaydet('x1', 'seviyeAcik', true);
+  depo.ayarKaydet('x1', 'korumaBaglanti', true);
+
+  const kotu = seviyeMesaji('x1', 'kotu');
+  const silinen = [];
+  Object.assign(kotu.mesaj, {
+    content: 'bedava nitro https://dlscord.com/gift',
+    attachments: new Map(),
+    delete: async () => silinen.push('kotu'),
+  });
+  Object.assign(kotu.mesaj.member, { permissions: izinli(), moderatable: true, timeout: async () => {} });
+  kotu.mesaj.channel.send = async () => null; // Korumanın kanala yazdığı kısa uyarı
+  const iyi = seviyeMesaji('x1', 'iyi');
+  Object.assign(iyi.mesaj, { content: 'merhaba', attachments: new Map() });
+  iyi.mesaj.member.permissions = izinli();
+
+  istemci.emit('messageCreate', kotu.mesaj);
+  istemci.emit('messageCreate', iyi.mesaj);
+  await new Promise((coz) => setImmediate(coz));
+  await new Promise((coz) => setImmediate(coz));
+
+  assert.deepEqual(silinen, ['kotu']);
+  assert.equal(seviye.xp('x1', 'kotu'), 0, 'silinen mesaj XP kazandırmaz');
+  assert.ok(seviye.xp('x1', 'iyi') >= 15, 'normal mesaj XP kazandırır');
+});

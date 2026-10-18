@@ -8,6 +8,7 @@ const crypto = require('node:crypto');
 const { Events } = require('discord.js');
 const { oku, yaz, ayarlariGetir } = require('./depo');
 const { yonetimRolu, yazabilirMi, beklemeSayaci, hataMetni } = require('./yardimci');
+const koruma = require('./koruma');
 
 const BEKLEME = 60_000; // Kişi bu sürede en fazla bir kez XP kazanır; art arda yazmak işe yaramaz
 const XP_EN_AZ = 15;
@@ -89,6 +90,8 @@ async function seviyeAtladi(mesaj, seviye, ayar) {
 
 async function mesajGeldi(mesaj) {
   if (!mesaj.guild || !mesaj.member || mesaj.author?.bot || mesaj.webhookId || mesaj.system) return;
+  // Otomatik korumanın silmek üzere yakaladığı mesaj (spam, küfür, zararlı bağlantı) XP kazandırmaz
+  if (koruma.yakalandi(mesaj)) return;
   const ayar = ayarCoz(ayarlariGetir(mesaj.guild.id));
   if (!ayar.acik) return;
   const anahtar = `${mesaj.guild.id}:${mesaj.author.id}`;
@@ -105,7 +108,9 @@ async function mesajGeldi(mesaj) {
 
 function baslat(client) {
   client.on(Events.MessageCreate, (mesaj) => {
-    mesajGeldi(mesaj).catch((hata) => console.error('Seviye hatası:', hataMetni(hata)));
+    // Bir tur sonra: otomatik koruma aynı olayda mesaj hakkındaki kararını o ana kadar vermiş olur.
+    // Dinleyicilerin kayıt sırasına ya da korumanın içindeki beklemelere bağlı değildir.
+    setImmediate(() => mesajGeldi(mesaj).catch((hata) => console.error('Seviye hatası:', hataMetni(hata))));
   });
   setInterval(kaydet, KAYIT_ARALIGI).unref();
   // systemd botu durdururken (güncelleme, yeniden başlatma) SIGTERM gönderir; bellekteki XP kaybolmasın

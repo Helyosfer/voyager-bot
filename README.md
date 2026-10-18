@@ -205,6 +205,8 @@ tutmaz, hangi rollerin menüde olduğunu mesajın düğmelerinden okur.
 
 - Üye her mesajda 15-25 XP kazanır, ama dakikada en fazla bir kez; art arda yazmak XP kazandırmaz. Botlar ve
   webhook'lar XP kazanmaz. Seviye atlamak giderek zorlaşır (0→1: 100 XP, 9→10: 1.005 XP).
+- Otomatik korumanın sildiği mesajlar (spam, küfür, zararlı bağlantı) XP kazandırmaz. Görsel denetiminin kararı
+  30-60 saniye sürdüğü için onun sildiği mesajlar bu kurala girmez.
 - Mesajların içeriği okunmaz, yalnızca yazıldıkları bilinir; Message Content Intent gerekmez.
 - Seviye atlayan, mesajı yazdığı kanalda (ya da seçilen duyuru kanalında) etiketlenerek duyurulur.
 - Ödül rollerine oto rolle aynı kurallar uygulanır: yönetim yetkisi taşıyan, botun rolünden yüksek ya da ödülü
