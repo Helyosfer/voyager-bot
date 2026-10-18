@@ -403,6 +403,11 @@ puanlar da yazar. Bir oyunun incelemesi bir kez yazılır, 60 gün saklanır ve 
 `/sor soru:<metin>` soruyu Google'ın Gemini modeline sorar ve cevabı kanala yazar; `gizli` seçeneğiyle cevabı
 yalnızca soran görür. Cevaplar yanlış olabilir; her cevabın altında bu not yer alır.
 
+Açık cevaplar Discord'da **Yanıtla** ile cevaplanarak sürdürülebilir: bot yanıt zincirini geriye doğru izler
+(en fazla 10 mesaj), önceki soru ve cevapları bağlam olarak modele gönderir ve cevabını yanıt olarak yazar. Her
+yanıt `/sor` hakkından bir tane kullanır. Bunun için `MESAJ_ICERIGI=1` gerekir; kapalıysa Discord yalnızca botu
+etiketleyen mesajların içeriğini verdiğinden, yanıt yalnızca etiket (Yanıtla'daki "@ AÇIK") açıkken çalışır.
+
 - Model yalnızca metin üretir: sunucuda hiçbir işlem yapamaz ve cevabı kimseyi etiketleyemez.
 - Sorulan metin Google'a gönderilir. Ücretsiz katmanda Google bu metni ürünlerini geliştirmek için kullanabilir;
   kişisel bilgi yazılmamalıdır. Bot soruları kaydetmez.
@@ -678,6 +683,7 @@ src/
   haber.js            Haber bildirimleri; haber-ayristir.js ayrı iş parçacığında çalışır
   instagram.js        Instagram gönderi bildirimleri
   yapayzeka.js        Gemini bağlantısı ve /sor
+  sohbet.js           /sor cevabına "Yanıtla" ile devam edilen konuşmalar
   inceleme.js         Oyun fırsatı kartlarındaki yapay zekâ incelemesi
   firsatlar.js        Oyun fırsatları
   hatirlatici.js      Hatırlatıcı zamanlayıcıları

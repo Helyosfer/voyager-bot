@@ -658,3 +658,127 @@ test('seviye: otomatik korumanın sildiği mesaj XP kazandırmaz (gerçek dinley
   assert.equal(seviye.xp('x1', 'kotu'), 0, 'silinen mesaj XP kazandırmaz');
   assert.ok(seviye.xp('x1', 'iyi') >= 15, 'normal mesaj XP kazandırır');
 });
+
+// --- /sor cevabına yanıtla devam ---
+const sohbet = src('sohbet');
+const yzSohbet = src('yapayzeka');
+const SOR_DIPNOTU = '-# Yapay zekâ cevabıdır, yanlış olabilir · bugün kalan soru hakkın: 19';
+
+// Sohbet mesajı sahtesi. onceki: yanıtlanan mesaj. Gönderilen yanıtlar yanitlar[]'a düşer.
+function sohbetMesaji({ yazar = 'u', bot = false, icerik, onceki = null, sunucu = 'sh', izinler = [P.ViewChannel, P.SendMessages, P.ReadMessageHistory] }) {
+  const yanitlar = [];
+  const mesaj = {
+    yanitlar,
+    guild: { id: sunucu, members: { me: {} } },
+    client: { user: { id: 'bot' } },
+    author: { id: bot ? 'bot' : yazar, bot },
+    system: false,
+    content: icerik,
+    reference: onceki ? { messageId: `m-${Math.random()}` } : null,
+    mentions: { repliedUser: onceki ? { id: onceki.author.id } : null },
+    fetchReference: async () => onceki ?? Promise.reject(new Error('Unknown Message')),
+    channel: { guild: { members: { me: {} } }, permissionsFor: () => izinli(...izinler), isThread: () => false, sendTyping: async () => {} },
+    reply: async (m) => yanitlar.push(m),
+  };
+  return mesaj;
+}
+
+// fetch sahtesi: modele giden konuşmayı kaydeder, sırayla verilen cevapları döndürür
+async function sohbetle(fn, cevaplar = ['cevap']) {
+  const istekler = [];
+  const asilFetch = global.fetch;
+  const asilLog = console.log;
+  const dakikalik = yzSohbet.ayar.dakikalik;
+  yzSohbet.ayar.dakikalik = Infinity;
+  console.log = () => {};
+  global.fetch = async (_adres, secenek) => {
+    istekler.push(JSON.parse(secenek.body).contents.map((c) => `${c.role}: ${c.parts.at(-1).text}`));
+    const text = cevaplar[Math.min(istekler.length - 1, cevaplar.length - 1)];
+    return { ok: true, status: 200, json: async () => ({ candidates: [{ content: { parts: [{ text }] } }] }) };
+  };
+  try {
+    await fn();
+  } finally {
+    global.fetch = asilFetch;
+    console.log = asilLog;
+    yzSohbet.ayar.dakikalik = dakikalik;
+  }
+  return istekler;
+}
+
+test('/sor yanıtı: cevaba yanıt önceki soru ve cevapla birlikte sorulur; zincir sürer', async () => {
+  const ilk = sohbetMesaji({ bot: true, icerik: `> **Selam, naber?**\nSelam! İyiyim.\n${SOR_DIPNOTU}` });
+  const u1 = sohbetMesaji({ yazar: 'y1', icerik: 'İyidir, neler yapabiliyorsun?', onceki: ilk });
+  const u2Ref = {};
+  const istekler = await sohbetle(async () => {
+    await sohbet.mesajGeldi(u1);
+    // Botun yanıtı da yanıtlanabilir
+    const b2 = sohbetMesaji({ bot: true, icerik: `${u1.yanitlar[0].content}`, onceki: u1 });
+    u2Ref.mesaj = sohbetMesaji({ yazar: 'y1', icerik: 'Peki hatırlatıcı nasıl kurulur?', onceki: b2 });
+    await sohbet.mesajGeldi(u2Ref.mesaj);
+  }, ['Soru cevaplayabilirim. @everyone', 'Şöyle kurulur.']);
+
+  assert.deepEqual(istekler[0], ['user: Selam, naber?', 'model: Selam! İyiyim.', 'user: İyidir, neler yapabiliyorsun?']);
+  const yanit = u1.yanitlar[0];
+  assert.deepEqual(yanit.allowedMentions, { parse: [], repliedUser: false });
+  assert.match(yanit.content, /^Soru cevaplayabilirim\. @everyone\n-# Yapay zekâ cevabıdır, yanlış olabilir · sürdürmek için yanıtla · bugün kalan soru hakkın: \d+$/);
+
+  assert.deepEqual(istekler[1], [
+    'user: Selam, naber?',
+    'model: Selam! İyiyim.',
+    'user: İyidir, neler yapabiliyorsun?',
+    'model: Soru cevaplayabilirim. @everyone',
+    'user: Peki hatırlatıcı nasıl kurulur?',
+  ]);
+  assert.match(u2Ref.mesaj.yanitlar[0].content, /^Şöyle kurulur\.\n-# Yapay zekâ cevabıdır/);
+});
+
+test('/sor yanıtı: /sor cevabı olmayan mesaja, başka kişiye, boş ya da yazılamayan kanaldaki yanıta cevap verilmez', async () => {
+  const sorCevabi = sohbetMesaji({ bot: true, icerik: `> **soru**\ncevap\n${SOR_DIPNOTU}` });
+  const durumlar = [
+    // Botun başka bir mesajı (ör. seviye duyurusu)
+    sohbetMesaji({ yazar: 'y2', icerik: 'teşekkürler', onceki: sohbetMesaji({ bot: true, icerik: '🎉 seviye atladın' }) }),
+    // Başka bir üyenin mesajı
+    sohbetMesaji({ yazar: 'y2', icerik: 'katılıyorum', onceki: sohbetMesaji({ yazar: 'baska', icerik: `x\n${SOR_DIPNOTU}` }) }),
+    // İçerik okunamıyor (Message Content izni yok)
+    sohbetMesaji({ yazar: 'y2', icerik: '', onceki: sorCevabi }),
+    // Bot bu kanala yazamıyor
+    sohbetMesaji({ yazar: 'y2', icerik: 'devam', onceki: sorCevabi, izinler: [P.ViewChannel] }),
+    // Yanıt olmayan mesaj
+    sohbetMesaji({ yazar: 'y2', icerik: 'merhaba' }),
+  ];
+  const botun = sohbetMesaji({ bot: true, icerik: 'bot kendine yanıt vermez', onceki: sorCevabi });
+  const istekler = await sohbetle(async () => {
+    for (const m of [...durumlar, botun]) await sohbet.mesajGeldi(m);
+  });
+  assert.equal(istekler.length, 0);
+  assert.ok([...durumlar, botun].every((m) => m.yanitlar.length === 0));
+});
+
+test('/sor yanıtı: sınır dolunca model çağrılmadan uyarı yazılır', async () => {
+  const sorCevabi = sohbetMesaji({ bot: true, icerik: `> **soru**\ncevap\n${SOR_DIPNOTU}` });
+  const mesajlar = Array.from({ length: yzSohbet.PENCERE_SORU + 1 }, () => sohbetMesaji({ yazar: 'y3', icerik: 'devam', onceki: sorCevabi }));
+  const istekler = await sohbetle(async () => {
+    for (const m of mesajlar) await sohbet.mesajGeldi(m);
+  });
+  assert.equal(istekler.length, yzSohbet.PENCERE_SORU);
+  assert.match(mesajlar.at(-1).yanitlar[0].content, /Kısa sürede çok soru/);
+});
+
+test('/sor yanıtı: geçmiş kullanıcıyla başlar, modelle biter, sınırı aşınca en yeni turlar kalır', () => {
+  const { gecmisiHazirla } = yzSohbet;
+  assert.deepEqual(gecmisiHazirla([
+    { rol: 'model', metin: 'öksüz cevap' },
+    { rol: 'user', metin: 'a' },
+    { rol: 'user', metin: 'b' },
+    { rol: 'model', metin: ' ' },
+    { rol: 'model', metin: 'c' },
+    { rol: 'user', metin: 'cevapsız' },
+  ]), [{ rol: 'user', metin: 'a\nb' }, { rol: 'model', metin: 'c' }]);
+
+  const uzun = Array.from({ length: 20 }, (_, i) => ({ rol: i % 2 ? 'model' : 'user', metin: `${i}:${'x'.repeat(1000)}` }));
+  const kalan = gecmisiHazirla(uzun);
+  assert.ok(kalan.reduce((t, g) => t + g.metin.length, 0) <= 6000);
+  assert.equal(kalan[0].rol, 'user');
+  assert.ok(kalan.at(-1).metin.startsWith('19:'), 'en yeni tur kalır');
+});
