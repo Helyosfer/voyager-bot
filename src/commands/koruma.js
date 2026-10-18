@@ -8,8 +8,11 @@ const {
 const { ayarlariGetir, ayarKaydet } = require('../depo');
 const koruma = require('../koruma');
 const yapayzeka = require('../yapayzeka');
+const baglanti = require('../baglanti');
+const { sureMetni } = require('../yardimci');
 
 const KELIME_SINIRI = 100;
+const ALAN_SINIRI = 100; // Engel ve izin listelerinin her biri
 
 const durumSecenegi = (o) =>
   o
@@ -24,7 +27,7 @@ const susturmaSecenegi = (aciklama) => (o) =>
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('koruma')
-    .setDescription('Otomatik spam koruması, ağır küfür filtresi ve dolandırıcılık görseli denetimi')
+    .setDescription('Otomatik spam koruması, küfür filtresi, zararlı bağlantı ve dolandırıcılık görseli denetimi')
     .addSubcommand((s) =>
       s
         .setName('spam')
@@ -63,6 +66,27 @@ module.exports = {
             .addChoices({ name: 'Yalnızca riskli olanlar', value: 'riskli' }, { name: 'Bütün resimler', value: 'hepsi' }),
         )
         .addIntegerOption(susturmaSecenegi('Yakalanan kaç dakika susturulsun? 0 = yalnızca mesajı sil (varsayılan 1440 = 1 gün)')),
+    )
+    .addSubcommand((s) =>
+      s
+        .setName('baglanti')
+        .setDescription('Discord, Steam gibi siteleri taklit eden ve yanıltıcı bağlantıları siler')
+        .addStringOption(durumSecenegi)
+        .addBooleanOption((o) => o.setName('kisaltici').setDescription('bit.ly gibi kısaltılmış bağlantılar da silinsin mi? (varsayılan: hayır)'))
+        .addIntegerOption(susturmaSecenegi('Bağlantıyı atan kaç dakika susturulsun? 0 = yalnızca mesajı sil (varsayılan 60)')),
+    )
+    .addSubcommand((s) =>
+      s
+        .setName('alan')
+        .setDescription('Bağlantı denetimi için bir alanı engeller ya da izin listesine ekler (yanlış alarm için)')
+        .addStringOption((o) => o.setName('alan').setDescription('Alan adı ya da bağlantı (ör. kotu.site)').setRequired(true).setMaxLength(200))
+        .addStringOption((o) =>
+          o
+            .setName('islem')
+            .setDescription('Ne yapılsın?')
+            .setRequired(true)
+            .addChoices({ name: 'Engelle', value: 'engel' }, { name: 'İzin ver', value: 'izin' }, { name: 'Listeden çıkar', value: 'cikar' }),
+        ),
     )
     .addSubcommand((s) => s.setName('goster').setDescription('Koruma ayarlarını gösterir'))
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
@@ -152,6 +176,61 @@ module.exports = {
       );
     }
 
+    if (alt === 'baglanti') {
+      const acik = interaction.options.getString('durum', true) === 'acik';
+      const kisaltici = interaction.options.getBoolean('kisaltici');
+      const dakika = interaction.options.getInteger('susturma-dakika');
+      if (acik && !koruma.icerikOkunabilir(interaction.client)) {
+        return cevapla('❌ Bağlantı denetimi mesajların metnini okuyabilmeli, ama botta "Message Content Intent" açık değil. Botun sahibi bunu açmalı.');
+      }
+      ayarKaydet(sunucuId, 'korumaBaglanti', acik);
+      if (kisaltici !== null) ayarKaydet(sunucuId, 'korumaKisaltici', kisaltici);
+      if (dakika !== null) ayarKaydet(sunucuId, 'korumaBaglantiDakika', dakika);
+      if (!acik) return cevapla('✅ Bağlantı denetimi kapatıldı.');
+      const ayar = koruma.ayarCoz(ayarlariGetir(sunucuId));
+      const eksik = [
+        !ben.permissions.has(PermissionFlagsBits.ManageMessages) && 'Mesajları Yönet',
+        ayar.baglantiDakika > 0 && !ben.permissions.has(PermissionFlagsBits.ModerateMembers) && 'Üyelere Zaman Aşımı Uygula',
+      ].filter(Boolean);
+      return cevapla(
+        [
+          `✅ Bağlantı denetimi açık. Discord, Steam, Epic Games, Roblox ve Twitch'i taklit eden alanlar, görünen adresiyle gittiği adres farklı bağlantılar ve bedava Nitro alanları silinir${ayar.baglantiDakika ? `, atan ${sureMetni(ayar.baglantiDakika)} susturulur` : ''}.`,
+          ayar.kisaltici ? 'Kısaltılmış bağlantılar (bit.ly vb.) da silinir.' : 'Kısaltılmış bağlantılar (bit.ly vb.) silinmez; istersen `kisaltici` seçeneğini aç.',
+          'Bağlantılar açılmaz ve hiçbir yere gönderilmez; karar adresin kendisinden verilir. Yanlış alarmda alanı `/koruma alan islem:İzin ver` ile izin listesine ekle.',
+          'Mesajları Yönet yetkisi olanlar muaftır.',
+          eksik.length ? `⚠️ Bunun çalışması için bana şu izinleri ver: ${eksik.join(', ')}.` : null,
+          ayarlariGetir(sunucuId).logKanali ? null : 'ℹ️ Yakalananları görmek için `/ayarla log-kanali` ile bir log kanalı seç.',
+        ]
+          .filter(Boolean)
+          .join('\n'),
+      );
+    }
+
+    if (alt === 'alan') {
+      const alan = baglanti.alanBicimi(interaction.options.getString('alan', true));
+      if (!alan) return cevapla('❌ Geçerli bir alan adı yaz (ör. `kotu.site`).');
+      const islem = interaction.options.getString('islem', true);
+      const ayar = koruma.ayarCoz(ayarlariGetir(sunucuId));
+      // Bir alan iki listede birden durmaz
+      const engel = ayar.alanEngel.filter((a) => a !== alan);
+      const izin = ayar.alanIzin.filter((a) => a !== alan);
+      if (islem === 'engel') engel.push(alan);
+      if (islem === 'izin') izin.push(alan);
+      if (engel.length > ALAN_SINIRI || izin.length > ALAN_SINIRI) return cevapla(`❌ Her listede en fazla ${ALAN_SINIRI} alan olabilir.`);
+      if (islem === 'cikar' && engel.length === ayar.alanEngel.length && izin.length === ayar.alanIzin.length) {
+        return cevapla(`❌ \`${alan}\` listelerde yok.`);
+      }
+      ayarKaydet(sunucuId, 'korumaAlanEngel', engel);
+      ayarKaydet(sunucuId, 'korumaAlanIzin', izin);
+      return cevapla(
+        {
+          engel: `✅ \`${alan}\` ve alt alan adları engellendi.`,
+          izin: `✅ \`${alan}\` ve alt alan adları izin listesinde; bağlantı denetimi bunlara dokunmaz.`,
+          cikar: `✅ \`${alan}\` listeden çıkarıldı.`,
+        }[islem] + (ayar.baglanti ? '' : ' Bağlantı denetimi şu an kapalı; `/koruma baglanti` ile açabilirsin.'),
+      );
+    }
+
     if (alt === 'kelime-ekle' || alt === 'kelime-cikar') {
       const kelime = koruma.kelimeBicimi(interaction.options.getString('kelime', true));
       if (kelime.length < 2) return cevapla('❌ En az iki harfli tek bir kelime yaz.');
@@ -180,6 +259,21 @@ module.exports = {
         {
           name: 'Görsel denetimi',
           value: ayar.gorsel ? `${durum(true, ayar.gorselDakika)}\n${ayar.gorselKapsam === 'hepsi' ? 'Bütün resimler' : 'Riskli resimler'}` : '⚫ Kapalı',
+          inline: true,
+        },
+        {
+          name: 'Bağlantı denetimi',
+          value: ayar.baglanti ? `${durum(true, ayar.baglantiDakika)}${ayar.kisaltici ? '\nKısaltıcılar da' : ''}` : '⚫ Kapalı',
+          inline: true,
+        },
+        {
+          name: `Engellenen alanlar · ${ayar.alanEngel.length}`,
+          value: ayar.alanEngel.length ? `\`${ayar.alanEngel.join(', ').slice(0, 1000)}\`` : 'Yok',
+          inline: true,
+        },
+        {
+          name: `İzin verilen alanlar · ${ayar.alanIzin.length}`,
+          value: ayar.alanIzin.length ? `\`${ayar.alanIzin.join(', ').slice(0, 1000)}\`` : 'Yok',
           inline: true,
         },
         {

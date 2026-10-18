@@ -486,3 +486,127 @@ test('/ozetle: döküm sınırı aşılınca en yeni mesajlar kalır', async () 
     console.log = asilLog;
   }
 });
+
+// --- Bağlantı denetimi ---
+const baglanti = src('baglanti');
+
+test('bağlantı: taklit ve yanıltıcı bağlantılar yakalanır', () => {
+  const zararli = [
+    'https://dlscord.com/gifts/x', // l → i
+    'https://disc0rd.gg/a', // 0 → o
+    'https://dіscord.com', // Kiril і
+    'https://dicsord.com', // yer değiştirme
+    'https://steamcommunlty.com/tradeoffer',
+    'https://stearncommunity.ru', // rn → m
+    'https://epicgarnes.com',
+    'https://rob1ox.com/games',
+    'https://discord-nitro.ru/a',
+    'https://discordgift.site',
+    'https://discord.ru',
+    'https://steamcommunity.com.kotu.ru/id', // gerçek adres alt alan adında
+    'https://free-nitro.xyz',
+    '[discord.com](https://kotu.site)',
+    '[https://discord.com/gifts](https://kotu.site)',
+    'https://discord.com@kotu.site/x',
+    'merhaba <https://dlscord.com> bak',
+  ];
+  for (const m of zararli) assert.ok(baglanti.denetle(m), m);
+});
+
+test('bağlantı: meşru siteler ve bağlantılar yakalanmaz', () => {
+  const zararsiz = [
+    'https://discord.com/channels/1/2',
+    'https://discord.gg/abc',
+    'https://cdn.discordapp.com/attachments/x.png',
+    'https://discord.gift/abc',
+    'https://discord.js.org/docs',
+    'https://discordbotlist.com',
+    'https://discords.com',
+    'https://top.gg/bot/1',
+    'https://store.steampowered.com/app/1',
+    'https://twitch.tv/kanal',
+    'https://www.youtube.com/watch?v=1',
+    'https://boss.team.io',
+    'https://switch.com',
+    'https://gonitro.com',
+    'https://discard.com',
+    'https://bit.ly/x',
+    '[README.md](https://github.com/a/b)',
+    '[www.discord.com](https://discord.com)',
+    '[Tıkla.Burada](https://ornek.com)',
+    '[sürüm 1.2](https://ornek.com/surum)',
+    'dlscord.com yazısı bağlantı değil',
+  ];
+  for (const m of zararsiz) assert.equal(baglanti.denetle(m), null, m);
+});
+
+test('bağlantı: kısaltıcı isteğe bağlı; sunucu listeleri alt alan adlarını kapsar, izin önce gelir', () => {
+  assert.ok(baglanti.denetle('https://bit.ly/x', { kisaltici: true }));
+  assert.ok(baglanti.denetle('https://a.kotu.site/x', { engel: ['kotu.site'] }));
+  assert.equal(baglanti.denetle('https://dlscord.com', { izin: ['dlscord.com'] }), null);
+  assert.equal(baglanti.alanBicimi('HTTPS://Kotu.Site/yol?x=1'), 'kotu.site');
+  assert.equal(baglanti.alanBicimi('kotu.site'), 'kotu.site');
+  assert.equal(baglanti.alanBicimi('kotu'), null);
+  assert.equal(baglanti.alanBicimi('http://'), null);
+});
+
+function korumaMesaji(sunucuId, icerik, { yetkili = false } = {}) {
+  const olanlar = [];
+  const mesaj = {
+    guild: { id: sunucuId, channels: { fetch: async () => null } },
+    author: { id: 'k', tag: 'k#0', bot: false, toString: () => '<@k>' },
+    member: {
+      permissions: izinli(...(yetkili ? [P.ManageMessages] : [])),
+      moderatable: true,
+      timeout: async (ms) => olanlar.push(`sustur:${ms / 60_000}`),
+    },
+    content: icerik,
+    attachments: new Map(),
+    channel: { toString: () => '<#k>', send: async () => null },
+    delete: async () => olanlar.push('sil'),
+  };
+  return { mesaj, olanlar };
+}
+
+test('bağlantı denetimi: zararlı bağlantı silinir ve atan susturulur; düzenleyerek atlatılamaz; yetkililer muaf', async () => {
+  const koruma = src('koruma');
+  const kapali = korumaMesaji('b1', 'https://dlscord.com/gift');
+  await koruma.mesajGeldi(kapali.mesaj);
+  assert.deepEqual(kapali.olanlar, [], 'kapalıyken dokunulmaz');
+
+  depo.ayarKaydet('b1', 'korumaBaglanti', true);
+  depo.ayarKaydet('b1', 'korumaBaglantiDakika', 30);
+  const { mesaj, olanlar } = korumaMesaji('b1', 'bedava nitro https://dlscord.com/gift');
+  await koruma.mesajGeldi(mesaj);
+  assert.deepEqual(olanlar, ['sil', 'sustur:30']);
+
+  const zararsiz = korumaMesaji('b1', 'https://discord.com/channels/1');
+  await koruma.mesajGeldi(zararsiz.mesaj);
+  assert.deepEqual(zararsiz.olanlar, []);
+
+  const duzenlenen = korumaMesaji('b1', 'https://dlscord.com/gift');
+  await koruma.mesajDuzenlendi({ content: 'merhaba' }, duzenlenen.mesaj);
+  assert.deepEqual(duzenlenen.olanlar, ['sil', 'sustur:30']);
+
+  const yetkili = korumaMesaji('b1', 'https://dlscord.com/gift', { yetkili: true });
+  await koruma.mesajGeldi(yetkili.mesaj);
+  assert.deepEqual(yetkili.olanlar, []);
+});
+
+test('/koruma alan: engel ve izin listeleri; bir alan iki listede birden durmaz', async () => {
+  const komut = src('commands/koruma');
+  const calistir = async (alan, islem) => {
+    const e = etkilesim({ sunucu: 'b2', alt: 'alan', secenekler: { alan, islem }, izinler: [P.ManageGuild] });
+    await komut.execute(e);
+    return e.cevaplar[0].content;
+  };
+  assert.match(await calistir('https://Kotu.Site/x', 'engel'), /^✅/);
+  assert.deepEqual(depo.ayarlariGetir('b2').korumaAlanEngel, ['kotu.site']);
+  await calistir('kotu.site', 'izin');
+  assert.deepEqual(depo.ayarlariGetir('b2').korumaAlanEngel, []);
+  assert.deepEqual(depo.ayarlariGetir('b2').korumaAlanIzin, ['kotu.site']);
+  await calistir('kotu.site', 'cikar');
+  assert.deepEqual(depo.ayarlariGetir('b2').korumaAlanIzin, []);
+  assert.match(await calistir('kotu.site', 'cikar'), /^❌/);
+  assert.match(await calistir('gecersiz', 'engel'), /^❌/);
+});

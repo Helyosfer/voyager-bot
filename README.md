@@ -52,7 +52,7 @@ Node.js ve [discord.js](https://discord.js.org) ile yazıldı. Kodu alıp kendi 
 
 - **Sunucu kurulumu:** tek komutla roller, kanallar, izinler, üyelik onayı ve destek sistemi.
 - **Moderasyon:** yasaklama, atma, süreli susturma, toplu mesaj silme; kalıcı uyarılar ve uyarı sayısına göre otomatik ceza.
-- **Otomatik koruma:** ele geçirilmiş hesapların spam'ini durdurur, ağır küfürleri siler.
+- **Otomatik koruma:** ele geçirilmiş hesapların spam'ini durdurur, ağır küfürleri ve Discord/Steam taklidi zararlı bağlantıları siler.
 - **Acil durum kilidi:** saldırı anında bütün kanalları kilitler, sonra eski haline döndürür.
 - **Sunucu günlüğü:** üye giriş çıkışları, silinen ve düzenlenen mesajlar, ses kanalları ve yönetim işlemleri tek kanalda.
 - **Canlı yayın bildirimleri:** Twitch, Kick ve YouTube'da takip ettiğin yayıncılar yayına geçince haber verir.
@@ -87,7 +87,7 @@ diliyle gösterilir.
 | `/temizle` | Kanaldaki son 1-100 mesajı siler | Mesajları Yönet |
 | `/uyari` | Üyeye kalıcı uyarı verir; uyarı sayısına göre otomatik susturma, atma ya da yasaklama | Üyelere Zaman Aşımı Uygula (kurallar için Sunucuyu Yönet) |
 | `/ayarla` | Log kanalı ve kategorileri, hoş geldin kanalı, oto rol, kanal özetleri (`sifirla` ile kaldırılır) | Sunucuyu Yönet |
-| `/koruma` | Otomatik spam koruması, ağır küfür filtresi ve dolandırıcılık görseli denetimi | Sunucuyu Yönet |
+| `/koruma` | Otomatik spam koruması, ağır küfür filtresi, zararlı bağlantı ve dolandırıcılık görseli denetimi | Sunucuyu Yönet |
 | `/cekilis` | Düğmeyle katılınan çekiliş başlatır, erken bitirir, yeniden çeker ya da iptal eder | Sunucuyu Yönet |
 | `/rolmenu` | Üyelerin düğmeyle rol alıp bırakabildiği bir menü mesajı kurar (en fazla 10 rol) | Rolleri Yönet |
 | `/sunucukur` | Topluluk sunucusu kurar: roller, kanallar, izinler, üyelik onayı, destek sistemi | Yönetici |
@@ -257,11 +257,26 @@ Moderatörlerin verdiği uyarılar kalıcı olarak saklanır; bot yeniden başla
 | `/koruma kufur` | Ağır küfür içeren mesajları siler; istenirse yazanı susturur |
 | `/koruma kelime-ekle` / `kelime-cikar` | Sunucuya özel yasaklı kelime listesi |
 | `/koruma gorsel` | Dolandırıcılık resimlerini (ünlü adına para dağıtma, kripto kumarhane bonusu, bedava Nitro vb.) yapay zekâyla yakalar; mesajı siler, atanı susturur (varsayılan 1 gün), günlüğe kanıtıyla yazar |
+| `/koruma baglanti` | Discord, Steam, Epic Games, Roblox ve Twitch'i taklit eden alanları, yanıltıcı bağlantıları ve bedava Nitro alanlarını siler; atanı susturur (varsayılan 60 dakika). İsteğe bağlı olarak kısaltılmış bağlantıları (bit.ly vb.) da siler |
+| `/koruma alan` | Bağlantı denetimi için sunucuya özel engel ve izin listesi (alt alan adları da kapsanır) |
 | `/koruma goster` | Ayarları gösterir |
 
 Spam koruması özellikle ele geçirilmiş hesapların bütün kanallara aynı görselleri atmasını hedefler; bu yüzden
 üyeyi banlamaz, susturur. Küfür filtresi yalnızca ağır küfürleri yakalar ve masum kelimelere takılmamak için
 bilerek dardır ("amk", "aq" gibi kısaltmalar hazır listede yoktur). Küfür filtresi için Message Content Intent gerekir.
+
+**Bağlantı denetimi** bağlantıları açmaz ve hiçbir yere göndermez; karar yalnızca adresin kendisinden verilir:
+
+- Taklit alanlar: harfi benzeyeniyle değiştirilmiş (`dlscord`, `disc0rd`, Kiril harfli `dіscord`, `stearncommunity`),
+  bir harfi oynatılmış (`dicsord`), markanın yanına hediye kelimesi eklenmiş (`discord-nitro`, `discordgift`), başka
+  uzantıda açılmış (`discord.ru`) ya da gerçek adresi alt alan adına gizlemiş (`steamcommunity.com.kotu.ru`) alanlar.
+- Yanıltıcı bağlantılar: görünen adresiyle gittiği adres farklı olanlar (`[discord.com](https://kotu.site)`) ve
+  adresin başına başka site adı gizleyenler (`https://discord.com@kotu.site`).
+- `free-nitro` gibi bedava Nitro/hediye alanları.
+- Kurallar yanlış alarm vermemek için bilerek dardır: markanın adını taşıyan ama hediye kelimesi içermeyen siteler
+  (`discordbotlist.com`, `discord.js.org`) yakalanmaz. Yine de yanlış alarm olursa alan `/koruma alan islem:İzin ver`
+  ile izin listesine eklenir. Bilinen her zararlı alanı tanımaz; gördüğün bir alanı `/koruma alan islem:Engelle` ile ekle.
+- Mesajı düzenleyerek bağlantı eklemek de yakalanır. Message Content Intent gerekir.
 
 **Görsel denetimi** metin filtrelerinin göremediği, resmin içindeki dolandırıcılığı yakalar:
 
@@ -650,6 +665,7 @@ src/
   yardimci.js         Yetki kontrolleri ve log gönderme
   gunluk.js           Sunucu günlüğü
   koruma.js           Spam koruması ve küfür filtresi
+  baglanti.js         Zararlı bağlantı denetimi
   uyari.js            Uyarı kayıtları ve otomatik ceza kuralları
   rolmenu.js          Rol menüsü düğmeleri
   cekilis.js          Çekiliş kayıtları, zamanlayıcıları ve kazanan seçimi

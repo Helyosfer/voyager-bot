@@ -118,6 +118,9 @@ Her satırda beklenen sonuç yazıyor. Farklı bir şey görürsen terminaldeki 
       ve susturuluyor.
 - [ ] `/koruma kufur durum:Açık` sonrası ağır küfür içeren mesaj siliniyor; mesajı düzenleyerek küfür eklemek de
       yakalanıyor. "sıkıntı", "klasik" gibi masum kelimeler silinmiyor.
+- [ ] `/koruma baglanti durum:Açık` sonrası ikinci hesabın `https://dlscord.com/gift` ve `[discord.com](https://ornek.com)`
+      içeren mesajları siliniyor, günlüğe alan ve sebep düşüyor; `https://discord.com/channels/...` silinmiyor.
+- [ ] `/koruma alan alan:ornek.com islem:İzin ver` sonrası aynı gizli bağlantı silinmiyor.
 
 ## Bildirimler
 
