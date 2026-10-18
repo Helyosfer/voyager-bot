@@ -21,6 +21,7 @@ const {
 const API = 'https://generativelanguage.googleapis.com/v1beta/models';
 
 const SORU_SINIRI = 500; // karakter
+const GECMIS_SINIRI = 6000; // karakter; yanıtla sürdürülen konuşmada modele gönderilen önceki turlar
 const CEVAP_SINIRI = 1600; // karakter; Discord mesaj sınırı 2000 (sorunun alıntısı ve dipnot da sığmalı)
 const ZAMAN_ASIMI = 20_000;
 // Gemma modelleri cevaptan önce kendiliğinden düşünür (kapatılamıyor) ve 15-30 saniye sürebilir
@@ -220,7 +221,8 @@ function temizle(metin) {
 // json: verilirse model cevabı bu şemaya uyan JSON olarak yazar (Gemini responseSchema biçimi).
 // Kayıtlara yalnızca durum ve süre yazılır; istek ve cevap metni yazılmaz.
 // ekler: modele metinle birlikte gönderilecek resimler, [{ mimeType, data (base64) }]
-async function uret(metin, { talimat, sicaklik = 0.7, json = null, ad = '/sor', modeller: secilen = null, arkaPlan = false, ekler = [] }) {
+// gecmis: konuşmanın önceki turları, eskiden yeniye [{ rol: 'user' | 'model', metin }]
+async function uret(metin, { talimat, sicaklik = 0.7, json = null, ad = '/sor', modeller: secilen = null, arkaPlan = false, ekler = [], gecmis = [] }) {
   let yanit;
   let govde;
   const baslangic = Date.now();
@@ -241,7 +243,10 @@ async function uret(metin, { talimat, sicaklik = 0.7, json = null, ad = '/sor', 
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': ANAHTAR },
         body: JSON.stringify({
           ...(!gemma && { systemInstruction: { parts: [{ text: talimat }] } }),
-          contents: [{ role: 'user', parts: [...ekler.map((e) => ({ inlineData: { mimeType: e.mimeType, data: e.data } })), { text: icerik }] }],
+          contents: [
+            ...gecmis.map((g) => ({ role: g.rol, parts: [{ text: g.metin }] })),
+            { role: 'user', parts: [...ekler.map((e) => ({ inlineData: { mimeType: e.mimeType, data: e.data } })), { text: icerik }] },
+          ],
           generationConfig: {
             maxOutputTokens: CIKTI_SINIRI,
             temperature: sicaklik,
@@ -301,23 +306,47 @@ const SOR_HATALARI = {
 
 // Kişinin /sor hakkından bir istek düşüp modele sorar. /sor ve /ozetle aynı kotayı paylaşır.
 // Başarılıysa { cevap, kalan }, değilse { hata } (kullanıcıya gösterilecek metin) döndürür.
-async function kotaliUret(sunucuId, kisiId, metin, { talimat, gizli, ad }) {
+async function kotaliUret(sunucuId, kisiId, metin, { talimat, gizli, ad, gecmis }) {
   if (!hazir()) return { hata: 'Yapay zekâ bu botta kurulu değil.' };
   if (!izinli(sunucuId)) return { hata: 'Yapay zekâ özellikleri bu sunucuda açık değil. Botun sahibi sunucuyu izin listesine eklemeli.' };
   const sinir = sinirMesaji(sunucuId, kisiId, gizli);
   if (sinir) return { hata: sinir };
   const kalan = say(sunucuId, kisiId, gizli);
 
-  const sonuc = await uret(metin, { talimat, ad });
+  const sonuc = await uret(metin, { talimat, ad, gecmis });
   if (sonuc.hata) return { hata: SOR_HATALARI[sonuc.hata] };
   return { cevap: temizle(sonuc.metin), kalan };
 }
 
-async function sor(sunucuId, kisiId, soru, { gizli = false } = {}) {
+// Konuşma geçmişini modele gönderilebilir hale getirir: boşlar atılır, art arda gelen aynı rolün
+// mesajları birleşir, sınır aşılırsa en yeni turlar kalır. Model sırayla user/model ister ve
+// konuşma kullanıcıyla başlamalıdır; son tur da modelin olmalı (ardından yeni soru gelir).
+function gecmisiHazirla(gecmis) {
+  const turlar = [];
+  for (const { rol, metin } of gecmis) {
+    const temiz = (metin ?? '').trim().slice(0, CEVAP_SINIRI);
+    if (!temiz || !['user', 'model'].includes(rol)) continue;
+    if (turlar.at(-1)?.rol === rol) turlar.at(-1).metin += `\n${temiz}`;
+    else turlar.push({ rol, metin: temiz });
+  }
+  while (turlar.length && turlar.at(-1).rol !== 'model') turlar.pop();
+  let uzunluk = turlar.reduce((t, g) => t + g.metin.length, 0);
+  while (turlar.length && (uzunluk > GECMIS_SINIRI || turlar[0].rol !== 'user')) uzunluk -= turlar.shift().metin.length;
+  return turlar;
+}
+
+// gecmis: cevaba "Yanıtla" ile devam edilen konuşmanın önceki turları (bkz. sohbet.js)
+async function sor(sunucuId, kisiId, soru, { gizli = false, gecmis = [] } = {}) {
   const metin = soru.trim().slice(0, SORU_SINIRI);
   if (!metin) return { hata: 'Bir soru yaz.' };
-  return kotaliUret(sunucuId, kisiId, metin, { talimat: TALIMAT, gizli, ad: '/sor' });
+  return kotaliUret(sunucuId, kisiId, metin, { talimat: TALIMAT, gizli, ad: gecmis.length ? '/sor (yanıt)' : '/sor', gecmis: gecmisiHazirla(gecmis) });
 }
+
+// Her /sor cevabının altındaki not. sohbet.js bir mesajın /sor cevabı olduğunu bu notla tanır;
+// model bu biçimde satır yazamaz (bkz. basliklariKir).
+const DIPNOT = '-# Yapay zekâ cevabıdır, yanlış olabilir';
+const dipnot = (kalan, { yanitlanabilir = true } = {}) =>
+  `${DIPNOT}${yanitlanabilir ? ' · sürdürmek için yanıtla' : ''} · bugün kalan soru hakkın: ${kalan}`;
 
 // satirlar: eskiden yeniye "Ad: mesaj" satırları. Döküm sınırı aşarsa en yeni mesajlar kalır.
 async function ozetle(sunucuId, kisiId, satirlar, { gizli = true } = {}) {
@@ -346,4 +375,4 @@ function botIstegiAyir(gorev = 'inceleme') {
   return true;
 }
 
-module.exports = { ayar, sonDakika, gemmaMi, GOREVLER, hazir, uret, botIstegiAyir, izinli, izinListesi, sor, ozetle, sinirMesaji, paylar, temizle, SORU_SINIRI, PENCERE_SORU, SORU_HAVUZU, SUNUCU_EN_COK, KISI_EN_COK, TOPLAM_GUNLUK };
+module.exports = { ayar, sonDakika, gemmaMi, GOREVLER, hazir, uret, botIstegiAyir, izinli, izinListesi, sor, ozetle, DIPNOT, dipnot, gecmisiHazirla, sinirMesaji, paylar, temizle, SORU_SINIRI, PENCERE_SORU, SORU_HAVUZU, SUNUCU_EN_COK, KISI_EN_COK, TOPLAM_GUNLUK };
