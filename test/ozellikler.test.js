@@ -307,3 +307,69 @@ test('çekiliş: başka sunucunun çekilişi komutla yönetilemez', async () => 
   await cekilisKomutu.execute(sahibi);
   assert.equal(cekilis.bul('100000000000000004'), null);
 });
+
+// --- Seviye ---
+const depo = src('depo');
+const seviye = src('seviye');
+
+test('seviye: XP eşikleri', () => {
+  assert.deepEqual(seviye.seviyeBul(0), { seviye: 0, ilerleme: 0, sonraki: 100 });
+  assert.deepEqual(seviye.seviyeBul(99), { seviye: 0, ilerleme: 99, sonraki: 100 });
+  assert.deepEqual(seviye.seviyeBul(100), { seviye: 1, ilerleme: 0, sonraki: 155 });
+  assert.deepEqual(seviye.seviyeBul(254), { seviye: 1, ilerleme: 154, sonraki: 155 });
+});
+
+function seviyeMesaji(sunucuId, kim, { roller = new Map(), bot = false } = {}) {
+  const gonderilen = [];
+  const uyeRolleri = new Set();
+  const guild = { id: sunucuId, roles: { cache: roller }, members: { me: { roles: { highest: { position: 10 } } } }, channels: { fetch: async () => null } };
+  const mesaj = {
+    guild,
+    author: { id: kim, bot, toString: () => `<@${kim}>` },
+    member: { guild, roles: { cache: { has: (id) => uyeRolleri.has(id) }, add: async (r) => uyeRolleri.add(r.id) } },
+    channel: { guild: { members: { me: {} } }, isTextBased: () => true, permissionsFor: () => izinli(P.ViewChannel, P.SendMessages), send: async (m) => gonderilen.push(m) },
+  };
+  return { mesaj, gonderilen, uyeRolleri };
+}
+
+test('seviye: kapalı sunucuda ve botlara XP yok; dakikada en fazla bir kez kazanılır', async () => {
+  // Önbellek ilk kullanımda dosyadan yüklenir; bu dosyadaki ilk seviye çağrısı burası
+  depo.yaz('seviyeler', { s2: { yakin: 99 } });
+  await seviye.mesajGeldi(seviyeMesaji('s1', 'a').mesaj);
+  assert.equal(seviye.xp('s1', 'a'), 0, 'kapalı');
+
+  depo.ayarKaydet('s1', 'seviyeAcik', true);
+  await seviye.mesajGeldi(seviyeMesaji('s1', 'bot', { bot: true }).mesaj);
+  assert.equal(seviye.xp('s1', 'bot'), 0);
+
+  await seviye.mesajGeldi(seviyeMesaji('s1', 'a').mesaj);
+  const ilk = seviye.xp('s1', 'a');
+  assert.ok(ilk >= 15 && ilk <= 25, String(ilk));
+  await seviye.mesajGeldi(seviyeMesaji('s1', 'a').mesaj);
+  assert.equal(seviye.xp('s1', 'a'), ilk, 'beklemede');
+});
+
+test('seviye: seviye atlayan duyurulur ve ödül rolünü alır; yönetim yetkili ödül verilmez', async () => {
+  const roller = new Map([['odul', sahteRol('odul', 3)], ['yetkili', sahteRol('yetkili', 4, [P.ManageMessages])]]);
+  depo.ayarKaydet('s2', 'seviyeAcik', true);
+  depo.ayarKaydet('s2', 'seviyeOdulleri', [{ seviye: 1, rolId: 'odul' }, { seviye: 1, rolId: 'yetkili' }, { seviye: 5, rolId: 'odul' }]);
+  const { mesaj, gonderilen, uyeRolleri } = seviyeMesaji('s2', 'yakin', { roller });
+  await seviye.mesajGeldi(mesaj);
+  assert.equal(seviye.seviyeBul(seviye.xp('s2', 'yakin')).seviye, 1);
+  assert.deepEqual([...uyeRolleri], ['odul']);
+  assert.equal(gonderilen.length, 1);
+  assert.match(gonderilen[0].content, /1\. seviyeye/);
+  assert.deepEqual(gonderilen[0].allowedMentions, { users: ['yakin'] });
+
+  seviye.kaydet();
+  assert.ok(depo.oku('seviyeler', {}).s2.yakin >= 114, 'diske yazılır');
+  assert.equal(seviye.siralama('s2')[0][0], 'yakin');
+});
+
+test('seviye: ayar ve ödül komutları Sunucuyu Yönet ister', async () => {
+  const komut = src('commands/seviye');
+  const e = etkilesim({ sunucu: 's3', alt: 'ayar', secenekler: { durum: 'acik' } });
+  await komut.execute(e);
+  assert.match(e.cevaplar[0].content, /Sunucuyu Yönet/);
+  assert.equal(seviye.ayarCoz(depo.ayarlariGetir('s3')).acik, false);
+});

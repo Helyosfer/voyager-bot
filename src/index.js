@@ -15,6 +15,7 @@ const topluluk = require('./topluluk');
 const kilit = require('./kilit');
 const rolmenu = require('./rolmenu');
 const cekilis = require('./cekilis');
+const seviye = require('./seviye');
 const { otoRolVer, komutYetkisiVar, hataMetni } = require('./yardimci');
 
 // Yakalanmamış bir hata botu kapatır; systemd birkaç saniyede yeniden başlatır. Bu davranış
@@ -143,6 +144,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 gunluk.baslat(client);
 koruma.baslat(client);
 kilit.baslat(client);
+seviye.baslat(client);
 
 // Yeni üye: hoş geldin mesajı + otomatik rol
 client.on(Events.GuildMemberAdd, async (uye) => {

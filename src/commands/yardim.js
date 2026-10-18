@@ -41,9 +41,9 @@ const BOLUMLER = [
     id: 'topluluk',
     simge: '🎉',
     ad: 'Topluluk',
-    ozet: 'Çekilişler ve düğmeyle rol alma menüleri',
-    komutlar: ['cekilis', 'rolmenu'],
-    ilkAdim: { cekilis: 'baslat' },
+    ozet: 'Seviyeler ve sıralama, çekilişler, düğmeyle rol alma menüleri',
+    komutlar: ['seviye', 'cekilis', 'rolmenu'],
+    ilkAdim: { seviye: 'goster', cekilis: 'baslat' },
   },
   {
     id: 'sunucu',

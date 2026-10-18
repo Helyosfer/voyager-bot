@@ -89,6 +89,13 @@ Her satırda beklenen sonuç yazıyor. Farklı bir şey görürsen terminaldeki 
 - [ ] `gereken-rol` ile başlatılan çekilişe rolü olmayan hesap katılamıyor.
 - [ ] `/cekilis yeniden` önceki kazananı seçmiyor; `/cekilis iptal` mesajı "iptal edildi" yapıyor.
 
+## Seviye sistemi
+
+- [ ] `/seviye ayar durum:Açık` sonrası ikinci hesap mesaj yazınca `/seviye goster` XP gösteriyor; aynı dakikada ikinci mesaj XP artırmıyor.
+- [ ] `/seviye odul-ekle seviye:1` ile bir rol ekleniyor; 1. seviyeye ulaşan hesap duyuruluyor ve rolü alıyor.
+- [ ] Bot `systemctl restart` ile yeniden başlatılınca XP kaybolmuyor.
+- [ ] Yetkisiz hesap `/seviye ayar` kullanamıyor.
+
 ## Acil durum kilidi
 
 - [ ] `/kitle`: ikinci hesap hiçbir kanala yazamıyor, sese giremiyor; sunucu sahibi yazabiliyor.

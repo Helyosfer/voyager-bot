@@ -19,6 +19,7 @@ Node.js ve [discord.js](https://discord.js.org) ile yazıldı. Kodu alıp kendi 
   - [Sunucu kurulumu](#sunucu-kurulumu-sunucukur)
   - [Rol menüsü](#rol-menüsü-rolmenu)
   - [Çekilişler](#çekilişler-cekilis)
+  - [Seviye sistemi](#seviye-sistemi-seviye)
   - [Acil durum kilidi](#acil-durum-kilidi-kitle-kilidiac)
   - [Uyarılar](#uyarılar-uyari)
   - [Otomatik koruma](#otomatik-koruma)
@@ -58,6 +59,7 @@ Node.js ve [discord.js](https://discord.js.org) ile yazıldı. Kodu alıp kendi 
 - **Oyun fırsatları:** Steam, Epic ve GOG'daki bedava oyunları ve indirimleri Türkiye fiyatlarıyla duyurur.
 - **Karşılama:** yeni üyeye hoş geldin mesajı ve otomatik rol.
 - **Rol menüsü:** üyeler düğmeye basarak seçtiğin rolleri alıp bırakır.
+- **Seviye sistemi:** mesaj yazdıkça XP, seviye atlayınca duyuru ve ödül rolleri, sıralama.
 - **Çekiliş:** düğmeyle katılınan, süre dolunca kazananı kendiliğinden seçip duyuran çekilişler.
 - **Hatırlatıcı:** belirttiğin süre sonra seni etiketler.
 
@@ -73,6 +75,7 @@ diliyle gösterilir.
 | `/yardim` | Tüm komutları ve ne işe yaradıklarını listeler | Herkes |
 | `/ping` | Bot çalışıyor mu kontrol eder | Herkes |
 | `/hatirlat` | Belirtilen süre sonra hatırlatma yapar (kişi başı en fazla 5) | Herkes |
+| `/seviye` | Seviyeni ve sunucu sıralamasını gösterir; yöneticiler sistemi açar, seviye ödülü rolleri belirler | Herkes (ayarlar için Sunucuyu Yönet) |
 | `/sor` | Yapay zekâya soru sorar (yalnızca kurulduysa; günlük hak kullanıma göre ayarlanır) | Herkes |
 | `/ban` | Kullanıcıyı yasaklar | Üyeleri Yasakla |
 | `/unban` | Kullanıcının yasağını kaldırır | Üyeleri Yasakla |
@@ -183,6 +186,29 @@ tutmaz, hangi rollerin menüde olduğunu mesajın düğmelerinden okur.
   çekiliş için 7 gün saklanır.
 - Bir sunucuda aynı anda en fazla 10 çekiliş sürebilir; bir çekilişe en fazla 5.000 kişi katılabilir.
 - `bitir`, `yeniden` ve `iptal` çekiliş mesajının bağlantısını (Mesaj → Bağlantıyı Kopyala) ya da kimliğini ister.
+
+### Seviye sistemi (`/seviye`)
+
+`/seviye ayar durum:Açık` ile sunucu başına açılır; varsayılan olarak kapalıdır.
+
+| Komut | Ne yapar |
+|---|---|
+| `/seviye goster` | Seviyeni (ya da başka bir üyenin seviyesini), sırasını ve sonraki seviyeye kalan XP'yi gösterir |
+| `/seviye siralama` | En yüksek seviyedeki 10 üyeyi gösterir |
+| `/seviye ayar` | Sistemi açar, kapatır; isteğe bağlı olarak seviye duyurularının yapılacağı kanalı seçer |
+| `/seviye odul-ekle` / `odul-sil` | Bir seviyeye ulaşanlara verilecek rolü belirler (en fazla 10 ödül) |
+| `/seviye sifirla` | Bir üyenin XP'sini sıfırlar |
+
+- Üye her mesajda 15-25 XP kazanır, ama dakikada en fazla bir kez; art arda yazmak XP kazandırmaz. Botlar ve
+  webhook'lar XP kazanmaz. Seviye atlamak giderek zorlaşır (0→1: 100 XP, 9→10: 1.005 XP).
+- Mesajların içeriği okunmaz, yalnızca yazıldıkları bilinir; Message Content Intent gerekmez.
+- Seviye atlayan, mesajı yazdığı kanalda (ya da seçilen duyuru kanalında) etiketlenerek duyurulur.
+- Ödül rollerine oto rolle aynı kurallar uygulanır: yönetim yetkisi taşıyan, botun rolünden yüksek ya da ödülü
+  ekleyenin kendisinin veremeyeceği roller ödül yapılamaz. Rol sonradan yönetim yetkisi alırsa verilmez.
+  Ödül eklenmeden önce o seviyeyi geçmiş üyeler rolü bir sonraki seviye atlayışlarında alır.
+- `ayar`, `odul-ekle`, `odul-sil` ve `sifirla` Sunucuyu Yönet yetkisi ister. Sistem kapatılınca XP silinmez.
+- XP her mesajda diske yazılmaz; dakikada bir ve bot kapanırken kaydedilir. Bot çökerse en fazla son dakikanın
+  XP'si kaybolur.
 
 ### Acil durum kilidi (`/kitle`, `/kilidiac`)
 
@@ -607,6 +633,7 @@ src/
   uyari.js            Uyarı kayıtları ve otomatik ceza kuralları
   rolmenu.js          Rol menüsü düğmeleri
   cekilis.js          Çekiliş kayıtları, zamanlayıcıları ve kazanan seçimi
+  seviye.js           Seviye sistemi: XP, seviye atlama, ödül rolleri
   gorsel.js           Dolandırıcılık görseli denetimi
   topluluk.js         /sunucukur şablonu, üyelik onayı, ilgi rolleri, destek talepleri
   kilit.js            Acil durum kilidi
@@ -618,7 +645,7 @@ src/
   hatirlatici.js      Hatırlatıcı zamanlayıcıları
   yayin/              Yayın bildirimleri (Twitch, Kick, YouTube) ve HTTP sunucusu
   site.js, site/      Tanıtım sayfası
-test/                 Güvenlik testleri (npm test) ve Discord deneme listesi
+test/                 Güvenlik ve özellik testleri (npm test), Discord deneme listesi
 ```
 
 Yeni komut eklemek için `src/commands/` içine `ping.js` gibi bir dosya ekleyip `npm run komutlar` çalıştır.
