@@ -11,7 +11,7 @@ const BOLUMLER = [
     simge: '🧭',
     ad: 'Genel',
     ozet: 'Herkesin kullanabildiği komutlar',
-    komutlar: ['hatirlat', 'ping', 'yardim'],
+    komutlar: ['sor', 'ozetle', 'hatirlat', 'ping', 'yardim'],
   },
   {
     id: 'moderasyon',

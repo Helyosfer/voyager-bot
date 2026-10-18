@@ -29,6 +29,7 @@ Node.js ve [discord.js](https://discord.js.org) ile yazıldı. Kodu alıp kendi 
   - [Instagram gönderi bildirimleri](#instagram-gönderi-bildirimleri)
   - [Oyun fırsatları](#oyun-fırsatları)
   - [Soru cevaplama](#soru-cevaplama-sor)
+  - [Kanal özeti](#kanal-özeti-ozetle)
 - [Sunucuna ekledikten sonra](#sunucuna-ekledikten-sonra)
 - [Kendi botunu çalıştırmak](#kendi-botunu-çalıştırmak)
 - [VPS'te 7/24 çalıştırma](#vpste-724-çalıştırma-ubuntu)
@@ -41,6 +42,7 @@ Node.js ve [discord.js](https://discord.js.org) ile yazıldı. Kodu alıp kendi 
 **Yapay zekâ** (Google Gemini; [ayrıntılar](#yapay-zekâ)):
 
 - **Soru cevaplama:** `/sor` ile yapay zekâya soru sorulur; kısa, Türkçe cevap gelir. İstenirse cevabı yalnızca soran görür.
+- **Kanal özeti:** `/ozetle` kanaldaki son mesajları kısa maddelerle özetler; sonradan katılan neler konuşulduğunu hemen görür.
 - **Oyun incelemeleri:** popüler ve yeni oyunların fırsat kartlarına spoilersiz konu, kısa yorum, kimlere hitap
   ettiği ve 10 üzerinden puan eklenir.
 - **Dolandırıcılık görseli denetimi:** "ünlü adına para dağıtılıyor, siteye gir kodu yaz" türü sahte çekiliş, kripto
@@ -76,6 +78,7 @@ diliyle gösterilir.
 | `/ping` | Bot çalışıyor mu kontrol eder | Herkes |
 | `/hatirlat` | Belirtilen süre sonra hatırlatma yapar (kişi başı en fazla 5) | Herkes |
 | `/seviye` | Seviyeni ve sunucu sıralamasını gösterir; yöneticiler sistemi açar, seviye ödülü rolleri belirler | Herkes (ayarlar için Sunucuyu Yönet) |
+| `/ozetle` | Kanaldaki son 10-100 mesajı yapay zekâyla özetler (sunucuda `/ayarla ozet` ile açılırsa; `/sor` hakkını kullanır) | Herkes (kanal geçmişini okuyabilen) |
 | `/sor` | Yapay zekâya soru sorar (yalnızca kurulduysa; günlük hak kullanıma göre ayarlanır) | Herkes |
 | `/ban` | Kullanıcıyı yasaklar | Üyeleri Yasakla |
 | `/unban` | Kullanıcının yasağını kaldırır | Üyeleri Yasakla |
@@ -83,7 +86,7 @@ diliyle gösterilir.
 | `/sustur` | Üyeyi belirli dakika susturur (0 = kaldır) | Üyelere Zaman Aşımı Uygula |
 | `/temizle` | Kanaldaki son 1-100 mesajı siler | Mesajları Yönet |
 | `/uyari` | Üyeye kalıcı uyarı verir; uyarı sayısına göre otomatik susturma, atma ya da yasaklama | Üyelere Zaman Aşımı Uygula (kurallar için Sunucuyu Yönet) |
-| `/ayarla` | Log kanalı ve kategorileri, hoş geldin kanalı, oto rol (`sifirla` ile kaldırılır) | Sunucuyu Yönet |
+| `/ayarla` | Log kanalı ve kategorileri, hoş geldin kanalı, oto rol, kanal özetleri (`sifirla` ile kaldırılır) | Sunucuyu Yönet |
 | `/koruma` | Otomatik spam koruması, ağır küfür filtresi ve dolandırıcılık görseli denetimi | Sunucuyu Yönet |
 | `/cekilis` | Düğmeyle katılınan çekiliş başlatır, erken bitirir, yeniden çeker ya da iptal eder | Sunucuyu Yönet |
 | `/rolmenu` | Üyelerin düğmeyle rol alıp bırakabildiği bir menü mesajı kurar (en fazla 10 rol) | Rolleri Yönet |
@@ -102,11 +105,12 @@ Sunucu Ayarları → Entegrasyonlar'dan başka bir role açılsa bile yalnızca 
 
 ### Yapay zekâ
 
-Üç özellik Google'ın Gemini modelleriyle çalışır. Her biri ayrıntılı olarak kendi bölümünde anlatılır:
+Dört özellik Google'ın Gemini modelleriyle çalışır. Her biri ayrıntılı olarak kendi bölümünde anlatılır:
 
 | Özellik | Nasıl açılır | Ayrıntılar |
 |---|---|---|
 | `/sor`: yapay zekâya soru sorma | Her sunucuda kendiliğinden açık | [Soru cevaplama](#soru-cevaplama-sor) |
+| `/ozetle`: kanaldaki son mesajları özetleme | Sunucu başına `/ayarla ozet` ile; varsayılan olarak kapalı | [Kanal özeti](#kanal-özeti-ozetle) |
 | Oyun fırsatı kartlarına inceleme ve puan | `/oyun kanal` ile fırsat bildirimleri açılınca | [Oyun fırsatları](#oyun-fırsatları) |
 | `/koruma gorsel`: dolandırıcılık görseli denetimi | Sunucu başına; varsayılan olarak kapalı | [Otomatik koruma](#otomatik-koruma) |
 
@@ -114,12 +118,12 @@ Ortak noktalar:
 
 - **Yapay zekâ yanılabilir.** Bot bunu her cevabın ve her incelemenin altında söyler. Görsel denetimi yanlış alarm
   verirse susturma elle kaldırılır.
-- **Ne Google'a gider:** `/sor` soruları, oyun incelemeleri için Steam mağaza bilgileri ve görsel denetimi açık
+- **Ne Google'a gider:** `/sor` soruları, `/ozetle` ile özetlenen mesajlar (yazanların görünen adlarıyla), oyun incelemeleri için Steam mağaza bilgileri ve görsel denetimi açık
   sunucularda denetlenen resimler. Ücretsiz katmanda Google bu verileri ürünlerini geliştirmek için kullanabilir.
-  Bot soruları kaydetmez. Resimleri de saklamaz, yalnızca parmak izlerini (SHA-256) tutar; yakalanan resmin kanıtı
+  Bot soruları ve özetlenen mesajları kaydetmez. Resimleri de saklamaz, yalnızca parmak izlerini (SHA-256) tutar; yakalanan resmin kanıtı
   sunucunun kendi günlük kanalına bulanık olarak düşer.
 - **Model yalnızca metin üretir.** Sunucuda hiçbir işlem yapamaz ve yazdığı metin kimseyi etiketleyemez; `/sor`
-  cevaplarında ve incelemelerde bağlantılar da etkisizleştirilir. Görsel denetiminde silme ve susturmayı bot yapar,
+  cevaplarında, özetlerde ve incelemelerde bağlantılar da etkisizleştirilir. Görsel denetiminde silme ve susturmayı bot yapar,
   bunun için model en az %70 emin olmalıdır.
 - **Kota ortaktır.** Günlük haklar sunucu ve kişi sayısına göre kendiliğinden paylaştırılır; incelemeler ve görsel
   denetiminin ayrı günlük payları vardır.
@@ -404,6 +408,22 @@ yalnızca soran görür. Cevaplar yanlış olabilir; her cevabın altında bu no
   bot talimatı soruyla birlikte gönderir ve JSON biçimini talimatla ister. Gemma'nın günlük sınırı yüksektir ama
   yavaştır: cevaptan önce kendiliğinden düşünür, bu kapatılamaz ve cevap 15-30 saniye sürer. Bu yüzden asıl model
   olarak değil, yedek olarak uygundur.
+
+### Kanal özeti (`/ozetle`)
+
+`/ozetle` bulunduğun kanalın son mesajlarını (varsayılan 50, `adet` ile 10-100) yapay zekâya özetletir: konuşulan
+konular, varılan kararlar, açık kalan sorular. Özet varsayılan olarak yalnızca isteyene görünür; `paylas` seçeneğiyle
+kanala yazılır.
+
+- **Sunucu başına açılır.** Özetlenen mesajlar başkalarının yazdıklarıdır ve Google'a gönderilir; bu yüzden özellik
+  varsayılan olarak kapalıdır, bir yönetici `/ayarla ozet durum:Açık` ile açar. Bot mesajları saklamaz.
+- Yalnızca kanalın mesaj geçmişini okuyabilen üyeler özet alabilir; göremediği mesajların özetini bu yoldan alamaz.
+- Botların ve sistemin mesajları özete katılmaz. Her mesajın en fazla 400 karakteri, toplamda en fazla 15.000
+  karakter gönderilir; sığmazsa en yeni mesajlar kalır.
+- Mesajlar modele "yalnızca özetlenecek veri" olarak verilir; içlerine yazılmış talimatları uygulamaması istenir.
+  Model yine de kandırılabilir, ama `/sor`'daki gibi özet kimseyi etiketleyemez, başlık ve gizli bağlantı içeremez.
+- Her özet, kişinin günlük `/sor` hakkından bir tane kullanır; sınırlar `/sor` ile ortaktır.
+- Mesajların metnini okuyabilmek için **Message Content Intent** gerekir (`.env` içinde `MESAJ_ICERIGI=1`).
 
 ## Sunucuna ekledikten sonra
 
