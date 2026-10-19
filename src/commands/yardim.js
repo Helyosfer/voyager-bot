@@ -136,6 +136,10 @@ const menu = (bolumler, secili) =>
   );
 
 module.exports = {
+  // Test için
+  BOLUMLER,
+  bolumleriHazirla,
+
   data: new SlashCommandBuilder().setName('yardim').setDescription('Komutları bölüm bölüm gösterir ve ne işe yaradıklarını anlatır'),
 
   async execute(interaction) {
