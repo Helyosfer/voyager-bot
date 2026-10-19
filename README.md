@@ -74,7 +74,7 @@ diliyle gösterilir.
 
 | Komut | Ne yapar | Gereken yetki |
 |---|---|---|
-| `/yardim` | Tüm komutları ve ne işe yaradıklarını listeler | Herkes |
+| `/yardim` | Komutları bölüm bölüm listeler; her komutun ayrıntılı sayfası (seçenekler, örnekler, bilmen gerekenler) var. `/yardim komut:ban` ile doğrudan açılır | Herkes |
 | `/ping` | Bot çalışıyor mu kontrol eder | Herkes |
 | `/hatirlat` | Belirtilen süre sonra hatırlatma yapar (kişi başı en fazla 5) | Herkes |
 | `/seviye` | Seviyeni ve sunucu sıralamasını gösterir; yöneticiler sistemi açar, seviye ödülü rolleri belirler | Herkes (ayarlar için Sunucuyu Yönet) |
@@ -683,6 +683,7 @@ src/
   haber.js            Haber bildirimleri; haber-ayristir.js ayrı iş parçacığında çalışır
   instagram.js        Instagram gönderi bildirimleri
   yapayzeka.js        Gemini bağlantısı ve /sor
+  yardim-rehberi.js   /yardim komut sayfalarının anlatımları, örnekleri ve notları
   sohbet.js           /sor cevabına "Yanıtla" ile devam edilen konuşmalar
   inceleme.js         Oyun fırsatı kartlarındaki yapay zekâ incelemesi
   firsatlar.js        Oyun fırsatları
