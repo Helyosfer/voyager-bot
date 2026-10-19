@@ -10,8 +10,8 @@ const { ayarlariGetir, ayarKaydet } = require('../depo');
 const { yazabilirMi, etiketEngeli, beklemeSayaci, neZaman } = require('../yardimci');
 const firsatlar = require('../firsatlar');
 
-// /oyun simdi her çağrıda dört mağazaya ve oyun başına Steam'e istek atar, rolü de etiketler.
-// Art arda çalıştırılırsa botun adresi bu servislerde sınırlanabilir; sunucu başına bu aralıkla çalışır.
+// /oyun simdi her çalıştırılışında dört mağazaya ve her oyun için Steam'e istek atar, rolü de etiketler.
+// Art arda çalıştırılırsa bu servisler botu sınırlayabilir; bu yüzden her sunucuda en sık bu aralıkla çalışır.
 const simdiSayaci = beklemeSayaci(5 * 60_000);
 
 const DURUMLAR = [
@@ -189,7 +189,7 @@ module.exports = {
       );
     }
 
-    // goster
+    // goster alt komutu
     const durum = (acik, ayrinti) => (acik ? `🟢 Açık\n${ayrinti}` : '⚫ Kapalı');
     const embed = new EmbedBuilder()
       .setTitle('🎮 Oyun fırsatları')

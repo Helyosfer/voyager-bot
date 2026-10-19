@@ -56,11 +56,11 @@ const BOLUMLER = [
 ];
 const DIGER = { id: 'diger', simge: '📦', ad: 'Diğer', ozet: 'Diğer komutlar', komutlar: [] };
 
-// Komut adından Discord kimliğine: tıklanabilir komut bağlantıları için
+// Komut adı → Discord'daki komut kimliği; tıklanabilir komut bağlantıları için
 async function kimlikler(client) {
   if (!client.komutKimlikleri) {
     const yuklu = await client.application.commands.fetch().catch(() => null);
-    if (!yuklu) return new Map(); // Alınamazsa düz yazıya dönülür, bir sonraki sefer yeniden denenir
+    if (!yuklu) return new Map(); // Alınamazsa düz yazı kullanılır, bir dahaki sefere yeniden denenir
     client.komutKimlikleri = new Map(yuklu.map((k) => [k.name, k.id]));
   }
   return client.komutKimlikleri;
@@ -136,7 +136,7 @@ const menu = (bolumler, secili) =>
   );
 
 module.exports = {
-  // Test için
+  // Yalnızca testler kullanır
   BOLUMLER,
   bolumleriHazirla,
 
@@ -157,7 +157,7 @@ module.exports = {
       const secili = bolumler.some((b) => b.id === secim.values[0]) ? secim.values[0] : 'ana';
       secim.update(sayfa(secili)).catch((hata) => console.error('Yardım sayfası gösterilemedi:', hata.message));
     });
-    // Süre dolunca menü kaldırılır; çalışmayan bir menü kalmasın
+    // Süre dolunca menü kaldırılır; ortada çalışmayan bir menü kalmasın
     toplayici.on('end', () => interaction.editReply({ components: [] }).catch(() => {}));
   },
 };

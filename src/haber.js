@@ -16,7 +16,7 @@ const KONTROL_ARALIGI = 10 * 60_000;
 const SUNUCU_BASI_SINIR = 15;
 // Bütün sunucuların takip ettiği farklı besleme sayısı. Yayın bildirimlerindeki oranla aynıdır
 // (orada 9000 / 50): havuz 180 sunucunun kendi sınırı kadardır, yani tek bir sunucu havuzun
-// en fazla %0,6'sını kullanabilir. Havuz büyüdüğü için kontrol döngüsü kaynakları birkaçı
+// en fazla %0,6'sını kullanabilir. Havuz büyük olduğu için kontrol döngüsü kaynakları birkaçı
 // aynı anda okur ve sorun çıkaranları seyrekleştirir (aşağıda, kontrolEt).
 const TOPLAM_SINIR = 180 * SUNUCU_BASI_SINIR;
 // Aynı kişinin sahip olduğu sunucuların toplamı; tek kişi TOPLAM_SINIR'ı dolduramasın
@@ -105,10 +105,10 @@ async function indir(adres, kalanYonlendirme = 3) {
     });
 
     if ([301, 302, 303, 307, 308].includes(yanit.statusCode) && yanit.headers.location) {
-      // Gövde okunmaz, bağlantı kapatılır: sonu gelmeyen bir gövde arkada akmaya devam etmesin
+      // Gövde okunmaz, bağlantı kapatılır: sonu gelmeyen bir gövde arka planda akmaya devam etmesin
       yanit.destroy();
       if (!kalanYonlendirme) throw new Error('Çok fazla yönlendirme');
-      clearTimeout(sure); // Yeni adresin kendi süresi var
+      clearTimeout(sure); // Yönlendirilen yeni adresin kendi süre sınırı var
       return indir(new URL(yanit.headers.location, u).href, kalanYonlendirme - 1);
     }
     if (yanit.statusCode !== 200) {
@@ -134,7 +134,7 @@ async function indir(adres, kalanYonlendirme = 3) {
       });
       akis.on('end', () => coz(Buffer.concat(parcalar)));
       akis.on('error', reddet);
-      // Sıkıştırılmış cevapta bağlantı hatası açıcıya (akis) ulaşmaz; burada yakalanmazsa beklemede kalır
+      // Sıkıştırılmış cevapta bağlantı hatası açıcıya (akis) ulaşmaz; burada yakalanmazsa istek beklemede kalır
       yanit.on('error', reddet);
       yanit.on('close', () => {
         if (!yanit.complete) reddet(new Error('Bağlantı yarıda kesildi'));
@@ -191,7 +191,7 @@ async function beslemeBul(girdi) {
   if (besleme) return { adres: yanit.adres, besleme };
 
   // Sayfa beslemesini <link rel="alternate" type="application/rss+xml"> ile duyurur (adaylar).
-  // Duyurmuyorsa yaygın adresleri dene
+  // Duyurmuyorsa yaygın besleme adresleri denenir
   for (const yol of ['/rss', '/feed', '/rss.xml', '/feed.xml', '/atom.xml']) adaylar.push(new URL(yol, yanit.adres).href);
 
   for (const aday of [...new Set(adaylar)].slice(0, 6)) {
@@ -249,7 +249,7 @@ async function ekle(sunucuId, girdi) {
   const kayit = { adres: bulunan.adres, ad: bulunan.besleme.ad.slice(0, 80) };
   kayitlar.push(kayit);
   yaz('haber', hepsi);
-  // Yalnızca bundan sonraki haberler duyurulsun
+  // Yalnızca bundan sonra çıkan haberler duyurulsun
   gorulduIsaretle(bulunan.adres, bulunan.besleme.haberler);
   return { besleme: kayit, adet: bulunan.besleme.haberler.length };
 }
@@ -278,7 +278,7 @@ function bildirimMesaji(kaynakAdi, haber, rol = null) {
     .setURL(haber.url)
     .setColor(0x3b82f6)
     .setFooter({ text: new URL(haber.url).hostname.replace(/^www\./, '') });
-  // Özet başlığın tekrarıysa gösterme
+  // Özet, başlığın tekrarıysa gösterilmez
   if (haber.ozet && haber.ozet !== haber.baslik) embed.setDescription(baglantisiz(kisalt(haber.ozet, 350)));
   if (haber.resim) embed.setImage(haber.resim);
   if (haber.zaman) embed.setTimestamp(haber.zaman);
@@ -328,7 +328,7 @@ async function kaynagiIsle(adres, okuyucu) {
   } catch (hata) {
     const sayi = (sorunSayisi.get(adres) ?? 0) + 1;
     sorunSayisi.set(adres, sayi);
-    // Sürekli çalışmayan bir kaynak kayıtları doldurmasın: ilk hatada ve sonra seyrek yaz
+    // Sürekli çalışmayan bir kaynak kayıtları doldurmasın: ilk hatada, sonra da seyrek yazılır
     if (sayi === 1 || sayi % 36 === 0) console.error(`Haber kaynağı okunamadı (${adres}, ${sayi}. kez):`, hata.message);
     return;
   }
@@ -336,14 +336,14 @@ async function kaynagiIsle(adres, okuyucu) {
   else sorunSayisi.delete(adres);
 
   const gorulen = oku('haber-durum', {})[adres];
-  // Besleme en yeniyi başa koyar; duyururken eskiden yeniye sırala
+  // Besleme en yeniyi başa koyar; duyurulurken eskiden yeniye sıralanır
   const yeniler = gorulen ? besleme.haberler.filter((h) => !gorulen.includes(h.kimlik)).slice(0, KONTROL_BASI_HABER).reverse() : [];
-  // Önce işaretle: gönderim sırasında bot kapanırsa aynı haber iki kez duyurulmasın
+  // Önce işaretlenir: gönderim sırasında bot kapanırsa aynı haber iki kez duyurulmasın
   gorulduIsaretle(adres, besleme.haberler);
   for (const haber of yeniler) await duyur(adres, haber);
 }
 
-// okuyucu: testlerde beslemeOku yerine sahtesi verilir
+// okuyucu: testlerde beslemeOku yerine onun sahtesi verilir
 async function kontrolEt(okuyucu = beslemeOku) {
   tur++;
   const takipte = takipEdilenler();
@@ -383,6 +383,6 @@ function baslat(discordClient) {
 
 module.exports = {
   baslat, liste, ekle, cikar, kontrolEt, bildirimMesaji, SUNUCU_BASI_SINIR, SAHIP_BASI_SINIR, TOPLAM_SINIR, KONTROL_ARALIGI,
-  // Test için
+  // Yalnızca testler kullanır
   indir, ayristir, incele, beslemeBul, herkeseAcik,
 };

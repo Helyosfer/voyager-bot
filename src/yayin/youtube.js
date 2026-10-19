@@ -1,5 +1,5 @@
 // YouTube: canlı yayın için anında bildirim servisi yok. Takip edilen kanalların
-// video akışı düzenli aralıklarla okunur, yeni videoların canlı olup olmadığı sorulur.
+// video akışı düzenli aralıklarla okunur ve yeni videoların canlı olup olmadığı sorulur.
 const { adAyikla } = require('./ortak');
 
 const ANAHTAR = process.env.YOUTUBE_API_KEY;
@@ -19,7 +19,7 @@ async function api(yol) {
 
 // "@kanal", kanal adresi ya da "UC..." ile başlayan kanal kimliği kabul eder
 async function bul(girdi) {
-  // Kanal adresinin sonundaki sekme adını at: youtube.com/@kanal/live
+  // Kanal adresinin sonundaki sekme adı atılır: youtube.com/@kanal/live
   const ad = adAyikla(girdi.trim().replace(/\/(live|streams|videos|featured)\/?$/, ''));
   if (!/^[\w.-]{3,64}$/.test(ad)) return null;
   const sorgu = /^UC[\w-]{22}$/.test(ad) ? `id=${ad}` : `forHandle=${encodeURIComponent(`@${ad}`)}`;
@@ -57,7 +57,7 @@ async function kontrolEt() {
     const yanit = await api(`/videos?part=snippet&id=${liste.slice(i, i + 50).join(',')}`);
     for (const v of yanit.items ?? []) {
       const durum = v.snippet.liveBroadcastContent; // 'live' | 'upcoming' | 'none'
-      if (durum === 'upcoming') continue; // Planlanmış yayın: başlayana kadar sormaya devam et
+      if (durum === 'upcoming') continue; // Planlanmış yayın: başlayana kadar sormaya devam edilir
       bitenler.add(v.id);
       if (durum !== 'live') continue;
       await bildir('youtube', v.snippet.channelId, {

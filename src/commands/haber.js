@@ -70,13 +70,13 @@ module.exports = {
     }
 
     if (alt === 'ekle') {
-      // Her ekleme birkaç sayfa indirir; aynı sunucudan üst üste gelenler sıraya girmez, reddedilir
+      // Her ekleme birkaç sayfa indirir; aynı sunucudan üst üste gelen istekler sıraya alınmaz, reddedilir
       if (eklenen.has(sunucuId)) return cevapla('⏳ Bu sunucuda şu an başka bir kaynak ekleniyor. Bitmesini bekle.');
       eklenen.add(sunucuId);
       let sonuc;
       try {
-        // Siteye bağlanıldığı için 3 saniyeyi aşabilir. Erteleme de başarısız olabilir (etkileşim zaman
-        // aşımına uğradıysa); o durumda da sunucu bot yeniden başlayana kadar kilitli kalmamalı.
+        // Siteye bağlanıldığı için 3 saniyeyi aşabilir. Yanıtı ertelemek de başarısız olabilir (etkileşim zaman
+        // aşımına uğradıysa); o durumda da sunucu, bot yeniden başlayana kadar kilitli kalmamalı.
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         sonuc = await haber.ekle(sunucuId, interaction.options.getString('adres', true)).catch((hata) => {
           console.error('/haber ekle hatası:', hata.message);
@@ -123,7 +123,7 @@ module.exports = {
       return cevapla('✅ Haber bildirimleri kapatıldı. Liste duruyor; yeniden açmak için `/haber kanal` kullan.');
     }
 
-    // liste
+    // liste alt komutu
     const ayar = ayarlariGetir(sunucuId);
     const kaynaklar = haber.liste(sunucuId);
     const embed = new EmbedBuilder()

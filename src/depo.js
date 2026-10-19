@@ -1,9 +1,9 @@
-// Basit dosya tabanlı kayıt. Ayarlar ve hatırlatıcılar data/ klasöründe
-// JSON olarak tutulur, böylece bot yeniden başlasa da kaybolmaz.
+// Basit, dosyaya dayalı kayıt. Ayarlar ve hatırlatıcılar data/ klasöründe
+// JSON olarak tutulur; böylece bot yeniden başlasa da kaybolmazlar.
 const fs = require('node:fs');
 const path = require('node:path');
 
-// VERI_KLASORU yalnızca testler içindir: gerçek data/ klasörüne dokunmadan geçici bir klasöre yazarlar
+// VERI_KLASORU yalnızca testler içindir: testler gerçek data/ klasörüne dokunmadan geçici bir klasöre yazar
 const KLASOR = process.env.VERI_KLASORU || path.join(__dirname, '..', 'data');
 
 // Kayıtları yalnızca botun kendi kullanıcısı okuyabilsin (ayarlar, imza anahtarı).
@@ -11,7 +11,7 @@ const KLASOR = process.env.VERI_KLASORU || path.join(__dirname, '..', 'data');
 try {
   fs.chmodSync(KLASOR, 0o700);
 } catch {
-  // Klasör yok
+  // Klasör henüz yok
 }
 
 function oku(ad, varsayilan) {
@@ -27,7 +27,7 @@ function oku(ad, varsayilan) {
   try {
     return JSON.parse(icerik);
   } catch {
-    // Bozuk dosyayı kenara al; yoksa bir sonraki kayıt üstüne yazıp içindekileri yok eder
+    // Bozuk dosya kenara alınır; yoksa bir sonraki kayıt üzerine yazıp içindekileri yok eder
     const yedek = `${dosya}.bozuk-${Date.now()}`;
     fs.renameSync(dosya, yedek);
     console.error(`${ad}.json okunamadı, varsayılan değerlerle devam ediliyor. Bozuk dosya: ${yedek}`);
@@ -35,8 +35,8 @@ function oku(ad, varsayilan) {
   }
 }
 
-// Windows'ta virüs tarayıcısı ya da dizin oluşturucu yeni yazılan dosyayı kısa bir süre açık
-// tutabilir; o sırada üzerine taşıma EPERM/EACCES/EBUSY verir. Birkaç kez kısa beklemeyle denenir.
+// Windows'ta virüs tarayıcısı ya da arama dizini yeni yazılan dosyayı kısa bir süre açık
+// tutabilir; o sırada dosyayı yerine taşımak EPERM/EACCES/EBUSY hatası verir. Kısa aralarla birkaç kez denenir.
 // (Linux'ta bu hatalar oluşmaz.)
 const TASIMA_DENEMESI = 5;
 const kisaBekle = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
@@ -54,7 +54,7 @@ function tasi(kaynak, hedef) {
 
 function yaz(ad, veri) {
   fs.mkdirSync(KLASOR, { recursive: true, mode: 0o700 });
-  // Önce geçici dosyaya yaz, sonra yerine taşı: yazma yarıda kesilirse eski dosya sağlam kalır
+  // Önce geçici dosyaya yazılır, sonra yerine taşınır: yazma yarıda kesilirse eski dosya sağlam kalır
   const dosya = path.join(KLASOR, `${ad}.json`);
   const gecici = `${dosya}.tmp`;
   fs.writeFileSync(gecici, JSON.stringify(veri, null, 2), { mode: 0o600 });

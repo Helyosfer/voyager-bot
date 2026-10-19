@@ -10,7 +10,7 @@ const TEKRAR_BEKLEME = 60_000;
 const EN_FAZLA_DENEME = 5;
 
 // Hatırlatıcıyı kuran kişi hâlâ bu kanala yazabiliyor mu? Sunucudan ayrılmış,
-// yasaklanmış veya susturulmuşsa mesajı bot üzerinden göndermesine izin verme.
+// yasaklanmış ya da susturulmuşsa mesajı bot üzerinden gönderemez.
 async function halaYazabilir(kanal, kullaniciId) {
   if (!kanal.guild) return false;
   const uye = await kanal.guild.members.fetch(kullaniciId);
@@ -24,7 +24,7 @@ async function gonder(client, kayit) {
   if (!kanal?.isTextBased() || !(await halaYazabilir(kanal, kayit.kullaniciId))) return;
   await kanal.send({
     content: `⏰ <@${kayit.kullaniciId}> hatırlatma: ${kayit.mesaj}`,
-    // Mesajın içine @everyone yazılsa bile sadece ilgili kişi etiketlenir
+    // Mesajın içine @everyone yazılsa bile yalnızca hatırlatıcının sahibi etiketlenir
     allowedMentions: { users: [kayit.kullaniciId] },
   });
 }
@@ -36,7 +36,7 @@ function kur(client, kayit, deneme = 1) {
       await gonder(client, kayit);
     } catch (hata) {
       // Discord'un reddettiği istekler (kanal silinmiş, üye ayrılmış, yetki yok)
-      // tekrar denenince düzelmez; diğerleri geçici olabilir.
+      // yeniden denenince düzelmez; diğer hatalar geçici olabilir.
       const kalici = hata instanceof DiscordAPIError && hata.status < 500;
       if (!kalici && deneme < EN_FAZLA_DENEME) return kur(client, kayit, deneme + 1);
       console.error(`Hatırlatma gönderilemedi (${kayit.id}):`, hata.message);
@@ -50,7 +50,7 @@ function kur(client, kayit, deneme = 1) {
   }, kalan);
 }
 
-// Kişi sınırı dolduysa eklemez ve false döndürür.
+// Kişinin sınırı dolduysa eklemez ve false döndürür.
 function ekle(client, kayit) {
   const hepsi = oku('hatirlaticilar', []);
   if (hepsi.filter((h) => h.kullaniciId === kayit.kullaniciId).length >= KISI_BASI_SINIR) return false;

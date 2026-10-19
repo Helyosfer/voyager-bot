@@ -18,7 +18,7 @@ const KAYIT_ARALIGI = 60_000;
 
 const bekleme = beklemeSayaci(BEKLEME);
 
-// Her mesajda dosya yazılmasın diye XP bellekte tutulur, dakikada bir ve bot kapanırken kaydedilir.
+// Her mesajda dosyaya yazılmasın diye XP bellekte tutulur; dakikada bir ve bot kapanırken kaydedilir.
 // Bot çökerse en fazla son dakikanın XP'si kaybolur.
 let veri = null;
 let degisti = false;
@@ -30,7 +30,7 @@ function kaydet() {
   try {
     yaz('seviyeler', veri);
   } catch (hata) {
-    degisti = true; // Bir sonraki seferde yeniden denensin
+    degisti = true; // Bir dahaki sefere yeniden denensin
     console.error('Seviye kayıtları yazılamadı:', hata.message);
   }
 }
@@ -108,8 +108,8 @@ async function mesajGeldi(mesaj) {
 
 function baslat(client) {
   client.on(Events.MessageCreate, (mesaj) => {
-    // Bir tur sonra: otomatik koruma aynı olayda mesaj hakkındaki kararını o ana kadar vermiş olur.
-    // Dinleyicilerin kayıt sırasına ya da korumanın içindeki beklemelere bağlı değildir.
+    // Bir tur sonra bakılır: otomatik koruma aynı olaydaki mesaj hakkında kararını o ana kadar vermiş olur.
+    // Bu, dinleyicilerin kayıt sırasına ya da korumanın içindeki beklemelere bağlı değildir.
     setImmediate(() => mesajGeldi(mesaj).catch((hata) => console.error('Seviye hatası:', hataMetni(hata))));
   });
   setInterval(kaydet, KAYIT_ARALIGI).unref();

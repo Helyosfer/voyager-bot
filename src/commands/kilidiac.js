@@ -2,7 +2,7 @@ const { SlashCommandBuilder, PermissionFlagsBits, InteractionContextType, Messag
 const kilit = require('../kilit');
 
 module.exports = {
-  // Yönetici yetkisini bot da denetler; sunucu ayarlarından başka rollere açılamaz
+  // Yönetici yetkisini bot da denetler; komut sunucu ayarlarından başka rollere açılsa bile onlarda çalışmaz
   kesinYetki: true,
 
   data: new SlashCommandBuilder()

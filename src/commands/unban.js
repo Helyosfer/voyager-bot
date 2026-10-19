@@ -19,7 +19,7 @@ module.exports = {
     const yasak = await interaction.guild.bans.fetch(hedef.id).catch(() => null);
     if (!yasak) return interaction.reply({ content: '❌ Bu kullanıcı yasaklı değil.', flags: MessageFlags.Ephemeral });
 
-    // Discord 3 saniye içinde cevap bekler; işlem uzarsa "yanıt vermedi" demesin
+    // Discord yanıtı 3 saniye içinde bekler; işlem uzun sürerse "Uygulama yanıt vermedi" hatası çıkmasın
     await interaction.deferReply();
     await interaction.guild.members.unban(hedef.id, `${interaction.user.tag}: ${sebep}`);
     await interaction.editReply(`🔓 **${hedef.tag}** kullanıcısının yasağı kaldırıldı. Sebep: ${sebep}`);

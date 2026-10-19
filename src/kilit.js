@@ -33,12 +33,12 @@ const KILITLENEN = [
 // "İzinleri Yönet" demektir; kilidi uygulayıp geri alabilmesi buna bağlıdır.
 const BOT_IZINLERI = [P.ViewChannel, P.SendMessages, P.EmbedLinks, P.ReadMessageHistory, P.ManageRoles];
 const AYNI_ANDA = 5; // Aynı anda düzenlenen kanal sayısı
-const YETKI_YOK = 50013; // Discord: Missing Permissions
+const YETKI_YOK = 50013; // Discord hata kodu: Missing Permissions (izin yok)
 
 const kilitli = (sunucuId) => Boolean(ayarlariGetir(sunucuId).kilit);
 const bitler = (izinler) => new PermissionsBitField(izinler).bitfield;
 
-// Listeyi küçük gruplar halinde işler; her öğe için hata (başarılıysa null) döndürür
+// Listeyi küçük gruplar halinde işler; her öğe için hatayı (başarılıysa null) döndürür
 async function gruplarHalinde(liste, islem) {
   const hatalar = [];
   for (let i = 0; i < liste.length; i += AYNI_ANDA) {
@@ -64,13 +64,13 @@ const kilitlenebilir = (kanal) => !kanal.isThread() && kanal.permissionOverwrite
 const kategoriMi = (kanal) => kanal.type === ChannelType.GuildCategory;
 
 async function kilitle(guild, yapan) {
-  // Zaten kilitliyse yedeğe dokunma (bkz. dosya sonundaki tekSefer)
+  // Zaten kilitliyse yedeğe dokunulmaz (bkz. dosya sonundaki tekSefer)
   if (kilitli(guild.id)) return null;
   const ben = guild.members.me;
   const sebep = `Acil durum kilidi (${yapan.tag})`;
   const kanallar = [...guild.channels.cache.values()].filter(kilitlenebilir);
 
-  // Hiçbir şeye dokunmadan önce her kanalın izinlerini sakla ve diske yaz:
+  // Hiçbir şeye dokunulmadan önce her kanalın izinleri saklanıp diske yazılır:
   // işlem yarıda kesilse bile /kilidiac geri alabilsin.
   const yedek = Object.fromEntries(
     kanallar.map((kanal) => [
@@ -86,8 +86,8 @@ async function kilitle(guild, yapan) {
   const tumu = bitler(KILITLENEN.map(([izin]) => izin));
   const botTemel = bitler(BOT_IZINLERI);
   let kilitlenemeyen = 0n; // Hiçbir yolla yasaklanamayan izinler
-  let gizlenen = 0; // İzni kilitlenemediği için kilit boyunca gizlenen kanallar
-  let satirVerilebiliyor = true; // Discord bota "İzinleri Yönet" satırını verdiriyor mu (ilk retten sonra false)
+  let gizlenen = 0; // İzinleri kilitlenemediği için kilit boyunca gizlenen kanallar
+  let satirVerilebiliyor = true; // Discord bota "İzinleri Yönet" satırı verilmesine izin veriyor mu (ilk retten sonra false)
   let tam = 0; // Bütün izinleri tek seferde kilitlenen kanallar
   let kismi = 0; // Yalnızca botun elindeki izinlerle kilitlenen kanallar
 
@@ -96,7 +96,7 @@ async function kilitle(guild, yapan) {
   const kilitliListe = (kanal, yasak, botAllow) => {
     const eski = yedek[kanal.id];
     const liste = eski
-      // Sahip zaten etkilenmez; botun satırı aşağıda yeniden yazılır
+      // Sunucu sahibi zaten etkilenmez; botun satırı aşağıda yeniden yazılır
       .filter((i) => i.id !== ben.id && i.id !== guild.ownerId)
       .map((i) => ({ id: i.id, type: i.type, allow: BigInt(i.allow) & ~yasak, deny: BigInt(i.deny) | yasak }));
     if (!liste.some((i) => i.id === guild.roles.everyone.id)) {
@@ -109,8 +109,8 @@ async function kilitle(guild, yapan) {
   };
 
   const kanaliKilitle = async (kanal) => {
-    // 1. Bota bu kanalda "İzinleri Yönet" satırını ver (bkz. dosya başındaki 1. kural).
-    //    Discord bu satırı her zaman verdirmez (botta Yönetici izni yoksa reddedebilir);
+    // 1. Bota bu kanalda "İzinleri Yönet" satırı verilir (bkz. dosya başındaki 1. kural).
+    //    Discord buna her zaman izin vermez (botta Yönetici izni yoksa reddedebilir);
     //    verilemezse kanal 3. adımdaki gibi, botun elindeki izinlerle kilitlenir.
     //    Bir kanalda reddedildiyse diğerlerinde de reddedilir; saldırı anında zaman kaybetmemek
     //    için kalan kanallarda yeniden denenmez.
@@ -152,7 +152,7 @@ async function kilitle(guild, yapan) {
   const sirali = [...kanallar.filter(kategoriMi), ...kanallar.filter((k) => !kategoriMi(k))];
   const hatalar = await gruplarHalinde(sirali, kanaliKilitle);
 
-  // Ses kanallarındakiler bağlı kalır; yetki varsa sahip ve bot dışındakileri çıkar
+  // Ses kanallarındakiler bağlı kalır; yetki varsa sahip ve bot dışındakiler kanaldan çıkarılır
   let cikarilan = 0;
   if (ben.permissions.has(P.MoveMembers)) {
     const seste = [...guild.voiceStates.cache.values()].filter((s) => s.channelId && s.id !== guild.ownerId && s.id !== ben.id);
@@ -205,7 +205,7 @@ async function ac(guild, yapan) {
   );
 
   const basarisiz = hatalar.filter(Boolean).length;
-  // Açılamayan kanal kaldıysa onların yedeğini sakla; komut yeniden çalıştırılabilsin
+  // Açılamayan kanal kaldıysa onların yedeği saklanır; komut yeniden çalıştırılabilsin
   if (basarisiz) {
     hepsi[guild.id] = Object.fromEntries(sirali.filter((_, i) => hatalar[i]).map((k) => [k.id, yedek[k.id]]));
   } else {
@@ -233,7 +233,7 @@ function baslat(client) {
   // Kilitliyken sunucuya eklenen botlar saldırının parçası sayılır ve atılır
   client.on(Events.GuildMemberAdd, async (uye) => {
     if (!uye.user.bot) return;
-    // Ayar dosyası okunamazsa hata burada kalsın; yakalanmazsa bot bütün sunucularda kapanır
+    // Ayar dosyası okunamazsa hata burada yakalansın; yakalanmazsa bot bütün sunucularda kapanır
     let kilitliMi = false;
     try {
       kilitliMi = kilitli(uye.guild.id);
@@ -253,7 +253,7 @@ function baslat(client) {
   });
 }
 
-// Bir sunucuda aynı anda tek bir kilitleme ya da açma işlemi yürür; süren bir işlem varsa
+// Bir sunucuda aynı anda tek bir kilitleme ya da açma işlemi yürütülür; süren bir işlem varsa
 // null döner. İki /kitle üst üste binerse ikincisi yedeği, birincinin kilitlemeye başladığı
 // izinlerle yeniden alır ve kilitten önceki izinler bir daha geri getirilemez.
 const islemde = new Set();

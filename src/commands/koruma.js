@@ -12,7 +12,7 @@ const baglanti = require('../baglanti');
 const { sureMetni } = require('../yardimci');
 
 const KELIME_SINIRI = 100;
-const ALAN_SINIRI = 100; // Engel ve izin listelerinin her biri
+const ALAN_SINIRI = 100; // Engel ve izin listelerinin her birinin en fazla uzunluğu
 
 const durumSecenegi = (o) =>
   o
@@ -247,7 +247,7 @@ module.exports = {
       return cevapla(`✅ ||${kelime}|| çıkarıldı.`);
     }
 
-    // goster
+    // goster alt komutu
     const ayar = koruma.ayarCoz(ayarlariGetir(sunucuId));
     const durum = (acik, dakika) => (acik ? `🟢 Açık\n${dakika ? `${dakika} dakika susturma` : 'Yalnızca silme'}` : '⚫ Kapalı');
     const embed = new EmbedBuilder()

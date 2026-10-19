@@ -3,7 +3,7 @@ const { gunlukGonder } = require('./gunluk');
 
 // Komutu kullanan kişi bu üyeye işlem yapabilir mi? Yapamazsa sebebini döndürür.
 function mudahaleEngeli(interaction, uye) {
-  if (!uye) return null; // Sunucuda değil (ör. ID ile ban), rol kontrolü gerekmez
+  if (!uye) return null; // Üye sunucuda değil (ör. kimlikle yasaklama); rol denetimi gerekmez
   if (uye.id === interaction.user.id) return 'Kendine işlem yapamazsın.';
   if (uye.id === interaction.client.user.id) return 'Bana işlem yapamazsın.';
   if (uye.id === interaction.guild.ownerId) return 'Sunucu sahibine işlem yapılamaz.';
@@ -18,7 +18,7 @@ function mudahaleEngeli(interaction, uye) {
   return null;
 }
 
-// Bot bu kanala yazabiliyor mu? Yazamıyorsa mesajlar sessizce kaybolur, o yüzden baştan söyle.
+// Bot bu kanala yazabiliyor mu? Yazamıyorsa mesajlar sessizce kaybolur; bu yüzden en baştan söylenir.
 function yazabilirMi(kanal, ekIzinler = []) {
   const izinler = kanal.permissionsFor(kanal.guild.members.me);
   return izinler?.has([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, ...ekIzinler]) ?? false;
@@ -80,7 +80,7 @@ function rolVermeEngeli(interaction, rol, { kime, amac }) {
 const otoRolEngeli = (interaction, rol) => rolVermeEngeli(interaction, rol, { kime: 'Yeni gelen herkese', amac: 'Oto rol yapabilmen' });
 
 // Oto rolü yeni üyeye verir. Rol ayarlandıktan sonra ona yönetim yetkisi eklenmişse vermez;
-// sessizce durmasın diye (en sık saatte bir) kayda ve log kanalına uyarı yazar.
+// sessizce durmasın diye kayda ve log kanalına (en sık saatte bir) uyarı yazar.
 const otoRolUyarisi = beklemeSayaci(60 * 60_000);
 async function otoRolVer(uye, rolId) {
   const rol = uye.guild.roles.cache.get(rolId);
@@ -104,7 +104,7 @@ async function otoRolVer(uye, rolId) {
 
 // Komutun bildirdiği yetki, komutu kullanan kişide var mı? Bu denetimi normalde Discord yapar,
 // ama sunucu yöneticileri kuralı Sunucu Ayarları → Entegrasyonlar bölümünden gevşetebilir.
-// "kesinYetki" işaretli komutlarda bot ayrıca bununla da denetler (bkz. index.js).
+// "kesinYetki" işaretli komutlarda bot yetkiyi ayrıca kendisi de denetler (bkz. index.js).
 function komutYetkisiVar(interaction, komut) {
   const gereken = komut.data.toJSON().default_member_permissions;
   return !gereken || Boolean(interaction.memberPermissions?.has(BigInt(gereken)));
@@ -123,7 +123,7 @@ function sahibinToplami(client, hepsi, sunucuId) {
 }
 
 // Bildirimlerde etiketlenecek rolü seçen kişi o rolü kendisi de etiketleyebiliyor olmalı;
-// yoksa etiketleyemediği bir rolü bot üzerinden etiketletmiş olur.
+// yoksa kendi etiketleyemediği bir rolü bot üzerinden etiketletmiş olur.
 function etiketEngeli(interaction, rol) {
   if (rol.mentionable || interaction.memberPermissions?.has(PermissionFlagsBits.MentionEveryone)) return null;
   return `${rol} rolünü etiketleme yetkin yok. Rol ayarlarından "Bu rolden herkesin bahsetmesine izin ver" seçeneğini aç ya da başka bir rol seç.`;
@@ -135,7 +135,7 @@ const baglantisiz = (metin) => metin.replace(/\]\(/g, ']\\(');
 
 // Dışarıdan gelen ad (haber kaynağı, yayıncı, Instagram hesabı) cevapta ya da [ad](adres) içinde
 // biçimlendirme ve gizli bağlantı oluşturamasın. escapeMarkdown tek başına [yazı](adres) yazımını kaçırmaz;
-// sıra önemli: escapeMarkdown sonra yapılırsa baglantisiz'in eklediği \ de kaçırılır ve metinde görünür.
+// Sıra önemlidir: escapeMarkdown sonra yapılırsa baglantisiz'in eklediği \ de kaçırılır ve metinde görünür.
 const duzAd = (ad) => baglantisiz(escapeMarkdown(String(ad)));
 
 // Hatanın kayda yazılacak hali. Hata nesnesinin tamamı yazılmaz: Discord hatalarında

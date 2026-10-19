@@ -23,8 +23,8 @@ const { gunlukGonder } = require('./gunluk');
 const { sureMetni } = require('./yardimci');
 
 const TURLER = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif' };
-const EN_BUYUK = 8 * 1024 * 1024; // bayt; daha büyük resimler indirilmez
-const EN_FAZLA_RESIM = 4; // Mesaj başına denetlenen resim
+const EN_BUYUK = 8 * 1024 * 1024; // bayt; bundan büyük resimler indirilmez
+const EN_FAZLA_RESIM = 4; // Bir mesajda denetlenen en fazla resim sayısı
 // Resimler yalnızca Discord'un kendi sunucularından indirilir
 const IZINLI_ADRESLER = new Set(['cdn.discordapp.com', 'media.discordapp.net']);
 const YENI_UYE = 7 * 24 * 60 * 60_000;
@@ -33,9 +33,9 @@ const KARA_OMUR = 90 * 24 * 60 * 60_000;
 const KARA_SINIRI = 10_000;
 const TEMIZ_OMUR = 24 * 60 * 60_000; // Temiz bulunan resim bu süre boyunca yeniden sorulmaz
 const GUVEN_ESIGI = 70; // Model en az bu kadar eminse işlem yapılır (0-100)
-const AYNI_ANDA = 2; // Modele aynı anda gönderilen denetim
-const KUYRUK_SINIRI = 30; // Bekleyen denetim bundan fazlaysa yenileri atlanır
-const SUNUCU_GUNLUK = 200; // Bir sunucu günde en fazla bu kadar denetim kullanır (ortak kota adil paylaşılsın)
+const AYNI_ANDA = 2; // Modele aynı anda gönderilebilen en fazla denetim
+const KUYRUK_SINIRI = 30; // Bekleyen denetim sayısı bunu aşarsa yeni gelenler atlanır
+const SUNUCU_GUNLUK = 200; // Bir sunucu günde en fazla bu kadar denetim kullanabilir (ortak kota adil paylaşılsın)
 
 const TALIMAT = [
   'Sen bir Discord sunucusunun dolandırıcılık denetçisisin. Sana bir Discord mesajındaki resimler ve varsa mesajın metni verilecek.',
@@ -78,9 +78,9 @@ function karayaEkle(ozetler, sebep) {
   yaz('gorsel-kara', Object.fromEntries(liste));
 }
 
-const temiz = new Map(); // parmak izi -> zaman (bellekte)
-const sonMesajlar = new Map(); // "sunucu:kişi" -> [{ mesaj, ozetler, zaman }]
-const suruyor = new Map(); // parmak izleri -> denetim sözü (aynı resim aynı anda iki kez sorulmasın)
+const temiz = new Map(); // parmak izi → zaman (bellekte)
+const sonMesajlar = new Map(); // "sunucu:kişi" → [{ mesaj, ozetler, zaman }]
+const suruyor = new Map(); // parmak izleri → süren denetim (Promise; aynı resim aynı anda iki kez sorulmasın)
 const sunucuSayaci = { gun: '', sayilar: new Map() };
 
 // Mesajdaki denetlenebilir resimler
@@ -165,7 +165,7 @@ function sunucuPayiVar(sunucuId) {
   return true;
 }
 
-// Resimleri modele sorar. Karar ya da (sorulamadıysa) null döndürür.
+// Resimleri modele sorar. Kararı, sorulamadıysa null döndürür.
 async function yargila(mesaj, indirilenler) {
   const anahtar = indirilenler.map((r) => r.ozet).join(',');
   if (suruyor.has(anahtar)) return suruyor.get(anahtar);
@@ -201,14 +201,14 @@ async function uygula(mesaj, indirilenler, ayar, karar, kaynak) {
   const ozetler = indirilenler.map((r) => r.ozet);
   karayaEkle(ozetler, karar.sebep);
 
-  // Bu mesaj ve aynı kişinin aynı resimleri içeren son mesajları
+  // Bu mesaj ve aynı kişinin aynı resimleri içeren son mesajları silinir
   const anahtar = `${mesaj.guild.id}:${mesaj.author.id}`;
   const silinecek = [mesaj, ...(sonMesajlar.get(anahtar) ?? []).filter((k) => k.mesaj.id !== mesaj.id && k.ozetler.some((o) => ozetler.includes(o))).map((k) => k.mesaj)];
   let silinen = 0;
   for (const m of silinecek) if (await m.delete().then(() => true, () => false)) silinen++;
   const susturuldu = await sustur(mesaj.member, ayar.gorselDakika, `Otomatik koruma: dolandırıcılık görseli (${karar.tur})`);
 
-  // Kanalda kısa bir uyarı; kalabalık yapmasın diye kendiliğinden silinir
+  // Kanalda kısa bir uyarı; kalabalık etmesin diye bir süre sonra kendiliğinden silinir
   const uyari = await mesaj.channel
     .send({
       content: `⚠️ ${mesaj.author} tarafından atılan mesaj dolandırıcılık görseli içerdiği için silindi. Hesabı ele geçirilmiş olabilir; görseldeki siteye girmeyin, kodu kullanmayın.`,
@@ -263,7 +263,7 @@ async function denetle(mesaj, ayar) {
   for (const o of ozetler) temiz.set(o, Date.now());
 }
 
-// Bellek birikmesin
+// Bellekte kayıt birikmesin
 function temizlik() {
   const simdi = Date.now();
   for (const [anahtar, kayitlar] of sonMesajlar) {

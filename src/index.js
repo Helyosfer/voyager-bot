@@ -1,4 +1,4 @@
-require('dotenv').config({ quiet: true }); // quiet: her açılışta kayda bilgi satırı yazmasın
+require('dotenv').config({ quiet: true }); // quiet: her açılışta kayda bilgi satırı yazılmasın
 const fs = require('node:fs');
 const path = require('node:path');
 const { Client, Collection, Events, GatewayIntentBits, MessageFlags, Partials } = require('discord.js');
@@ -51,14 +51,14 @@ const client = new Client({
     GatewayIntentBits.GuildVoiceStates,
     ...mesajIcerigi,
   ],
-  // Bot açılmadan önce yazılmış mesajların silinmesi de haber verilsin
+  // Bot açılmadan önce yazılmış mesajlar silindiğinde de haber gelsin
   partials: [Partials.Message],
   // Sebep gibi kullanıcının yazdığı metinlerdeki @everyone ve rol etiketleri
-  // bildirim göndermesin; sadece kullanıcı etiketleri çalışır.
+  // bildirim göndermesin; yalnızca kullanıcı etiketleri çalışır.
   allowedMentions: { parse: ['users'] },
 });
 
-// commands/ klasöründeki her dosya bir komut
+// commands/ klasöründeki her dosya bir komuttur
 client.komutlar = new Collection();
 const komutKlasoru = path.join(__dirname, 'commands');
 for (const dosya of fs.readdirSync(komutKlasoru).filter((d) => d.endsWith('.js'))) {
@@ -89,7 +89,7 @@ client.once(Events.ClientReady, (c) => {
 client.on(Events.GuildCreate, (sunucu) => console.log(`Sunucuya eklendi: ${sunucu.name} (${sunucu.id}) · ${sunucu.memberCount} üye`));
 client.on(Events.GuildDelete, (sunucu) => console.log(`Sunucudan çıkarıldı: ${sunucu.name} (${sunucu.id})`));
 
-// Dinleyici olmazsa bağlantı hatası botu çökertir
+// Bu dinleyici olmazsa bir bağlantı hatası botu çökertir
 client.on(Events.Error, (hata) => console.error('Discord bağlantı hatası:', hata));
 
 // Kalıcı düğmelerin önekleri. /sunucukur akışları (üyelik onayı, ilgi rolleri, destek), rol menüleri, çekilişler
@@ -148,7 +148,7 @@ kilit.baslat(client);
 seviye.baslat(client);
 sohbet.baslat(client);
 
-// Yeni üye: hoş geldin mesajı + otomatik rol
+// Yeni üye: hoş geldin mesajı ve otomatik rol
 client.on(Events.GuildMemberAdd, async (uye) => {
   // Burada yakalanmayan bir hata (ör. ayar dosyası okunamazsa) botu bütün sunucularda kapatır
   try {

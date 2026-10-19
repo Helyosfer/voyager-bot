@@ -58,7 +58,7 @@ async function ekle(sunucuId, platform, girdi) {
   try {
     await esitle(platform);
   } catch (hata) {
-    // Abonelik kurulamadıysa bildirim hiç gelmez; listede yanıltıcı bir kayıt kalmasın
+    // Abonelik kurulamadıysa bildirim hiç gelmez; listede yanıltıcı bir kayıt bırakılmaz
     cikar(sunucuId, platform, yayinci.id);
     throw hata;
   }
@@ -116,7 +116,7 @@ async function kanalaGonder(sunucuId, platform, bilgi) {
 }
 
 // Platformlar yayın başladığında bunu çağırır. bilgi.anahtar o yayına özgüdür;
-// aynı yayın için ikinci kez (tekrar gönderim, yeniden başlatma) haber verilmez.
+// aynı yayın için ikinci kez (yinelenen gönderim, yeniden başlatma) haber verilmez.
 async function bildir(platform, id, bilgi) {
   const durum = oku('yayin-durum', {});
   const anahtar = `${platform}:${id}`;
@@ -131,7 +131,7 @@ async function bildir(platform, id, bilgi) {
     });
   }
 
-  // Gecikmenin nereden geldiği görülsün: platformun haber vermesi mi, botun işlemesi mi
+  // Gecikmenin nereden geldiği görülsün: platformun geç haber vermesinden mi, botun işlemesinden mi
   const sure = (ms) => (Number.isFinite(ms) ? `${(ms / 1000).toFixed(1)} sn` : 'bilinmiyor');
   console.log(
     `Yayın bildirildi: ${PLATFORMLAR[platform].ad} · ${bilgi.ad} · platform ${sure(bilgi.geldi - bilgi.basladi)} sonra haber verdi, bot ${sure(Date.now() - bilgi.geldi)} içinde gönderdi`,
@@ -193,7 +193,7 @@ function baslat(discordClient) {
     console.log(`Yayın bildirimi · ${p.ad}: ${p.hazir() ? 'hazır' : `kapalı (eksik: ${p.gereken})`}`);
   }
   webhookSunucusu();
-  // Açılışta ve düzenli aralıklarla: iptal edilmiş ya da eksik kalmış abonelikleri onar
+  // Açılışta ve düzenli aralıklarla iptal edilmiş ya da eksik kalmış abonelikler onarılır
   hepsiniEsitle();
   setInterval(hepsiniEsitle, ESITLEME_ARALIGI);
 }

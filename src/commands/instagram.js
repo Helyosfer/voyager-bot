@@ -123,7 +123,7 @@ module.exports = {
       return cevapla(`✅ ${kanal} kanalına deneme bildirimi gönderildi.`);
     }
 
-    // liste
+    // liste alt komutu
     const hesaplar = instagram.liste(sunucuId);
     const dakika = Math.round(instagram.kontrolAraligi() / 60_000);
     const embed = new EmbedBuilder()

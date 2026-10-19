@@ -6,13 +6,13 @@ const { PermissionFlagsBits } = require('discord.js');
 const { oku, yaz, ayarlariGetir, ayarKaydet } = require('./depo');
 const { sureMetni } = require('./yardimci');
 
-const KISI_BASI_SINIR = 50; // Bir üyenin en fazla bu kadar uyarısı saklanır; eskiler düşer
+const KISI_BASI_SINIR = 50; // Bir üyenin en fazla bu kadar uyarısı saklanır; eskiler silinir
 const KURAL_SINIRI = 5;
-// Kural eşiği kişi başı sınırın altında kalmalı; yoksa sınırdaki üyenin sayısı hep aynı kalır ve
+// Kural eşiği kişi başı sınırın altında kalmalı; yoksa sınıra ulaşan üyenin uyarı sayısı hep aynı kalır ve
 // kural her yeni uyarıda yeniden tetiklenir.
 const ESIK_SINIRI = 20;
 
-// Otomatik işlemler ve onları tetikleyebilmek için uyarıyı verenin taşıması gereken yetki.
+// Otomatik işlemler ve her birini tetikleyebilmek için uyarıyı verenin taşıması gereken yetki.
 // Yalnızca susturma yetkisi olan bir moderatör, uyarı vererek bot üzerinden birini atamaz
 // ya da yasaklayamaz; o durumda işlem uygulanmaz ve yetkililere bildirilir.
 const ISLEMLER = {
@@ -39,7 +39,7 @@ function guncelle(sunucuId, kullaniciId, degistir) {
 
 const ekle = (sunucuId, kullaniciId, kayit) => guncelle(sunucuId, kullaniciId, (liste) => [...liste, kayit]);
 
-// numara: listede görünen 1'den başlayan sıra. Silinen kaydı döndürür, yoksa null.
+// numara: listede görünen, 1'den başlayan sıra numarası. Silinen kaydı döndürür, yoksa null.
 function sil(sunucuId, kullaniciId, numara) {
   let silinen = null;
   guncelle(sunucuId, kullaniciId, (liste) => {
@@ -61,7 +61,7 @@ function temizle(sunucuId, kullaniciId) {
 
 const kurallar = (sunucuId) => ayarlariGetir(sunucuId).uyariKurallari ?? [];
 
-// Aynı eşikte kural varsa yerine geçer. Sınır dolduysa false döndürür.
+// Aynı eşikte bir kural varsa onun yerine geçer. Sınır dolduysa false döndürür.
 function kuralEkle(sunucuId, kural) {
   const diger = kurallar(sunucuId).filter((k) => k.esik !== kural.esik);
   if (diger.length >= KURAL_SINIRI) return false;

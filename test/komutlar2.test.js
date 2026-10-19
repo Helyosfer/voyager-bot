@@ -1,7 +1,7 @@
 // Sunucu günlüğü (gunluk.js), /ayarla, acil durum kilidi (/kitle, /kilidiac) ve bildirim
 // komutlarının (/oyun, /yayin, /haber, /instagram) testleri. Çalıştırmak için: npm test
 //
-// komutlar.test.js gibi: bot başlatılmaz, Discord'a bağlanılmaz. Komutlar sahte (elle yazılmış)
+// komutlar.test.js'teki gibi: bot başlatılmaz, Discord'a bağlanılmaz. Komutlar sahte (elle yazılmış)
 // Discord nesneleriyle çalıştırılır. Veri geçici bir klasöre yazılır; hiçbir test ağa çıkmaz.
 const { test, after, mock } = require('node:test');
 const assert = require('node:assert/strict');
@@ -12,7 +12,7 @@ const path = require('node:path');
 const VERI = fs.mkdtempSync(path.join(os.tmpdir(), 'voyager-komut2-'));
 process.env.VERI_KLASORU = VERI;
 // Yapay zekâ ve bildirim platformlarının bağlantısı bilerek kurulmaz: "kurulu değil" davranışı
-// denenir, hiçbir istek dışarı çıkmaz
+// denenir, hiçbir istek dışarıya çıkmaz
 for (const ad of [
   'GEMINI_API_KEY', 'GEMINI_MODEL', 'TWITCH_CLIENT_ID', 'TWITCH_CLIENT_SECRET', 'KICK_CLIENT_ID', 'KICK_CLIENT_SECRET',
   'YOUTUBE_API_KEY', 'YAYIN_ADRESI', 'META_APP_ID', 'META_APP_SECRET', 'INSTAGRAM_TOKEN',
@@ -116,7 +116,7 @@ test('günlük: kanal ayarlı değilse, kategori kapalıysa ya da kanal alınama
   assert.equal(giden.length, 1);
 
   depo.ayarKaydet(guild.id, 'logKanali', 'silinmis-kanal');
-  await gunluk.olaylar.uyeKatildi(uye); // Hata fırlatmaz
+  await gunluk.olaylar.uyeKatildi(uye); // Hata fırlatılmaz
   depo.ayarKaydet(guild.id, 'logKanali', null);
   await gunluk.olaylar.uyeKatildi(uye);
   assert.equal(giden.length, 1);
@@ -167,7 +167,7 @@ test('günlük: takma ad ve rol değişikliği ayrı kaydedilir; önceki hali bi
   assert.deepEqual(alanlar(giden[0]), { 'Kullanıcı': '<@ali> (ali#0)', 'Önce': '(yok)', 'Sonra': 'Ali' });
   assert.deepEqual(alanlar(giden[1]), { 'Kullanıcı': '<@ali> (ali#0)', 'Verilen': '<@&c>', 'Alınan': '<@&a>' });
 
-  // Yalnızca rol alındıysa "Verilen" alanı boş bırakılmaz
+  // Yalnızca rol alındıysa boş bir "Verilen" alanı eklenmez
   await gunluk.olaylar.uyeGuncellendi(uye('Ali', 'b'), uye('Ali'));
   assert.deepEqual(Object.keys(alanlar(giden[2])), ['Kullanıcı', 'Alınan']);
 });
@@ -291,7 +291,7 @@ test('günlük: olay işlenirken çıkan hata yakalanır, bot kapanmaz', async (
   const hatalar = [];
   console.error = (...a) => hatalar.push(a.join(' '));
   try {
-    istemci.emit(Events.GuildMemberAdd, { guild: { id: 'gunluk-9' } }); // user yok: TypeError
+    istemci.emit(Events.GuildMemberAdd, { guild: { id: 'gunluk-9' } }); // user alanı yok: dinleyicide TypeError oluşur
     for (let i = 0; i < 3; i++) await turBekle();
   } finally {
     console.error = asilHata;
@@ -383,7 +383,7 @@ test('/ayarla ozet: yapay zekâ kurulu değilse ya da mesaj içeriği okunamıyo
   } finally {
     hazir.mock.restore();
   }
-  // Kapatmak her zaman serbest
+  // Kapatmak her zaman serbesttir
   assert.equal(await ozet('kapali', []), '✅ Özetleme kapatıldı.');
   assert.equal(ayar('ayar-4').ozetAcik, false);
 });
@@ -410,13 +410,13 @@ test('/ayarla goster: ayarlar ve günlük kategorileri gizli kartla gösterilir'
 });
 
 // --- Acil durum kilidi: /kitle ve /kilidiac ---
-// İzin satırı listesini karşılaştırılabilir hale getirir
+// İzin satırları listesini karşılaştırılabilir hale getirir
 const satirlar = (kanal) =>
   [...kanal.permissionOverwrites.cache.values()]
     .map((i) => ({ id: i.id, type: i.type, allow: i.allow.bitfield, deny: i.deny.bitfield }))
     .sort((a, b) => a.id.localeCompare(b.id));
 
-// Sahte kanal: permissionOverwrites.set Discord gibi listenin tamamını yazar. hatalar: set'in sırayla fırlatacağı hatalar
+// Sahte kanal: permissionOverwrites.set, Discord'daki gibi listenin tamamını yazar. hatalar: set'in sırayla fırlatacağı hatalar
 function kilitKanali(id, type, satirListesi, { hatalar = [] } = {}) {
   const yap = (i) => ({ id: i.id, type: i.type, allow: new PermissionsBitField(i.allow ?? 0n), deny: new PermissionsBitField(i.deny ?? 0n) });
   const kanal = {
@@ -466,7 +466,7 @@ function kilitSunucusu(id, { botIzinleri = [P.ManageRoles, P.ManageChannels, P.M
 }
 
 const kilitEtkilesimi = (guild, ek = {}) => ({ ...etkilesim({ sunucu: guild.id, ...ek }), guild, user: kullanici('yonetici') });
-// kilit.js her işlemde konsola özet yazar; test çıktısını kirletmesin
+// kilit.js her işlemde konsola bir özet yazar; test çıktısını kirletmesin
 async function sessizce(islem) {
   const [log, hata] = [console.log, console.error];
   console.log = console.error = () => {};
@@ -543,7 +543,7 @@ test('/kitle: aynı anda iki kez çalıştırılırsa ikincisi beklemesini söyl
 
 test('/kilidiac: açılamayan kanal kalırsa sunucu kilitli sayılır, yeniden çalıştırınca kalanlar açılır', async () => {
   const yetkiYok = Object.assign(new Error('Missing Permissions'), { code: 50013 });
-  // genel kanalın 1. set çağrısı (kilitleme) geçer, 2.si (açma) reddedilir
+  // genel kanalın 1. set çağrısı (kilitleme) başarılı olur, 2. çağrısı (açma) reddedilir
   const { guild, kanallar } = kilitSunucusu('kilit-d', { hatalar: [null, yetkiYok] });
   const once = Object.fromEntries(Object.entries(kanallar).map(([ad, k]) => [ad, satirlar(k)]));
   await sessizce(() => komut('kitle').execute(kilitEtkilesimi(guild)));
@@ -770,7 +770,7 @@ test('/yayin test: deneme bildirimi kimseyi etiketlemez; liste uzun olunca kısa
   assert.equal(kanal.gonderilen.length, 1);
   assert.deepEqual(kanal.gonderilen[0].allowedMentions, { parse: [] });
 
-  // 50 Twitch yayıncısı: kart alanı 1024 karakteri aşmaz, sığmayanlar sayıyla söylenir. Adlar biçimlendirme taşımaz.
+  // 50 Twitch yayıncısı: kart alanı 1024 karakteri aşmaz, sığmayanların yalnızca sayısı yazılır. Adlar biçimlendirme taşımaz.
   depo.yaz('yayincilar', {
     'yayin-3': [
       ...Array.from({ length: 50 }, (_, i) => ({ platform: 'twitch', id: String(i), giris: `yayinci_${i}`, ad: `*Yayıncı ${i}*` })),
@@ -801,7 +801,7 @@ test('/haber ekle: aynı sunucuda üst üste ekleme reddedilir; cevap verilemese
     const ikinci = etkilesim({ sunucu: 'haber-1', alt: 'ekle', secenekler: { adres: 'baska.com' } });
     await haberKomutu.execute(ikinci);
     assert.match(son(ikinci).content, /^⏳ Bu sunucuda şu an başka bir kaynak ekleniyor/);
-    // Başka sunucu beklemez
+    // Başka bir sunucu sırada beklemez
     const baska = etkilesim({ sunucu: 'haber-2', alt: 'ekle', secenekler: { adres: 'baska.com' } });
     const baskaSuren = haberKomutu.execute(baska);
     await turBekle();
@@ -813,7 +813,7 @@ test('/haber ekle: aynı sunucuda üst üste ekleme reddedilir; cevap verilemese
     assert.equal(son(ilk).content, '✅ **[Örnek]\\(https://kotu.example)** takibe alındı. Bundan sonra yayınlanan haberler duyurulacak. Haberlerin gelmesi için `/haber kanal` ile bir kanal seç.');
     assert.equal(son(baska).content, '❌ Bu adreste bir haber beslemesi (RSS) bulamadım.');
 
-    // Beklenmeyen hata genel bir mesajla söylenir, sıra serbest kalır
+    // Beklenmeyen bir hata genel bir mesajla bildirilir ve sıra serbest kalır
     ekle.mock.mockImplementation(async () => Promise.reject(new Error('EAI_AGAIN')));
     const hatali = etkilesim({ sunucu: 'haber-1', alt: 'ekle', secenekler: { adres: 'ornek.com' } });
     const asilHata = console.error;
@@ -824,7 +824,7 @@ test('/haber ekle: aynı sunucuda üst üste ekleme reddedilir; cevap verilemese
     // Discord etkileşimi zaman aşımına uğrarsa (Unknown interaction) cevap ertelenemez;
     // sunucu, bot yeniden başlayana kadar kaynak ekleyemez hale gelmemeli
     const gec = etkilesim({ sunucu: 'haber-3', alt: 'ekle', secenekler: { adres: 'ornek.com' }, ertele: async () => Promise.reject(new Error('Unknown interaction')) });
-    await assert.rejects(haberKomutu.execute(gec), /Unknown interaction/); // index.js bunu kayda yazar
+    await assert.rejects(haberKomutu.execute(gec), /Unknown interaction/); // index.js bu hatayı kayda yazar
     ekle.mock.mockImplementation(async () => ({ besleme: { ad: 'Örnek' } }));
     const sonra = etkilesim({ sunucu: 'haber-3', alt: 'ekle', secenekler: { adres: 'ornek.com' } });
     await haberKomutu.execute(sonra);

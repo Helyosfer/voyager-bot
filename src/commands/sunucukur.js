@@ -15,7 +15,7 @@ const GEREKLI = [
   [PermissionFlagsBits.ManageChannels, 'Kanalları Yönet'],
   [PermissionFlagsBits.ManageRoles, 'Rolleri Yönet'],
 ];
-// Olmazsa kurulum yine çalışır ama ilgili izin kuralları eksik kalır
+// Bunlar olmasa da kurulum çalışır, ama ilgili izin kuralları eksik kalır
 const ONERILEN = [
   [PermissionFlagsBits.Connect, 'Bağlan'],
   [PermissionFlagsBits.Speak, 'Konuş'],
@@ -23,7 +23,7 @@ const ONERILEN = [
   [PermissionFlagsBits.AttachFiles, 'Dosya Ekle'],
 ];
 
-const kurulan = new Set(); // Kurulumu süren sunucular
+const kurulan = new Set(); // Kurulumu şu an süren sunucular
 
 function onizleme(plan, eksikOnerilen) {
   const isaret = (oge) => (oge.mevcut ? '▫️' : '🟢');
@@ -38,7 +38,7 @@ function onizleme(plan, eksikOnerilen) {
         plan.roller.map((r) => `${isaret(r)} ${r.ad}`).join(' · '),
       ].join('\n'),
     );
-  // Alan değeri 1024 karakterle sınırlı: her kategori kendi alanında
+  // Bir alanın değeri en fazla 1024 karakter olabilir: her kategori kendi alanında gösterilir
   for (const kategori of plan.kategoriler) {
     embed.addFields({
       name: `${isaret(kategori)} ${kategori.ad}`,
@@ -62,7 +62,7 @@ function onizleme(plan, eksikOnerilen) {
 }
 
 module.exports = {
-  // Yönetici yetkisini bot da denetler; sunucu ayarlarından başka rollere açılamaz
+  // Yönetici yetkisini bot da denetler; komut sunucu ayarlarından başka rollere açılsa bile onlarda çalışmaz
   kesinYetki: true,
 
   data: new SlashCommandBuilder()
@@ -87,7 +87,7 @@ module.exports = {
       return interaction.reply({ content: '✅ Şablondaki her şey sunucuda zaten var; oluşturulacak bir şey yok.', flags: MessageFlags.Ephemeral });
     }
 
-    // Onlarca kanal ve rol oluşturan bir işlem: önce ne yapılacağını göster, onay iste
+    // Onlarca kanal ve rol oluşturan bir işlem: önce ne yapılacağı gösterilir, onay istenir
     const dugmeler = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('sunucukur-onay').setLabel(`Kur (${plan.yeni} öğe)`).setStyle(ButtonStyle.Success),
       new ButtonBuilder().setCustomId('sunucukur-vazgec').setLabel('Vazgeç').setStyle(ButtonStyle.Secondary),
@@ -104,13 +104,13 @@ module.exports = {
       return secim ? secim.update({ content: metin, embeds: [], components: [] }) : interaction.editReply({ content: metin, embeds: [], components: [] });
     }
 
-    // Aynı anda iki kurulum her şeyi çift oluşturur
+    // Aynı anda iki kurulum yapılırsa her şey iki kez oluşturulur
     if (kurulan.has(guild.id)) {
       return secim.update({ content: '⏳ Bu sunucuda şu an başka bir kurulum sürüyor. Bitmesini bekle.', embeds: [], components: [] });
     }
     kurulan.add(guild.id);
     await secim.update({ content: '⏳ Kuruluyor…', embeds: [], components: [] });
-    // Onay beklenirken sunucu değişmiş olabilir; planı güncel haliyle yeniden çıkar
+    // Onay beklenirken sunucu değişmiş olabilir; plan sunucunun güncel haline göre yeniden çıkarılır
     const sonuc = await topluluk
       .kur(guild, topluluk.planla(guild), interaction.user.tag, (metin) => secim.editReply({ content: metin }))
       .finally(() => kurulan.delete(guild.id));
@@ -143,6 +143,6 @@ module.exports = {
     return secim.editReply({ content: '', embeds: [embed] });
   },
 
-  // Test için
+  // Yalnızca testler kullanır
   onizleme,
 };

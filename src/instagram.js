@@ -1,8 +1,8 @@
 // Instagram gönderi bildirimleri: takip edilen hesaplar yeni gönderi paylaşınca
 // seçilen kanala haber verir. Ayarlar /instagram komutuyla yapılır.
 //
-// Instagram'ın başka hesapları okumaya izin veren tek resmi yolu "Business Discovery"dir:
-// kendi profesyonel hesabın üzerinden, başka profesyonel (işletme / içerik üreticisi)
+// Instagram'ın başka hesapları okumaya izin veren tek resmî yolu "Business Discovery"dir:
+// kendi profesyonel hesabın üzerinden, başka profesyonel (işletme ya da içerik üreticisi)
 // hesapların herkese açık gönderileri sorulur. Anında bildirim yoktur; hesaplar
 // düzenli aralıklarla kontrol edilir.
 const crypto = require('node:crypto');
@@ -69,7 +69,7 @@ async function jetonAl() {
     yaz('instagram-jeton', sonuc);
     return sonuc;
   } catch (hata) {
-    // Yenileme başarısız ama eldeki jeton hâlâ çalışıyor olabilir
+    // Yenileme başarısız oldu, ama eldeki jeton hâlâ çalışıyor olabilir
     if (gecerli) return kayit;
     throw new Error(`Instagram jetonu alınamadı: ${hata.message}. .env içindeki INSTAGRAM_TOKEN süresi dolmuş olabilir; yenisini üret.`);
   }
@@ -109,7 +109,7 @@ async function hesapGetir(kullaniciAdi, adet = 5) {
       resim: g.media_type === 'VIDEO' ? g.thumbnail_url : g.media_url,
       video: g.media_type === 'VIDEO',
       url: g.permalink,
-      // "2026-01-02T03:04:05+0000" -> ayrıştırılabilir biçim
+      // "2026-01-02T03:04:05+0000" → ayrıştırılabilir biçim
       zaman: Date.parse(String(g.timestamp).replace(/([+-]\d{2})(\d{2})$/, '$1:$2')),
     })),
   };
@@ -150,7 +150,7 @@ async function ekle(sunucuId, girdi) {
   }
 
   // Liste, Instagram'a sorulurken geçen sürede değişmiş olabilir (başka bir sunucu da hesap
-  // eklemiş olabilir). Baştaki kopyayı yazmak o değişiklikleri siler; bu yüzden yeniden okunur.
+  // eklemiş olabilir). Baştaki kopyayı yazmak o değişiklikleri siler; bu yüzden liste şimdi yeniden okunur.
   const hepsi = oku('instagram', {});
   const kayitlar = (hepsi[sunucuId] ??= []);
   if (kayitlar.some((h) => h.giris === hesap.giris)) return zatenVar;
@@ -158,7 +158,7 @@ async function ekle(sunucuId, girdi) {
   if (sahibinToplami(client, hepsi, sunucuId) >= SAHIP_BASI_SINIR) return sahipDolu;
   kayitlar.push({ giris: hesap.giris, ad: hesap.ad });
   yaz('instagram', hepsi);
-  // Yalnızca bundan sonraki gönderiler duyurulsun
+  // Yalnızca bundan sonra paylaşılan gönderiler duyurulsun
   const durum = oku('instagram-durum', {});
   durum[hesap.giris] ??= enYeni(hesap.gonderiler) || Date.now();
   yaz('instagram-durum', durum);
@@ -228,14 +228,14 @@ async function kontrolEt() {
       .filter((g) => g.zaman && son && g.zaman > son)
       .sort((a, b) => a.zaman - b.zaman)
       .slice(-KONTROL_BASI_GONDERI);
-    // Önce işaretle: gönderim sırasında bot kapanırsa aynı gönderi iki kez duyurulmasın
+    // Önce işaretlenir: gönderim sırasında bot kapanırsa aynı gönderi iki kez duyurulmasın
     durum[kullaniciAdi] = Math.max(son ?? 0, enYeni(hesap.gonderiler)) || Date.now();
     yaz('instagram-durum', durum);
     for (const gonderi of yeniler) await duyur(hesap, gonderi);
   }
 }
 
-// Hesap sayısına göre: saatlik istek sınırını aşmayacak en kısa aralık
+// Hesap sayısına göre, saatlik istek sınırını aşmayan en kısa aralık
 const kontrolAraligi = () => Math.max(EN_KISA_ARALIK, (takipEdilenler().length * 3_600_000) / SAATLIK_ISTEK);
 
 function baslat(discordClient) {
@@ -250,7 +250,7 @@ function baslat(discordClient) {
     }
     setTimeout(dongu, kontrolAraligi());
   };
-  // Açılışta jetonu ve bağlı hesabı doğrula; sorun varsa kayıtlarda hemen görünsün
+  // Açılışta jeton ve bağlı hesap doğrulanır; sorun varsa kayıtlarda hemen görünsün
   kendiHesabim()
     .then((hesap) => console.log(`Instagram bağlandı (hesap ${hesap})`))
     .catch((hata) => console.error('Instagram bağlanamadı:', hata.message))

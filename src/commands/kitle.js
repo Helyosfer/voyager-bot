@@ -2,7 +2,7 @@ const { SlashCommandBuilder, PermissionFlagsBits, InteractionContextType, EmbedB
 const kilit = require('../kilit');
 
 module.exports = {
-  // Yönetici yetkisini bot da denetler; sunucu ayarlarından başka rollere açılamaz
+  // Yönetici yetkisini bot da denetler; komut sunucu ayarlarından başka rollere açılsa bile onlarda çalışmaz
   kesinYetki: true,
 
   data: new SlashCommandBuilder()
@@ -21,7 +21,7 @@ module.exports = {
       return cevapla('❌ Kilitleyebilmem için bende **Rolleri Yönet** ve **Kanalları Yönet** izinleri olmalı. Sunucu Ayarları → Roller → Voyager bölümünden aç.');
     }
 
-    // Saldırı anında hız önemli: onay sorulmaz. /kilidiac her şeyi geri alır.
+    // Saldırı anında hız önemlidir, bu yüzden onay istenmez. /kilidiac her şeyi geri alır.
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const sonuc = await kilit.kilitle(guild, interaction.user);
     if (!sonuc) return interaction.editReply('⏳ Şu an başka bir kilitleme ya da açma işlemi sürüyor (ya da sunucu az önce kilitlendi). Bitmesini bekle.');

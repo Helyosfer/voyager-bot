@@ -12,7 +12,7 @@ const { KATEGORILER, kategoriAcik } = require('../gunluk');
 const { icerikOkunabilir } = require('../koruma');
 const yapayzeka = require('../yapayzeka');
 
-// /ayarla sifirla seçenekleri: görünen ad -> depodaki anahtar
+// /ayarla sifirla seçenekleri: görünen ad → depodaki anahtar
 const AYARLAR = {
   'log-kanali': 'logKanali',
   'hosgeldin-kanali': 'hosgeldinKanali',

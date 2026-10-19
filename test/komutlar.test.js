@@ -1,7 +1,7 @@
 // Bütün komutların yapısı, moderasyon komutları (/ban, /kick, /sustur, /unban, /temizle) ve
 // hatırlatıcıların testleri. Çalıştırmak için: npm test
 //
-// guvenlik.test.js gibi: bot başlatılmaz, Discord'a bağlanılmaz. Komutlar sahte (elle yazılmış)
+// guvenlik.test.js'teki gibi: bot başlatılmaz, Discord'a bağlanılmaz. Komutlar sahte (elle yazılmış)
 // Discord nesneleriyle çalıştırılır. Veri geçici bir klasöre yazılır; hiçbir test ağa çıkmaz.
 const { test, after, mock } = require('node:test');
 const assert = require('node:assert/strict');
@@ -70,7 +70,7 @@ test('komutlar: yönetim komutları Discord tarafında yetki ister', () => {
   for (const [ad, izin] of Object.entries(gereken)) {
     assert.equal(veri[ad].default_member_permissions, String(izin), `/${ad}`);
   }
-  // Herkese açık komutlar bilerek yetkisiz: listede olmayan yeni bir komut yetkisiz eklenirse test bunu söyler
+  // Herkese açık komutlar bilerek yetkisizdir: listede olmayan yeni bir komut yetkisiz eklenirse test bunu yakalar
   const herkeseAcik = Object.values(veri).filter((v) => !v.default_member_permissions).map((v) => v.name).sort();
   assert.deepEqual(herkeseAcik, ['hatirlat', 'ozetle', 'ping', 'seviye', 'sor', 'yardim']);
 });
@@ -97,7 +97,7 @@ test('/yardim: bölümlerdeki her ad gerçek bir komut; sahibe özel olmayan her
 const bilinmeyenUye = () => new DiscordAPIError({ code: 10007, message: 'Unknown Member' }, 10007, 404, 'GET', '/guilds/g/members/x', {});
 const sira = (konum) => ({ position: konum, comparePositionTo: (diger) => konum - diger.position });
 
-// Sahte sunucu üyesi. konum: en yüksek rolünün sırası
+// Sahte sunucu üyesi. konum: en yüksek rolünün sıradaki yeri
 function sahteUye(id, { konum = 1, yonetilebilir = true, susturulabilir = true } = {}) {
   const islemler = [];
   return {
@@ -188,7 +188,7 @@ test('/ban: üye bilgisi alınamazsa (geçici Discord hatası) rol denetimi atla
     secenekler: { kullanici: kullanici('ust') },
     uyeHatasi: new DiscordAPIError({ code: 0, message: 'Internal Server Error' }, 0, 500, 'GET', '/guilds/g/members/ust', {}),
   });
-  await assert.rejects(komut('ban').execute(e)); // index.js kullanıcıya "Komut çalışırken bir hata oluştu" der
+  await assert.rejects(komut('ban').execute(e)); // index.js bu durumda kullanıcıya "Komut çalışırken bir hata oluştu" der
   assert.deepEqual(e.islemler, []);
 });
 
@@ -256,7 +256,7 @@ test('/temizle: 14 günden eski mesajlar atlanır, silinen sayı söylenir, gün
     await komut('temizle').execute(e);
     assert.deepEqual(e.islemler, [['temizle', 50, true]]);
     assert.match(e.cevaplar.at(-1).content, /12 mesaj silindi/);
-    // Botun kendi temizliği günlüğe ikinci kez "toplu mesaj silindi" diye düşmez; 10 saniye sonra başkasınınki düşer
+    // Botun kendi temizliği günlüğe ikinci kez "toplu mesaj silindi" diye düşmez; 10 saniye sonra başkasının silmesi düşer
     const kanal = { id: 'kanal', guild: e.guild, toString: () => '<#kanal>' };
     await gunlukModulu.olaylar.topluSilindi(new Map(), kanal);
     assert.equal(e.gunluk.length, 1);
@@ -327,7 +327,7 @@ test('/hatirlat: süre dolunca yalnızca kuran kişi etiketlenir, kayıt silinir
     const fazla = await hatirlat(istemci, { kisi: 'ali' });
     assert.match(fazla.cevaplar[0].content, /en fazla 5 hatırlatıcın/);
     assert.equal(bekleyenler().length, hatirlatici.KISI_BASI_SINIR);
-    // Başkasının sınırı ayrı sayılır
+    // Başka bir kişinin sınırı ayrı sayılır
     assert.match((await hatirlat(istemci, { kisi: 'veli' })).cevaplar[0].content, /hatırlatacağım/);
 
     mock.timers.tick(5 * 60_000);

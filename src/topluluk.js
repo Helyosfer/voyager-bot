@@ -2,8 +2,8 @@
 // bunlara bağlı akışlar (üyelik onayı, ilgi rolleri, destek talepleri).
 //
 // İzin mantığı: erişim kategori düzeyinde tanımlanır ve kanallar kategorisiyle
-// eşitlenmiş (senkron) oluşturulur. Yalnızca farklı davranması gereken kanallar
-// (duyuru, kurallar, bot akışları...) kendi iznini taşır.
+// eşitlenmiş (senkron) olarak oluşturulur. Yalnızca farklı davranması gereken kanallar
+// (duyuru, kurallar, bot akışları vb.) kendi izinlerini taşır.
 const {
   ActionRowBuilder,
   ButtonBuilder,
@@ -49,14 +49,14 @@ const EKIP = ['yonetici', 'moderator', 'destek', 'etkinlik'];
 const GOR = [P.ViewChannel, P.ReadMessageHistory];
 const YAZ = [P.SendMessages];
 const SES = [P.Connect, P.Speak, P.Stream];
-// Bağlan: bot ses kanalına girmez, ama Discord o kanalın izinlerini düzenleyebilmesi (ör. /kitle) için ister
+// Bağlan: bot ses kanalına girmez, ama o kanalın izinlerini düzenleyebilmesi için (ör. /kitle) Discord bu izni ister
 const BOT = [P.ViewChannel, P.ReadMessageHistory, P.SendMessages, P.EmbedLinks, P.AttachFiles, P.Connect];
 
 const kural = (roller, izin = [], yasak = []) => roller.map((rol) => ({ rol, izin, yasak }));
 
-// Kategori politikaları. "herkes" = @everyone
+// Kategorilerin izin kuralları. "herkes" = @everyone
 const POLITIKALAR = {
-  // Herkes görür, yalnızca ekip yazar; kanallar gerekirse kendi iznini taşır
+  // Herkes görür, yalnızca ekip yazar; kanallar gerekirse kendi izinlerini taşır
   baslangic: [...kural(['herkes', 'yeni', 'uye'], GOR, YAZ), ...kural(EKIP, [...GOR, ...YAZ])],
   // Yalnızca üyeliğini onaylamış olanlar
   uyeler: [...kural(['herkes'], [], [P.ViewChannel]), ...kural(['uye', ...EKIP], [...GOR, ...YAZ])],
@@ -82,14 +82,14 @@ const ERISIMLER = {
   uyeSalt: [...kural(['herkes', 'yeni'], [], [P.ViewChannel]), ...kural(['uye'], GOR, YAZ), ...kural(EKIP, [...GOR, ...YAZ])],
   // Üyeler okur; etkinlik ekibi ve yöneticiler yazar
   etkinlikYazar: [...kural(['herkes'], [], [P.ViewChannel]), ...kural(['uye', ...EKIP], GOR, YAZ), ...kural(['etkinlik', ...YONETIM], [...GOR, ...YAZ])],
-  // Üyeler okur; botun doldurduğu akış (fırsatlar, yayınlar)
+  // Üyeler okur, içeriği bot yazar (fırsatlar, yayınlar)
   botAkisi: [...kural(['herkes'], [], [P.ViewChannel]), ...kural(['uye', ...EKIP], GOR, YAZ), ...kural(YONETIM, [...GOR, ...YAZ])],
   // Ekip okur, yalnızca yöneticiler yazar
   ekipSalt: [...kural(['herkes'], [], [P.ViewChannel]), ...kural(EKIP, GOR, YAZ), ...kural(YONETIM, [...GOR, ...YAZ])],
 };
 
 // Kanal alanları: ad, konu, yavas (saniye), erisim (yoksa kategoriyle eşitlenir), ses,
-// ayar (botun bu ayarı o kanala bağlanır), anahtar (akışların kullandığı kanal)
+// ayar (botun bu ayarı o kanala bağlanır), anahtar (akışların bu kanalı bulduğu ad)
 const KATEGORILER = [
   {
     ad: '📌・BAŞLANGIÇ', politika: 'baslangic',
@@ -217,7 +217,7 @@ const KATEGORILER = [
 const RENK = 0x5865f2;
 const turu = (kanal) => (kanal.ses ? ChannelType.GuildVoice : ChannelType.GuildText);
 
-// Şablonu sunucunun mevcut haliyle karşılaştırır. Aynı adda olan öğeler "mevcut" sayılır
+// Şablonu sunucunun şu anki haliyle karşılaştırır. Aynı adı taşıyan öğeler "mevcut" sayılır
 // ve onlara dokunulmaz.
 function planla(guild) {
   const kanallar = [...guild.channels.cache.values()];
@@ -278,7 +278,7 @@ async function kur(guild, plan, yapan, ilerleme = async () => {}) {
       if (!rol.mevcut) sonuc.olusturulan++;
     }
 
-    // Yeni rolleri hiyerarşiye diz: listenin başındaki en üstte. Yalnızca bu kurulumda
+    // Yeni roller hiyerarşiye dizilir: listenin başındaki en üste. Yalnızca bu kurulumda
     // oluşturulanlar taşınır; mevcut rollerin sırasına dokunulmaz.
     const yeniRoller = plan.roller.filter((r) => !r.mevcut).map((r) => roller[r.k]);
     await guild.roles
@@ -308,7 +308,7 @@ async function kur(guild, plan, yapan, ilerleme = async () => {}) {
             parent: ust.id,
             topic: kanal.ses ? undefined : kanal.konu,
             rateLimitPerUser: kanal.ses ? undefined : kanal.yavas,
-            // İzin verilmezse kanal kategorisiyle eşitlenmiş (senkron) oluşur
+            // İzin verilmezse kanal kategorisiyle eşitlenmiş (senkron) olarak oluşur
             permissionOverwrites: kanal.erisim ? izinListesi(ERISIMLER[kanal.erisim]) : undefined,
             reason: sebep,
           }));
@@ -322,13 +322,13 @@ async function kur(guild, plan, yapan, ilerleme = async () => {}) {
       await ilerleme(`⏳ Kuruluyor… **${kategori.ad}** tamam (${sonuc.olusturulan} öğe)`).catch(() => {});
     }
 
-    // Akışların (onay, roller, destek) kullanacağı kimlikleri sakla
+    // Akışların (onay, roller, destek) kullanacağı kimlikler saklanır
     ayarKaydet(guild.id, 'topluluk', {
       roller: Object.fromEntries(Object.entries(roller).map(([k, r]) => [k, r.id])),
       kanallar: Object.fromEntries(Object.entries(kanallar).map(([k, v]) => [k, v.id])),
       kategoriler,
     });
-    // Yeni gelenler "Yeni Gelen" rolüyle başlar; onay düğmesi "Üye"ye çevirir
+    // Yeni gelenler "Yeni Gelen" rolüyle başlar; onay düğmesi bu rolü "Üye" yapar
     if (roller.yeni.position < ben.roles.highest.position) {
       ayarKaydet(guild.id, 'otoRol', roller.yeni.id);
       sonuc.baglanan.push(`Yeni gelenlere ${roller.yeni} rolü verilecek`);
@@ -472,27 +472,27 @@ async function rolSec(interaction, t) {
 }
 
 // Konu "sahip=<kimlik>; konu=<üyenin yazdığı metin>" biçimindedir. Sahip yalnızca baştan
-// okunur: üye konuya başkasının kimliğini yazarak onun talep açmasını engelleyemesin.
+// okunur: bir üye konuya başkasının kimliğini yazarak onun talep açmasını engelleyemesin.
 const acikTalep = (guild, t, uyeId) =>
   guild.channels.cache.find((k) => k.parentId === t.kategoriler.talepler && k.topic?.startsWith(`sahip=${uyeId};`) && !k.name.startsWith('kapalı-'));
 
 // --- Destek odalarının sınırları ---
-// Kapatılan oda hemen silinmez, ama süresiz de durmaz. Yoksa bir üye aç-kapat yaparak kategoriyi
+// Kapatılan oda hemen silinmez, ama süresiz de durmaz; yoksa bir üye aç-kapat yaparak kategoriyi
 // doldurur (Discord bir kategoride en fazla 50 kanala izin verir) ve kimse talep açamaz.
-const TALEP_ARALIGI = 10 * 60_000; // Bir üye bu aralıktan sık talep açamaz
+const TALEP_ARALIGI = 10 * 60_000; // Bir üye bu aralıktan daha sık talep açamaz
 const KAPALI_ODA_OMRU = 30 * 24 * 60 * 60_000; // Kapalı oda bu kadar süre sonra silinir
 const UYE_BASI_KAPALI_ODA = 3; // Bir üyenin saklanan kapalı oda sayısı; fazlası en eskiden başlayarak silinir
-// Yukarıdakiler hesap başınadır; çok sayıda hesap kullanan biri için ayrıca sunucu geneli sınırlar:
+// Yukarıdakiler hesap başınadır; çok sayıda hesap kullanan birine karşı ayrıca sunucu geneli sınırlar:
 const SUNUCU_SAATLIK_TALEP = 15; // Bir sunucuda bir saatte açılabilen talep sayısı
 const KATEGORI_ESIGI = 40; // Kategori bu kadar kanala ulaşınca en eski kapalı odalar silinir (Discord sınırı 50)
 // Aynı anda açık oda sayısı. Eşikten küçük olduğu için kategori açık odalarla doldurulamaz:
 // kapalı odalar eşikte silinir, açık odalar bu sınırı geçemez.
 const ACIK_ODA_SINIRI = 25;
-const UYELIK_BEKLEMESI = 10 * 60_000; // Sunucuya yeni katılan bu süre dolmadan talep açamaz
+const UYELIK_BEKLEMESI = 10 * 60_000; // Sunucuya yeni katılan biri bu süre dolmadan talep açamaz
 const SAAT = 60 * 60_000;
 const talepSayaci = beklemeSayaci(TALEP_ARALIGI);
 const sinirUyarisi = beklemeSayaci(SAAT);
-const sonTalepler = new Map(); // sunucuId -> son bir saatte açılan taleplerin zamanları
+const sonTalepler = new Map(); // sunucuId → son bir saatte açılan taleplerin zamanları
 
 function sonSaattekiler(sunucuId) {
   const liste = (sonTalepler.get(sunucuId) ?? []).filter((zaman) => Date.now() - zaman < SAAT);
@@ -501,7 +501,7 @@ function sonSaattekiler(sunucuId) {
 }
 
 // Talep açılamıyorsa üyeye gösterilecek mesajı döndürür, açılabiliyorsa null.
-// Ekibe destek kayıt kanalından haber verir; aynı türden uyarı en sık saatte bir yazılır
+// Ekibe destek kayıt kanalından haber verilir; aynı türden uyarı en sık saatte bir yazılır
 async function ekibeHaber(interaction, t, tur, metin) {
   const anahtar = `${interaction.guildId}:${tur}`;
   if (sinirUyarisi.bekle(anahtar)) return;
@@ -510,7 +510,7 @@ async function ekibeHaber(interaction, t, tur, metin) {
 }
 
 async function talepBeklemesi(interaction, t) {
-  // Yeni açılmış hesaplarla sunucuya girip hemen oda açmaya karşı
+  // Yeni açılmış hesaplarla sunucuya girip hemen oda açılmasına karşı
   const katildi = interaction.member?.joinedTimestamp;
   if (katildi && Date.now() - katildi < UYELIK_BEKLEMESI) {
     return `⏳ Sunucuya yeni katıldın. Destek talebi açabileceğin zaman: ${neZaman(katildi + UYELIK_BEKLEMESI - Date.now())}`;
@@ -538,7 +538,7 @@ const sonHareket = (kanal) => (kanal.lastMessageId ? SnowflakeUtil.timestampFrom
 // yaklaştıysa yeni odaya yer açar. Yeni talep açılırken çağrılır.
 async function eskiOdalariSil(guild, t, uyeId) {
   const odalar = [...guild.channels.cache.values()].filter((k) => k.parentId === t.kategoriler.talepler);
-  const kapali = odalar.filter((k) => k.name.startsWith('kapalı-')).sort((a, b) => sonHareket(b) - sonHareket(a)); // En yeni başta
+  const kapali = odalar.filter((k) => k.name.startsWith('kapalı-')).sort((a, b) => sonHareket(b) - sonHareket(a)); // En yenisi başta
   const silinecek = new Set([
     ...kapali.filter((k) => Date.now() - sonHareket(k) > KAPALI_ODA_OMRU),
     ...kapali.filter((k) => odaSahibi(k) === uyeId).slice(UYE_BASI_KAPALI_ODA),
@@ -574,7 +574,7 @@ async function talepFormu(interaction, t) {
   return interaction.showModal(new ModalBuilder().setCustomId('tp:talep-form').setTitle('Destek talebi').addComponents(new ActionRowBuilder().addComponents(konu)));
 }
 
-// "Giriş yapamıyorum!" -> "giris-yapamiyorum"
+// "Giriş yapamıyorum!" → "giris-yapamiyorum"
 function kisaAd(metin) {
   const sade = metin
     .toLocaleLowerCase('tr')
@@ -591,7 +591,7 @@ async function talepAc(interaction, t) {
   if (mevcut) return gizli(interaction, `Zaten açık bir destek odan var: ${mevcut}`);
   const bekleme = await talepBeklemesi(interaction, t);
   if (bekleme) return gizli(interaction, bekleme);
-  // Oda oluşmadan önce işaretle: form art arda gönderilirse ikincisi buraya takılır
+  // Oda oluşturulmadan önce işaretlenir: form art arda gönderilirse ikincisi burada durur
   talepSayaci.isaretle(`${guild.id}:${member.id}`);
   sonSaattekiler(guild.id).push(Date.now());
 

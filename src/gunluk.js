@@ -71,7 +71,7 @@ function uyeAyrildi(uye) {
 }
 
 async function uyeGuncellendi(eski, yeni) {
-  if (eski.partial) return; // Önceki hali bilinmiyorsa neyin değiştiği de bilinmez
+  if (eski.partial) return; // Önceki hali bilinmiyorsa neyin değiştiği de bilinemez
 
   if (eski.nickname !== yeni.nickname) {
     await gunlukGonder(
@@ -136,7 +136,7 @@ function topluSilindi(mesajlar, kanal) {
 
 function mesajDuzenlendi(eski, yeni) {
   if (!yeni.guild || yeni.author?.bot) return;
-  // İçerik yalnızca Message Content Intent açıkken gelir; yoksa karşılaştıracak bir şey olmaz
+  // İçerik yalnızca Message Content Intent açıkken gelir; kapalıysa karşılaştırılacak bir şey yoktur
   if (eski.partial || !eski.content || !yeni.content || eski.content === yeni.content) return;
   return gunlukGonder(
     yeni.guild,
@@ -151,7 +151,7 @@ function mesajDuzenlendi(eski, yeni) {
 }
 
 function sesDegisti(eski, yeni) {
-  if (eski.channelId === yeni.channelId) return; // Susturma, kamera vb. değişiklikler
+  if (eski.channelId === yeni.channelId) return; // Kanal değişmedi: seste susturma, kamera açma gibi bir değişiklik
   const uye = yeni.member ?? eski.member;
   if (!uye) return;
   const kullanici = ['Kullanıcı', kisi(uye.user)];
@@ -162,8 +162,8 @@ function sesDegisti(eski, yeni) {
   return gunlukGonder(yeni.guild, 'ses', embed);
 }
 
-// Denetim kaydından izlenen işlemler. Bunlar Discord arayüzünden elle yapılan
-// işlemleri de yakalar; botun kendi komutları zaten ayrıca kaydedilir.
+// Denetim kaydından izlenen işlemler. Bu yolla Discord arayüzünden elle yapılan
+// işlemler de yakalanır; botun kendi komutları zaten ayrıca kaydedilir.
 const DENETIM = {
   [AuditLogEvent.MemberKick]: { kategori: 'moderasyon', baslik: 'Üye atıldı', renk: SARI, hedef: 'kullanici' },
   [AuditLogEvent.MemberBanAdd]: { kategori: 'moderasyon', baslik: 'Üye yasaklandı', renk: KIRMIZI, hedef: 'kullanici' },
@@ -208,7 +208,7 @@ function denetimKaydi(kayit, guild) {
 }
 
 function baslat(client) {
-  // Günlükteki bir hata botu etkilemesin
+  // Günlük yazılırken çıkan bir hata botu etkilemesin
   const dinle = (olay, islev) =>
     client.on(olay, (...argumanlar) => {
       Promise.resolve()
@@ -232,6 +232,6 @@ module.exports = {
   gunlukGonder,
   temizlemeBildir,
   baslat,
-  // Test için
+  // Yalnızca testler kullanır
   olaylar: { uyeKatildi, uyeAyrildi, uyeGuncellendi, mesajSilindi, topluSilindi, mesajDuzenlendi, sesDegisti, denetimKaydi },
 };
