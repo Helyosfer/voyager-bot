@@ -5,10 +5,9 @@ const {
   ChannelType,
   EmbedBuilder,
   MessageFlags,
-  escapeMarkdown,
 } = require('discord.js');
 const { ayarlariGetir, ayarKaydet } = require('../depo');
-const { yazabilirMi, etiketEngeli } = require('../yardimci');
+const { yazabilirMi, etiketEngeli, duzAd } = require('../yardimci');
 const haber = require('../haber');
 
 const eklenen = new Set(); // Şu an kaynak eklemekte olan sunucular
@@ -74,28 +73,30 @@ module.exports = {
       // Her ekleme birkaç sayfa indirir; aynı sunucudan üst üste gelenler sıraya girmez, reddedilir
       if (eklenen.has(sunucuId)) return cevapla('⏳ Bu sunucuda şu an başka bir kaynak ekleniyor. Bitmesini bekle.');
       eklenen.add(sunucuId);
-      // Siteye bağlanıldığı için 3 saniyeyi aşabilir
-      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
       let sonuc;
       try {
-        sonuc = await haber.ekle(sunucuId, interaction.options.getString('adres', true));
-      } catch (hata) {
-        console.error('/haber ekle hatası:', hata.message);
-        return interaction.editReply('❌ Kaynak eklenirken bir hata oluştu.');
+        // Siteye bağlanıldığı için 3 saniyeyi aşabilir. Erteleme de başarısız olabilir (etkileşim zaman
+        // aşımına uğradıysa); o durumda da sunucu bot yeniden başlayana kadar kilitli kalmamalı.
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        sonuc = await haber.ekle(sunucuId, interaction.options.getString('adres', true)).catch((hata) => {
+          console.error('/haber ekle hatası:', hata.message);
+          return null;
+        });
       } finally {
         eklenen.delete(sunucuId);
       }
+      if (!sonuc) return interaction.editReply('❌ Kaynak eklenirken bir hata oluştu.');
       if (sonuc.hata) return interaction.editReply(`❌ ${sonuc.hata}`);
       const kanalNotu = ayarlariGetir(sunucuId).haberKanali ? '' : ' Haberlerin gelmesi için `/haber kanal` ile bir kanal seç.';
       return interaction.editReply(
-        `✅ **${escapeMarkdown(sonuc.besleme.ad)}** takibe alındı. Bundan sonra yayınlanan haberler duyurulacak.${kanalNotu}`,
+        `✅ **${duzAd(sonuc.besleme.ad)}** takibe alındı. Bundan sonra yayınlanan haberler duyurulacak.${kanalNotu}`,
       );
     }
 
     if (alt === 'cikar') {
       const silinen = haber.cikar(sunucuId, interaction.options.getString('kaynak', true));
       if (!silinen) return cevapla('❌ Listede böyle bir kaynak yok. `/haber liste` ile sıra numarasına bak.');
-      return cevapla(`✅ **${escapeMarkdown(silinen.ad)}** takipten çıkarıldı.`);
+      return cevapla(`✅ **${duzAd(silinen.ad)}** takipten çıkarıldı.`);
     }
 
     if (alt === 'rol') {
@@ -138,7 +139,7 @@ module.exports = {
         name: `Kaynaklar · ${kaynaklar.length}/${haber.SUNUCU_BASI_SINIR}`,
         value:
           kaynaklar
-            .map((k, i) => `**${i + 1}.** [${escapeMarkdown(k.ad.slice(0, 40))}](${new URL(k.adres).origin})`)
+            .map((k, i) => `**${i + 1}.** [${duzAd(k.ad.slice(0, 40))}](${new URL(k.adres).origin})`)
             .join('\n')
             .slice(0, 1000) || 'Henüz kaynak eklenmemiş',
       })

@@ -5,10 +5,9 @@ const {
   ChannelType,
   EmbedBuilder,
   MessageFlags,
-  escapeMarkdown,
 } = require('discord.js');
 const { ayarlariGetir, ayarKaydet } = require('../depo');
-const { yazabilirMi, etiketEngeli } = require('../yardimci');
+const { yazabilirMi, etiketEngeli, duzAd } = require('../yardimci');
 const yayin = require('../yayin');
 
 const platformSecenegi = (o) =>
@@ -93,7 +92,7 @@ module.exports = {
       if (sonuc.hata) return interaction.editReply(`❌ ${sonuc.hata}`);
       const kanalNotu = ayarlariGetir(sunucuId).yayinKanali ? '' : ' Bildirimlerin gelmesi için `/yayin kanal` ile bir kanal seç.';
       return interaction.editReply(
-        `✅ **${sonuc.yayinci.ad}** (${yayin.PLATFORMLAR[platform].ad}) takibe alındı.${kanalNotu}`,
+        `✅ **${duzAd(sonuc.yayinci.ad)}** (${yayin.PLATFORMLAR[platform].ad}) takibe alındı.${kanalNotu}`,
       );
     }
 
@@ -103,7 +102,7 @@ module.exports = {
       if (!silinen) return cevapla('❌ Listede böyle bir yayıncı yok. `/yayin liste` ile kontrol et.');
       // Başka sunucu da takip etmiyorsa platformdaki abonelik de kaldırılır
       yayin.esitle(platform).catch((hata) => console.error('Abonelik kaldırılamadı:', hata.message));
-      return cevapla(`✅ **${silinen.ad}** (${yayin.PLATFORMLAR[platform].ad}) takipten çıkarıldı.`);
+      return cevapla(`✅ **${duzAd(silinen.ad)}** (${yayin.PLATFORMLAR[platform].ad}) takipten çıkarıldı.`);
     }
 
     if (alt === 'rol') {
@@ -156,7 +155,7 @@ module.exports = {
       const sigan = [];
       let uzunluk = 0;
       for (const y of yayincilar) {
-        const baglanti = `[${escapeMarkdown(y.ad)}](${p.kanalAdresi(y)})`;
+        const baglanti = `[${duzAd(y.ad)}](${p.kanalAdresi(y)})`;
         if (uzunluk + baglanti.length > 900) break;
         sigan.push(baglanti);
         uzunluk += baglanti.length + 3;

@@ -1,4 +1,4 @@
-const { EmbedBuilder, PermissionFlagsBits } = require('discord.js');
+const { EmbedBuilder, PermissionFlagsBits, escapeMarkdown } = require('discord.js');
 const { gunlukGonder } = require('./gunluk');
 
 // Komutu kullanan kişi bu üyeye işlem yapabilir mi? Yapamazsa sebebini döndürür.
@@ -133,6 +133,11 @@ function etiketEngeli(interaction, rol) {
 // gizli bağlantı oluşturamasın
 const baglantisiz = (metin) => metin.replace(/\]\(/g, ']\\(');
 
+// Dışarıdan gelen ad (haber kaynağı, yayıncı, Instagram hesabı) cevapta ya da [ad](adres) içinde
+// biçimlendirme ve gizli bağlantı oluşturamasın. escapeMarkdown tek başına [yazı](adres) yazımını kaçırmaz;
+// sıra önemli: escapeMarkdown sonra yapılırsa baglantisiz'in eklediği \ de kaçırılır ve metinde görünür.
+const duzAd = (ad) => baglantisiz(escapeMarkdown(String(ad)));
+
 // Hatanın kayda yazılacak hali. Hata nesnesinin tamamı yazılmaz: Discord hatalarında
 // gönderilen isteğin gövdesi, yani kullanıcının yazdığı metin (ör. yasaklama sebebi) de bulunur.
 const hataMetni = (hata) => hata?.stack ?? String(hata);
@@ -164,5 +169,5 @@ function sureMetni(dakika) {
 
 module.exports = {
   mudahaleEngeli, logGonder, yazabilirMi, rolVermeEngeli, otoRolEngeli, otoRolVer, yonetimRolu, komutYetkisiVar, etiketEngeli,
-  baglantisiz, hataMetni, beklemeSayaci, neZaman, sureMetni, sahibinToplami,
+  baglantisiz, duzAd, hataMetni, beklemeSayaci, neZaman, sureMetni, sahibinToplami,
 };

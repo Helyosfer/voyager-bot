@@ -5,10 +5,9 @@ const {
   ChannelType,
   EmbedBuilder,
   MessageFlags,
-  escapeMarkdown,
 } = require('discord.js');
 const { ayarlariGetir, ayarKaydet } = require('../depo');
-const { yazabilirMi, etiketEngeli } = require('../yardimci');
+const { yazabilirMi, etiketEngeli, duzAd } = require('../yardimci');
 const instagram = require('../instagram');
 
 const hesapSecenegi = (o) =>
@@ -75,14 +74,14 @@ module.exports = {
       if (sonuc.hata) return interaction.editReply(`❌ ${sonuc.hata}`);
       const kanalNotu = ayarlariGetir(sunucuId).instagramKanali ? '' : ' Bildirimlerin gelmesi için `/instagram kanal` ile bir kanal seç.';
       return interaction.editReply(
-        `✅ **${sonuc.hesap.ad}** (@${sonuc.hesap.giris}) takibe alındı. Bundan sonraki gönderileri duyurulacak.${kanalNotu}`,
+        `✅ **${duzAd(sonuc.hesap.ad)}** (@${sonuc.hesap.giris}) takibe alındı. Bundan sonraki gönderileri duyurulacak.${kanalNotu}`,
       );
     }
 
     if (alt === 'cikar') {
       const silinen = instagram.cikar(sunucuId, interaction.options.getString('hesap', true));
       if (!silinen) return cevapla('❌ Listede böyle bir hesap yok. `/instagram liste` ile kontrol et.');
-      return cevapla(`✅ **${silinen.ad}** (@${silinen.giris}) takipten çıkarıldı.`);
+      return cevapla(`✅ **${duzAd(silinen.ad)}** (@${silinen.giris}) takipten çıkarıldı.`);
     }
 
     if (alt === 'rol') {
@@ -142,7 +141,7 @@ module.exports = {
       .addFields({
         name: `Takip edilen hesaplar · ${hesaplar.length}/${instagram.SUNUCU_BASI_SINIR}`,
         value:
-          hesaplar.map((h) => `[${escapeMarkdown(h.ad)}](https://www.instagram.com/${h.giris}/)`).join(' · ').slice(0, 1000) ||
+          hesaplar.map((h) => `[${duzAd(h.ad)}](https://www.instagram.com/${h.giris}/)`).join(' · ').slice(0, 1000) ||
           'Henüz hesap eklenmemiş',
       })
       .setFooter({ text: `Hesaplar yaklaşık ${dakika} dakikada bir kontrol edilir` });
