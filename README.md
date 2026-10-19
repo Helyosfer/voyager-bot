@@ -689,7 +689,7 @@ src/
   hatirlatici.js      Hatırlatıcı zamanlayıcıları
   yayin/              Yayın bildirimleri (Twitch, Kick, YouTube) ve HTTP sunucusu
   site.js, site/      Tanıtım sayfası
-test/                 Güvenlik ve özellik testleri (npm test), Discord deneme listesi
+test/                 Güvenlik, özellik ve komut testleri (npm test), Discord deneme listesi
 ```
 
 Yeni komut eklemek için `src/commands/` içine `ping.js` gibi bir dosya ekleyip `npm run komutlar` çalıştır.
