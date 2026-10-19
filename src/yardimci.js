@@ -1,4 +1,4 @@
-const { EmbedBuilder, PermissionFlagsBits } = require('discord.js');
+const { EmbedBuilder, PermissionFlagsBits, escapeMarkdown } = require('discord.js');
 const { gunlukGonder } = require('./gunluk');
 
 // Komutu kullanan kişi bu üyeye işlem yapabilir mi? Yapamazsa sebebini döndürür.
@@ -57,25 +57,27 @@ const YONETIM_IZINLERI = [
 ];
 const yonetimRolu = (rol) => rol.permissions.any(YONETIM_IZINLERI);
 
-// Bu rol "oto rol" yapılabilir mi? Yapılamazsa sebebini döndürür.
+// Bu rol bot üzerinden üyelere verilebilir mi (oto rol, rol menüsü)? Verilemezse sebebini döndürür.
 // Rolü bot verir; bu yüzden komutu kullanan kişinin o rolü kendisinin de verebiliyor olması
 // gerekir. Yoksa yalnızca Sunucuyu Yönet yetkisi olan biri, kendi veremeyeceği bir rolü
 // (ör. moderatör rolünü) yeni gelen herkese, yani kendi ikinci hesabına da verdirebilir.
-function otoRolEngeli(interaction, rol) {
+// kime: rolü kimin alacağı ("Yeni gelen herkese"); amac: cümle başı, "Oto rol yapabilmen" gibi.
+function rolVermeEngeli(interaction, rol, { kime, amac }) {
   const { guild, member } = interaction;
-  if (rol.managed || rol.id === guild.id) return 'Bu rol otomatik verilemez.';
+  if (rol.managed || rol.id === guild.id) return 'Bu rol bot tarafından verilemez.';
   if (yonetimRolu(rol)) {
-    return 'Bu rol yönetim yetkisi taşıyor (ör. üye atma, mesaj ya da rol yönetme). Yeni gelen herkese verilmesi güvenli değil; yetkisiz bir rol seç.';
+    return `Bu rol yönetim yetkisi taşıyor (ör. üye atma, mesaj ya da rol yönetme). ${kime} verilmesi güvenli değil; yetkisiz bir rol seç.`;
   }
   if (rol.position >= guild.members.me.roles.highest.position) {
     return 'Bu rol benim rolümden yüksek. Bot rolünü rol listesinde bu rolün üstüne taşı.';
   }
   const sahipMi = interaction.user.id === guild.ownerId;
   if (!sahipMi && (!member.permissions.has(PermissionFlagsBits.ManageRoles) || rol.position >= member.roles.highest.position)) {
-    return 'Bu rolü sen de veremiyorsun. Oto rol yapabilmen için Rolleri Yönet yetkin olmalı ve rol senin en yüksek rolünden aşağıda olmalı.';
+    return `Bu rolü sen de veremiyorsun. ${amac} için Rolleri Yönet yetkin olmalı ve rol senin en yüksek rolünden aşağıda olmalı.`;
   }
   return null;
 }
+const otoRolEngeli = (interaction, rol) => rolVermeEngeli(interaction, rol, { kime: 'Yeni gelen herkese', amac: 'Oto rol yapabilmen' });
 
 // Oto rolü yeni üyeye verir. Rol ayarlandıktan sonra ona yönetim yetkisi eklenmişse vermez;
 // sessizce durmasın diye (en sık saatte bir) kayda ve log kanalına uyarı yazar.
@@ -131,6 +133,11 @@ function etiketEngeli(interaction, rol) {
 // gizli bağlantı oluşturamasın
 const baglantisiz = (metin) => metin.replace(/\]\(/g, ']\\(');
 
+// Dışarıdan gelen ad (haber kaynağı, yayıncı, Instagram hesabı) cevapta ya da [ad](adres) içinde
+// biçimlendirme ve gizli bağlantı oluşturamasın. escapeMarkdown tek başına [yazı](adres) yazımını kaçırmaz;
+// sıra önemli: escapeMarkdown sonra yapılırsa baglantisiz'in eklediği \ de kaçırılır ve metinde görünür.
+const duzAd = (ad) => baglantisiz(escapeMarkdown(String(ad)));
+
 // Hatanın kayda yazılacak hali. Hata nesnesinin tamamı yazılmaz: Discord hatalarında
 // gönderilen isteğin gövdesi, yani kullanıcının yazdığı metin (ör. yasaklama sebebi) de bulunur.
 const hataMetni = (hata) => hata?.stack ?? String(hata);
@@ -161,6 +168,6 @@ function sureMetni(dakika) {
 }
 
 module.exports = {
-  mudahaleEngeli, logGonder, yazabilirMi, otoRolEngeli, otoRolVer, yonetimRolu, komutYetkisiVar, etiketEngeli,
-  baglantisiz, hataMetni, beklemeSayaci, neZaman, sureMetni, sahibinToplami,
+  mudahaleEngeli, logGonder, yazabilirMi, rolVermeEngeli, otoRolEngeli, otoRolVer, yonetimRolu, komutYetkisiVar, etiketEngeli,
+  baglantisiz, duzAd, hataMetni, beklemeSayaci, neZaman, sureMetni, sahibinToplami,
 };

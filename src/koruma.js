@@ -1,11 +1,13 @@
 // Otomatik koruma: spam (özellikle ele geçirilmiş hesapların her kanala aynı
-// şeyi atması), ağır küfür filtresi ve dolandırıcılık görseli denetimi (gorsel.js).
+// şeyi atması), ağır küfür filtresi, zararlı bağlantı denetimi (baglanti.js) ve
+// dolandırıcılık görseli denetimi (gorsel.js).
 // Sunucu başına /koruma ile açılır; hepsi varsayılan olarak kapalıdır.
 const { EmbedBuilder, Events, GatewayIntentBits, PermissionFlagsBits } = require('discord.js');
 const { ayarlariGetir } = require('./depo');
 const { gunlukGonder, temizlemeBildir } = require('./gunluk');
 const { sureMetni } = require('./yardimci');
 const gorsel = require('./gorsel');
+const baglanti = require('./baglanti');
 
 // --- Spam ---
 const PENCERE = 30_000; // Bu süre içindeki mesajlara bakılır
@@ -13,6 +15,7 @@ const KANAL_ESIGI = 3; // Bu kadar farklı kanala yazan kişi spam sayılır
 const TEKRAR_ESIGI = 4; // Aynı içeriği bu kadar kez gönderen kişi spam sayılır
 const VARSAYILAN_SUSTURMA = 60; // dakika
 const GORSEL_SUSTURMA = 24 * 60; // dakika; dolandırıcılık görseli atan (çoğu zaman ele geçirilmiş) hesap
+const BAGLANTI_SUSTURMA = 60; // dakika
 
 // Kayıtlı ayarları varsayılanlarla tamamlar
 function ayarCoz(ayar) {
@@ -25,6 +28,11 @@ function ayarCoz(ayar) {
     gorsel: ayar.korumaGorsel === true,
     gorselKapsam: ayar.korumaGorselKapsam === 'hepsi' ? 'hepsi' : 'riskli',
     gorselDakika: ayar.korumaGorselDakika ?? GORSEL_SUSTURMA,
+    baglanti: ayar.korumaBaglanti === true,
+    baglantiDakika: ayar.korumaBaglantiDakika ?? BAGLANTI_SUSTURMA,
+    kisaltici: ayar.korumaKisaltici === true,
+    alanEngel: ayar.korumaAlanEngel ?? [],
+    alanIzin: ayar.korumaAlanIzin ?? [],
   };
 }
 
@@ -218,17 +226,65 @@ async function kufurUygula(mesaj, kelime, ayar) {
   await gunlukGonder(mesaj.guild, 'moderasyon', embed);
 }
 
+// Mesajdaki zararlı bağlantıyı bulur; yoksa null
+const zararliBaglanti = (icerik, ayar) =>
+  baglanti.denetle(icerik, { kisaltici: ayar.kisaltici, engel: ayar.alanEngel, izin: ayar.alanIzin });
+
+async function baglantiUygula(mesaj, bulgu, ayar) {
+  await mesaj.delete().catch(() => {});
+  const susturuldu = await sustur(mesaj.member, ayar.baglantiDakika, `Otomatik koruma: ${bulgu.sebep}`).catch(() => false);
+
+  // Kısa bir uyarı; kanalda kalıp kalabalık yapmasın diye kendiliğinden silinir
+  const uyari = await mesaj.channel
+    .send({ content: `${mesaj.author}, mesajın zararlı olabilecek bir bağlantı içerdiği için silindi.`, allowedMentions: { users: [mesaj.author.id] } })
+    .catch(() => null);
+  if (uyari) setTimeout(() => uyari.delete().catch(() => {}), 8000);
+
+  const embed = new EmbedBuilder()
+    .setTitle('🛡️ Zararlı bağlantı')
+    .setColor(0xed4245)
+    .setDescription('Bu hesap ele geçirilmiş olabilir. Yanlış alarmsa alanı `/koruma alan` ile izin listesine ekle.')
+    .addFields(
+      { name: 'Kullanıcı', value: `${mesaj.author} (${mesaj.author.tag})` },
+      { name: 'Kanal', value: `${mesaj.channel}` },
+      // Kod biçiminde: günlükte tıklanabilir bağlantı olmasın
+      { name: 'Alan', value: `\`${bulgu.alan}\`` },
+      { name: 'Sebep', value: bulgu.sebep },
+      { name: 'Yapılanlar', value: susturuldu ? `Mesaj silindi, üye ${sureMetni(ayar.baglantiDakika)} susturuldu` : 'Mesaj silindi' },
+    );
+  await gunlukGonder(mesaj.guild, 'moderasyon', embed);
+}
+
+// Silinmek üzere yakalanan mesajlar. Seviye sistemi bunlara XP vermez (bkz. seviye.js).
+// Spam, küfür ve bağlantı kararı mesaj geldiği anda, ilk beklemeden önce verilip işaretlenir.
+// Görsel denetiminin kararı 30-60 saniye sürdüğü için o mesajlar işaretlenemez.
+const yakalananlar = new WeakSet();
+const yakalandi = (mesaj) => yakalananlar.has(mesaj);
+
 async function mesajGeldi(mesaj) {
   if (muaf(mesaj)) return;
   const ayar = ayarCoz(ayarlariGetir(mesaj.guild.id));
 
   if (ayar.spam) {
     const sebep = spamSebebi(mesaj);
-    if (sebep) return spamUygula(mesaj, sebep, ayar);
+    if (sebep) {
+      yakalananlar.add(mesaj);
+      return spamUygula(mesaj, sebep, ayar);
+    }
   }
   if (ayar.kufur && mesaj.content) {
     const kelime = kufurBul(mesaj.content, ayar.kelimeler);
-    if (kelime) return kufurUygula(mesaj, kelime, ayar);
+    if (kelime) {
+      yakalananlar.add(mesaj);
+      return kufurUygula(mesaj, kelime, ayar);
+    }
+  }
+  if (ayar.baglanti && mesaj.content) {
+    const bulgu = zararliBaglanti(mesaj.content, ayar);
+    if (bulgu) {
+      yakalananlar.add(mesaj);
+      return baglantiUygula(mesaj, bulgu, ayar);
+    }
   }
   if (ayar.gorsel && mesaj.attachments?.size) return gorsel.denetle(mesaj, ayar);
 }
@@ -237,9 +293,10 @@ async function mesajGeldi(mesaj) {
 async function mesajDuzenlendi(eski, yeni) {
   if (muaf(yeni) || !yeni.content || eski.content === yeni.content) return;
   const ayar = ayarCoz(ayarlariGetir(yeni.guild.id));
-  if (!ayar.kufur) return;
-  const kelime = kufurBul(yeni.content, ayar.kelimeler);
-  if (kelime) await kufurUygula(yeni, kelime, ayar);
+  const kelime = ayar.kufur && kufurBul(yeni.content, ayar.kelimeler);
+  if (kelime) return kufurUygula(yeni, kelime, ayar);
+  const bulgu = ayar.baglanti && zararliBaglanti(yeni.content, ayar);
+  if (bulgu) await baglantiUygula(yeni, bulgu, ayar);
 }
 
 function baslat(client) {
@@ -265,4 +322,4 @@ function baslat(client) {
 // Küfür filtresi mesaj metnini okuyabilmeli; bu ayrıcalıklı izin açık mı?
 const icerikOkunabilir = (client) => client.options.intents.has(GatewayIntentBits.MessageContent);
 
-module.exports = { baslat, ayarCoz, kufurBul, kelimeBicimi, icerikOkunabilir, mesajGeldi, mesajDuzenlendi, KANAL_ESIGI, PENCERE };
+module.exports = { baslat, ayarCoz, kufurBul, kelimeBicimi, icerikOkunabilir, mesajGeldi, mesajDuzenlendi, yakalandi, KANAL_ESIGI, PENCERE };

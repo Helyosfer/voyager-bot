@@ -17,7 +17,11 @@ Node.js ve [discord.js](https://discord.js.org) ile yazıldı. Kodu alıp kendi 
 - [Özellikler](#özellikler)
   - [Yapay zekâ](#yapay-zekâ)
   - [Sunucu kurulumu](#sunucu-kurulumu-sunucukur)
+  - [Rol menüsü](#rol-menüsü-rolmenu)
+  - [Çekilişler](#çekilişler-cekilis)
+  - [Seviye sistemi](#seviye-sistemi-seviye)
   - [Acil durum kilidi](#acil-durum-kilidi-kitle-kilidiac)
+  - [Uyarılar](#uyarılar-uyari)
   - [Otomatik koruma](#otomatik-koruma)
   - [Sunucu günlüğü](#sunucu-günlüğü)
   - [Canlı yayın bildirimleri](#canlı-yayın-bildirimleri)
@@ -25,6 +29,7 @@ Node.js ve [discord.js](https://discord.js.org) ile yazıldı. Kodu alıp kendi 
   - [Instagram gönderi bildirimleri](#instagram-gönderi-bildirimleri)
   - [Oyun fırsatları](#oyun-fırsatları)
   - [Soru cevaplama](#soru-cevaplama-sor)
+  - [Kanal özeti](#kanal-özeti-ozetle)
 - [Sunucuna ekledikten sonra](#sunucuna-ekledikten-sonra)
 - [Kendi botunu çalıştırmak](#kendi-botunu-çalıştırmak)
 - [VPS'te 7/24 çalıştırma](#vpste-724-çalıştırma-ubuntu)
@@ -37,6 +42,7 @@ Node.js ve [discord.js](https://discord.js.org) ile yazıldı. Kodu alıp kendi 
 **Yapay zekâ** (Google Gemini; [ayrıntılar](#yapay-zekâ)):
 
 - **Soru cevaplama:** `/sor` ile yapay zekâya soru sorulur; kısa, Türkçe cevap gelir. İstenirse cevabı yalnızca soran görür.
+- **Kanal özeti:** `/ozetle` kanaldaki son mesajları kısa maddelerle özetler; sonradan katılan neler konuşulduğunu hemen görür.
 - **Oyun incelemeleri:** popüler ve yeni oyunların fırsat kartlarına spoilersiz konu, kısa yorum, kimlere hitap
   ettiği ve 10 üzerinden puan eklenir.
 - **Dolandırıcılık görseli denetimi:** "ünlü adına para dağıtılıyor, siteye gir kodu yaz" türü sahte çekiliş, kripto
@@ -45,8 +51,8 @@ Node.js ve [discord.js](https://discord.js.org) ile yazıldı. Kodu alıp kendi 
 **Diğer özellikler:**
 
 - **Sunucu kurulumu:** tek komutla roller, kanallar, izinler, üyelik onayı ve destek sistemi.
-- **Moderasyon:** yasaklama, atma, süreli susturma, toplu mesaj silme.
-- **Otomatik koruma:** ele geçirilmiş hesapların spam'ini durdurur, ağır küfürleri siler.
+- **Moderasyon:** yasaklama, atma, süreli susturma, toplu mesaj silme; kalıcı uyarılar ve uyarı sayısına göre otomatik ceza.
+- **Otomatik koruma:** ele geçirilmiş hesapların spam'ini durdurur, ağır küfürleri ve Discord/Steam taklidi zararlı bağlantıları siler.
 - **Acil durum kilidi:** saldırı anında bütün kanalları kilitler, sonra eski haline döndürür.
 - **Sunucu günlüğü:** üye giriş çıkışları, silinen ve düzenlenen mesajlar, ses kanalları ve yönetim işlemleri tek kanalda.
 - **Canlı yayın bildirimleri:** Twitch, Kick ve YouTube'da takip ettiğin yayıncılar yayına geçince haber verir.
@@ -54,6 +60,9 @@ Node.js ve [discord.js](https://discord.js.org) ile yazıldı. Kodu alıp kendi 
 - **Instagram:** seçtiğin hesapların yeni gönderilerini duyurur (ayrıca kurulum ister).
 - **Oyun fırsatları:** Steam, Epic ve GOG'daki bedava oyunları ve indirimleri Türkiye fiyatlarıyla duyurur.
 - **Karşılama:** yeni üyeye hoş geldin mesajı ve otomatik rol.
+- **Rol menüsü:** üyeler düğmeye basarak seçtiğin rolleri alıp bırakır.
+- **Seviye sistemi:** mesaj yazdıkça XP, seviye atlayınca duyuru ve ödül rolleri, sıralama.
+- **Çekiliş:** düğmeyle katılınan, süre dolunca kazananı kendiliğinden seçip duyuran çekilişler.
 - **Hatırlatıcı:** belirttiğin süre sonra seni etiketler.
 
 Her sunucunun ayarları ayrıdır ve bir özellik açılmadıkça kapalı kalır.
@@ -68,14 +77,19 @@ diliyle gösterilir.
 | `/yardim` | Tüm komutları ve ne işe yaradıklarını listeler | Herkes |
 | `/ping` | Bot çalışıyor mu kontrol eder | Herkes |
 | `/hatirlat` | Belirtilen süre sonra hatırlatma yapar (kişi başı en fazla 5) | Herkes |
+| `/seviye` | Seviyeni ve sunucu sıralamasını gösterir; yöneticiler sistemi açar, seviye ödülü rolleri belirler | Herkes (ayarlar için Sunucuyu Yönet) |
+| `/ozetle` | Kanaldaki son 10-100 mesajı yapay zekâyla özetler (sunucuda `/ayarla ozet` ile açılırsa; `/sor` hakkını kullanır) | Herkes (kanal geçmişini okuyabilen) |
 | `/sor` | Yapay zekâya soru sorar (yalnızca kurulduysa; günlük hak kullanıma göre ayarlanır) | Herkes |
 | `/ban` | Kullanıcıyı yasaklar | Üyeleri Yasakla |
 | `/unban` | Kullanıcının yasağını kaldırır | Üyeleri Yasakla |
 | `/kick` | Üyeyi atar | Üyeleri At |
 | `/sustur` | Üyeyi belirli dakika susturur (0 = kaldır) | Üyelere Zaman Aşımı Uygula |
 | `/temizle` | Kanaldaki son 1-100 mesajı siler | Mesajları Yönet |
-| `/ayarla` | Log kanalı ve kategorileri, hoş geldin kanalı, oto rol (`sifirla` ile kaldırılır) | Sunucuyu Yönet |
-| `/koruma` | Otomatik spam koruması, ağır küfür filtresi ve dolandırıcılık görseli denetimi | Sunucuyu Yönet |
+| `/uyari` | Üyeye kalıcı uyarı verir; uyarı sayısına göre otomatik susturma, atma ya da yasaklama | Üyelere Zaman Aşımı Uygula (kurallar için Sunucuyu Yönet) |
+| `/ayarla` | Log kanalı ve kategorileri, hoş geldin kanalı, oto rol, kanal özetleri (`sifirla` ile kaldırılır) | Sunucuyu Yönet |
+| `/koruma` | Otomatik spam koruması, ağır küfür filtresi, zararlı bağlantı ve dolandırıcılık görseli denetimi | Sunucuyu Yönet |
+| `/cekilis` | Düğmeyle katılınan çekiliş başlatır, erken bitirir, yeniden çeker ya da iptal eder | Sunucuyu Yönet |
+| `/rolmenu` | Üyelerin düğmeyle rol alıp bırakabildiği bir menü mesajı kurar (en fazla 10 rol) | Rolleri Yönet |
 | `/sunucukur` | Topluluk sunucusu kurar: roller, kanallar, izinler, üyelik onayı, destek sistemi | Yönetici |
 | `/kitle`, `/kilidiac` | Acil durumda bütün kanalları kilitler ve geri açar | Yönetici |
 | `/yayin` | Canlı yayın bildirimlerini ayarlar (Twitch, Kick, YouTube) | Sunucuyu Yönet |
@@ -83,7 +97,7 @@ diliyle gösterilir.
 | `/instagram` | Instagram hesaplarının yeni gönderilerini duyurur | Sunucuyu Yönet |
 | `/oyun` | Bedava oyun ve indirim bildirimlerini ayarlar (Steam, Epic, GOG) | Sunucuyu Yönet |
 
-Yetki gerektiren komutlar yalnızca o yetkisi olanlara görünür. `/ban`, `/kick` ve `/sustur` ayrıca rol sırasına
+Yetki gerektiren komutlar yalnızca o yetkisi olanlara görünür. `/ban`, `/kick`, `/sustur` ve `/uyari ver` ayrıca rol sırasına
 bakar: kendinle aynı ya da daha yüksek roldeki bir üyeye işlem yapamazsın. `/sunucukur`, `/kitle` ve `/kilidiac`
 Sunucu Ayarları → Entegrasyonlar'dan başka bir role açılsa bile yalnızca Yönetici yetkisi olanlarca kullanılabilir.
 
@@ -91,11 +105,12 @@ Sunucu Ayarları → Entegrasyonlar'dan başka bir role açılsa bile yalnızca 
 
 ### Yapay zekâ
 
-Üç özellik Google'ın Gemini modelleriyle çalışır. Her biri ayrıntılı olarak kendi bölümünde anlatılır:
+Dört özellik Google'ın Gemini modelleriyle çalışır. Her biri ayrıntılı olarak kendi bölümünde anlatılır:
 
 | Özellik | Nasıl açılır | Ayrıntılar |
 |---|---|---|
 | `/sor`: yapay zekâya soru sorma | Her sunucuda kendiliğinden açık | [Soru cevaplama](#soru-cevaplama-sor) |
+| `/ozetle`: kanaldaki son mesajları özetleme | Sunucu başına `/ayarla ozet` ile; varsayılan olarak kapalı | [Kanal özeti](#kanal-özeti-ozetle) |
 | Oyun fırsatı kartlarına inceleme ve puan | `/oyun kanal` ile fırsat bildirimleri açılınca | [Oyun fırsatları](#oyun-fırsatları) |
 | `/koruma gorsel`: dolandırıcılık görseli denetimi | Sunucu başına; varsayılan olarak kapalı | [Otomatik koruma](#otomatik-koruma) |
 
@@ -103,12 +118,12 @@ Ortak noktalar:
 
 - **Yapay zekâ yanılabilir.** Bot bunu her cevabın ve her incelemenin altında söyler. Görsel denetimi yanlış alarm
   verirse susturma elle kaldırılır.
-- **Ne Google'a gider:** `/sor` soruları, oyun incelemeleri için Steam mağaza bilgileri ve görsel denetimi açık
+- **Ne Google'a gider:** `/sor` soruları, `/ozetle` ile özetlenen mesajlar (yazanların görünen adlarıyla), oyun incelemeleri için Steam mağaza bilgileri ve görsel denetimi açık
   sunucularda denetlenen resimler. Ücretsiz katmanda Google bu verileri ürünlerini geliştirmek için kullanabilir.
-  Bot soruları kaydetmez. Resimleri de saklamaz, yalnızca parmak izlerini (SHA-256) tutar; yakalanan resmin kanıtı
+  Bot soruları ve özetlenen mesajları kaydetmez. Resimleri de saklamaz, yalnızca parmak izlerini (SHA-256) tutar; yakalanan resmin kanıtı
   sunucunun kendi günlük kanalına bulanık olarak düşer.
 - **Model yalnızca metin üretir.** Sunucuda hiçbir işlem yapamaz ve yazdığı metin kimseyi etiketleyemez; `/sor`
-  cevaplarında ve incelemelerde bağlantılar da etkisizleştirilir. Görsel denetiminde silme ve susturmayı bot yapar,
+  cevaplarında, özetlerde ve incelemelerde bağlantılar da etkisizleştirilir. Görsel denetiminde silme ve susturmayı bot yapar,
   bunun için model en az %70 emin olmalıdır.
 - **Kota ortaktır.** Günlük haklar sunucu ve kişi sayısına göre kendiliğinden paylaştırılır; incelemeler ve görsel
   denetiminin ayrı günlük payları vardır.
@@ -147,6 +162,60 @@ Botta **Kanalları Yönet** ve **Rolleri Yönet** izinleri olmalı; bot yalnızc
 yazabildiği için **Bağlan**, **Konuş**, **Video** ve **Dosya Ekle** izinleri de önerilir. Kurulumdan sonra Voyager rolü
 yeni rollerin üstüne taşınmalıdır.
 
+### Rol menüsü (`/rolmenu`)
+
+`/rolmenu` seçtiğin kanala başlık, açıklama ve her rol için bir düğme içeren bir mesaj koyar. Üye düğmeye basınca
+rolü alır, yeniden basınca bırakır. `tek-secim` açıksa üye o menüden yalnızca bir rol taşıyabilir; yenisini seçince
+eskisi bırakılır (renk ya da takım rolleri için). Menüyü kaldırmak için mesajı silmek yeterlidir; bot ayrıca bir kayıt
+tutmaz, hangi rollerin menüde olduğunu mesajın düğmelerinden okur.
+
+- Menüye oto rolle aynı kurallar uygulanır: yönetim yetkisi taşıyan (ör. üye atma, mesaj ya da rol yönetme), botun
+  rolünden yüksek ya da menüyü kuranın kendisinin veremeyeceği roller eklenemez.
+- Menü kurulduktan sonra role yönetim yetkisi verilirse ya da rol botun üstüne taşınırsa düğme o rolü vermez.
+- Bot için **Rolleri Yönet** izni gerekir.
+
+### Çekilişler (`/cekilis`)
+
+| Komut | Ne yapar |
+|---|---|
+| `/cekilis baslat` | Ödül, süre (en fazla 14 gün), kazanan sayısı (en fazla 20) ve isteğe bağlı rol şartıyla çekiliş başlatır |
+| `/cekilis bitir` | Çekilişi süresi dolmadan bitirir ve kazananları seçer |
+| `/cekilis yeniden` | Biten çekilişte daha önce kazanmamış katılımcılar arasından yeniden seçer |
+| `/cekilis iptal` | Çekilişi kimseyi seçmeden iptal eder |
+
+- Üyeler mesajdaki **Katıl** düğmesiyle katılır, yeniden basınca çekilir. Süre dolunca kazananlar rastgele seçilir,
+  mesaj güncellenir ve kanalda yalnızca kazananlar etiketlenerek duyurulur.
+- Kazananlar yalnızca hâlâ sunucuda olan katılımcılar arasından seçilir.
+- Çekilişler kaydedilir; bot yeniden başlarsa süren çekilişler kaldığı yerden devam eder. Biten çekilişler yeniden
+  çekiliş için 7 gün saklanır.
+- Bir sunucuda aynı anda en fazla 10 çekiliş sürebilir; bir çekilişe en fazla 5.000 kişi katılabilir.
+- `bitir`, `yeniden` ve `iptal` çekiliş mesajının bağlantısını (Mesaj → Bağlantıyı Kopyala) ya da kimliğini ister.
+
+### Seviye sistemi (`/seviye`)
+
+`/seviye ayar durum:Açık` ile sunucu başına açılır; varsayılan olarak kapalıdır.
+
+| Komut | Ne yapar |
+|---|---|
+| `/seviye goster` | Seviyeni (ya da başka bir üyenin seviyesini), sırasını ve sonraki seviyeye kalan XP'yi gösterir |
+| `/seviye siralama` | En yüksek seviyedeki 10 üyeyi gösterir |
+| `/seviye ayar` | Sistemi açar, kapatır; isteğe bağlı olarak seviye duyurularının yapılacağı kanalı seçer |
+| `/seviye odul-ekle` / `odul-sil` | Bir seviyeye ulaşanlara verilecek rolü belirler (en fazla 10 ödül) |
+| `/seviye sifirla` | Bir üyenin XP'sini sıfırlar |
+
+- Üye her mesajda 15-25 XP kazanır, ama dakikada en fazla bir kez; art arda yazmak XP kazandırmaz. Botlar ve
+  webhook'lar XP kazanmaz. Seviye atlamak giderek zorlaşır (0→1: 100 XP, 9→10: 1.005 XP).
+- Otomatik korumanın sildiği mesajlar (spam, küfür, zararlı bağlantı) XP kazandırmaz. Görsel denetiminin kararı
+  30-60 saniye sürdüğü için onun sildiği mesajlar bu kurala girmez.
+- Mesajların içeriği okunmaz, yalnızca yazıldıkları bilinir; Message Content Intent gerekmez.
+- Seviye atlayan, mesajı yazdığı kanalda (ya da seçilen duyuru kanalında) etiketlenerek duyurulur.
+- Ödül rollerine oto rolle aynı kurallar uygulanır: yönetim yetkisi taşıyan, botun rolünden yüksek ya da ödülü
+  ekleyenin kendisinin veremeyeceği roller ödül yapılamaz. Rol sonradan yönetim yetkisi alırsa verilmez.
+  Ödül eklenmeden önce o seviyeyi geçmiş üyeler rolü bir sonraki seviye atlayışlarında alır.
+- `ayar`, `odul-ekle`, `odul-sil` ve `sifirla` Sunucuyu Yönet yetkisi ister. Sistem kapatılınca XP silinmez.
+- XP her mesajda diske yazılmaz; dakikada bir ve bot kapanırken kaydedilir. Bot çökerse en fazla son dakikanın
+  XP'si kaybolur.
+
 ### Acil durum kilidi (`/kitle`, `/kilidiac`)
 
 `/kitle` saldırı anında bütün kanalları kilitler: sunucu sahibi dışındaki üyeler yazamaz, tepki ekleyemez, konu açamaz ve
@@ -160,6 +229,26 @@ ses kanallarına giremez. Her kanalın izinleri saklanır; `/kilidiac` hepsini k
   elle kurulmuş ya da eski bir kurulumdan kalan ses kanallarında izin yoksa komut o kanalları "erişimim yok" diye bildirir.
 - Bot **Yönetici** olmak zorunda değildir. Kilit, botun kanalda elinde olan izinlerle uygulanır.
 
+### Uyarılar (`/uyari`)
+
+Moderatörlerin verdiği uyarılar kalıcı olarak saklanır; bot yeniden başlasa da kaybolmaz.
+
+| Komut | Ne yapar |
+|---|---|
+| `/uyari ver` | Üyeye sebebiyle birlikte uyarı verir; üyeye özel mesajla da bildirilir |
+| `/uyari liste` | Üyenin uyarılarını numaralarıyla gösterir (yalnızca komutu kullanan görür) |
+| `/uyari sil` / `temizle` | Tek bir uyarıyı ya da bütün uyarıları siler |
+| `/uyari kural-ekle` / `kural-sil` | Uyarı sayısı bir eşiğe gelince uygulanacak işlemi belirler: susturma, atma ya da yasaklama (Sunucuyu Yönet gerekir) |
+| `/uyari kurallar` | Kuralları gösterir |
+
+- Kural, üyenin uyarı sayısı **tam** eşiğe geldiğinde bir kez uygulanır (ör. 3. uyarıda 1 gün susturma, 5. uyarıda
+  atma). En fazla 5 kural olabilir; eşik en fazla 20'dir. Bir üyenin en fazla 50 uyarısı saklanır.
+- Kural bot üzerinden yetki aşmaya yaramaz: uyarıyı veren yetkili kuralın işlemini kendisi yapamıyorsa (ör. yalnızca
+  susturma yetkisi varken atma kuralı) işlem uygulanmaz, bu durum cevapta ve günlükte söylenir. Kural ekleyen de
+  işlemi kendisi yapabiliyor olmalıdır.
+- Uyarılar, susturma gibi rol sırasına bakar: kendinle aynı ya da daha yüksek roldeki üyeye uyarı veremezsin.
+- Verilen, silinen ve temizlenen uyarılar günlüğün Moderasyon kategorisine yazılır.
+
 ### Otomatik koruma
 
 `/koruma` ile sunucu başına açılır; hepsi varsayılan olarak kapalıdır. Mesajları Yönet yetkisi olanlar ve botlar muaftır.
@@ -170,11 +259,26 @@ ses kanallarına giremez. Her kanalın izinleri saklanır; `/kilidiac` hepsini k
 | `/koruma kufur` | Ağır küfür içeren mesajları siler; istenirse yazanı susturur |
 | `/koruma kelime-ekle` / `kelime-cikar` | Sunucuya özel yasaklı kelime listesi |
 | `/koruma gorsel` | Dolandırıcılık resimlerini (ünlü adına para dağıtma, kripto kumarhane bonusu, bedava Nitro vb.) yapay zekâyla yakalar; mesajı siler, atanı susturur (varsayılan 1 gün), günlüğe kanıtıyla yazar |
+| `/koruma baglanti` | Discord, Steam, Epic Games, Roblox ve Twitch'i taklit eden alanları, yanıltıcı bağlantıları ve bedava Nitro alanlarını siler; atanı susturur (varsayılan 60 dakika). İsteğe bağlı olarak kısaltılmış bağlantıları (bit.ly vb.) da siler |
+| `/koruma alan` | Bağlantı denetimi için sunucuya özel engel ve izin listesi (alt alan adları da kapsanır) |
 | `/koruma goster` | Ayarları gösterir |
 
 Spam koruması özellikle ele geçirilmiş hesapların bütün kanallara aynı görselleri atmasını hedefler; bu yüzden
 üyeyi banlamaz, susturur. Küfür filtresi yalnızca ağır küfürleri yakalar ve masum kelimelere takılmamak için
 bilerek dardır ("amk", "aq" gibi kısaltmalar hazır listede yoktur). Küfür filtresi için Message Content Intent gerekir.
+
+**Bağlantı denetimi** bağlantıları açmaz ve hiçbir yere göndermez; karar yalnızca adresin kendisinden verilir:
+
+- Taklit alanlar: harfi benzeyeniyle değiştirilmiş (`dlscord`, `disc0rd`, Kiril harfli `dіscord`, `stearncommunity`),
+  bir harfi oynatılmış (`dicsord`), markanın yanına hediye kelimesi eklenmiş (`discord-nitro`, `discordgift`), başka
+  uzantıda açılmış (`discord.ru`) ya da gerçek adresi alt alan adına gizlemiş (`steamcommunity.com.kotu.ru`) alanlar.
+- Yanıltıcı bağlantılar: görünen adresiyle gittiği adres farklı olanlar (`[discord.com](https://kotu.site)`) ve
+  adresin başına başka site adı gizleyenler (`https://discord.com@kotu.site`).
+- `free-nitro` gibi bedava Nitro/hediye alanları.
+- Kurallar yanlış alarm vermemek için bilerek dardır: markanın adını taşıyan ama hediye kelimesi içermeyen siteler
+  (`discordbotlist.com`, `discord.js.org`) yakalanmaz. Yine de yanlış alarm olursa alan `/koruma alan islem:İzin ver`
+  ile izin listesine eklenir. Bilinen her zararlı alanı tanımaz; gördüğün bir alanı `/koruma alan islem:Engelle` ile ekle.
+- Mesajı düzenleyerek bağlantı eklemek de yakalanır. Message Content Intent gerekir.
 
 **Görsel denetimi** metin filtrelerinin göremediği, resmin içindeki dolandırıcılığı yakalar:
 
@@ -198,7 +302,7 @@ tek tek açılıp kapatılır; hepsi varsayılan olarak açıktır.
 
 | Kategori | Neler yazılır |
 |---|---|
-| Moderasyon | Ban, yasak kaldırma, kick, susturma, `/temizle` (bot komutuyla ya da elle yapılanlar) |
+| Moderasyon | Ban, yasak kaldırma, kick, susturma, uyarılar, `/temizle` (bot komutuyla ya da elle yapılanlar) |
 | Üyeler | Katılma, ayrılma, takma ad ve rol değişikliği |
 | Mesajlar | Silinen ve düzenlenen mesajlar, toplu silme |
 | Ses kanalları | Girme, çıkma, kanal değiştirme |
@@ -299,6 +403,11 @@ puanlar da yazar. Bir oyunun incelemesi bir kez yazılır, 60 gün saklanır ve 
 `/sor soru:<metin>` soruyu Google'ın Gemini modeline sorar ve cevabı kanala yazar; `gizli` seçeneğiyle cevabı
 yalnızca soran görür. Cevaplar yanlış olabilir; her cevabın altında bu not yer alır.
 
+Açık cevaplar Discord'da **Yanıtla** ile cevaplanarak sürdürülebilir: bot yanıt zincirini geriye doğru izler
+(en fazla 10 mesaj), önceki soru ve cevapları bağlam olarak modele gönderir ve cevabını yanıt olarak yazar. Her
+yanıt `/sor` hakkından bir tane kullanır. Bunun için `MESAJ_ICERIGI=1` gerekir; kapalıysa Discord yalnızca botu
+etiketleyen mesajların içeriğini verdiğinden, yanıt yalnızca etiket (Yanıtla'daki "@ AÇIK") açıkken çalışır.
+
 - Model yalnızca metin üretir: sunucuda hiçbir işlem yapamaz ve cevabı kimseyi etiketleyemez.
 - Sorulan metin Google'a gönderilir. Ücretsiz katmanda Google bu metni ürünlerini geliştirmek için kullanabilir;
   kişisel bilgi yazılmamalıdır. Bot soruları kaydetmez.
@@ -321,6 +430,22 @@ yalnızca soran görür. Cevaplar yanlış olabilir; her cevabın altında bu no
   bot talimatı soruyla birlikte gönderir ve JSON biçimini talimatla ister. Gemma'nın günlük sınırı yüksektir ama
   yavaştır: cevaptan önce kendiliğinden düşünür, bu kapatılamaz ve cevap 15-30 saniye sürer. Bu yüzden asıl model
   olarak değil, yedek olarak uygundur.
+
+### Kanal özeti (`/ozetle`)
+
+`/ozetle` bulunduğun kanalın son mesajlarını (varsayılan 50, `adet` ile 10-100) yapay zekâya özetletir: konuşulan
+konular, varılan kararlar, açık kalan sorular. Özet varsayılan olarak yalnızca isteyene görünür; `paylas` seçeneğiyle
+kanala yazılır.
+
+- **Sunucu başına açılır.** Özetlenen mesajlar başkalarının yazdıklarıdır ve Google'a gönderilir; bu yüzden özellik
+  varsayılan olarak kapalıdır, bir yönetici `/ayarla ozet durum:Açık` ile açar. Bot mesajları saklamaz.
+- Yalnızca kanalın mesaj geçmişini okuyabilen üyeler özet alabilir; göremediği mesajların özetini bu yoldan alamaz.
+- Botların ve sistemin mesajları özete katılmaz. Her mesajın en fazla 400 karakteri, toplamda en fazla 15.000
+  karakter gönderilir; sığmazsa en yeni mesajlar kalır.
+- Mesajlar modele "yalnızca özetlenecek veri" olarak verilir; içlerine yazılmış talimatları uygulamaması istenir.
+  Model yine de kandırılabilir, ama `/sor`'daki gibi özet kimseyi etiketleyemez, başlık ve gizli bağlantı içeremez.
+- Her özet, kişinin günlük `/sor` hakkından bir tane kullanır; sınırlar `/sor` ile ortaktır.
+- Mesajların metnini okuyabilmek için **Message Content Intent** gerekir (`.env` içinde `MESAJ_ICERIGI=1`).
 
 ## Sunucuna ekledikten sonra
 
@@ -570,18 +695,24 @@ src/
   yardimci.js         Yetki kontrolleri ve log gönderme
   gunluk.js           Sunucu günlüğü
   koruma.js           Spam koruması ve küfür filtresi
+  baglanti.js         Zararlı bağlantı denetimi
+  uyari.js            Uyarı kayıtları ve otomatik ceza kuralları
+  rolmenu.js          Rol menüsü düğmeleri
+  cekilis.js          Çekiliş kayıtları, zamanlayıcıları ve kazanan seçimi
+  seviye.js           Seviye sistemi: XP, seviye atlama, ödül rolleri
   gorsel.js           Dolandırıcılık görseli denetimi
   topluluk.js         /sunucukur şablonu, üyelik onayı, ilgi rolleri, destek talepleri
   kilit.js            Acil durum kilidi
   haber.js            Haber bildirimleri; haber-ayristir.js ayrı iş parçacığında çalışır
   instagram.js        Instagram gönderi bildirimleri
   yapayzeka.js        Gemini bağlantısı ve /sor
+  sohbet.js           /sor cevabına "Yanıtla" ile devam edilen konuşmalar
   inceleme.js         Oyun fırsatı kartlarındaki yapay zekâ incelemesi
   firsatlar.js        Oyun fırsatları
   hatirlatici.js      Hatırlatıcı zamanlayıcıları
   yayin/              Yayın bildirimleri (Twitch, Kick, YouTube) ve HTTP sunucusu
   site.js, site/      Tanıtım sayfası
-test/                 Güvenlik testleri (npm test) ve Discord deneme listesi
+test/                 Güvenlik, özellik ve komut testleri (npm test), Discord deneme listesi
 ```
 
 Yeni komut eklemek için `src/commands/` içine `ping.js` gibi bir dosya ekleyip `npm run komutlar` çalıştır.
