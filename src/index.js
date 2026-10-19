@@ -122,6 +122,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
     }
     return;
   }
+  // Seçeneğe yazarken gelen öneri istekleri (ör. /yardim komut). Cevap verilemezse Discord öneri göstermez.
+  if (interaction.isAutocomplete()) {
+    const komut = client.komutlar.get(interaction.commandName);
+    await komut?.autocomplete?.(interaction).catch((hata) => console.error(`/${interaction.commandName} önerileri:`, hataMetni(hata)));
+    return;
+  }
   if (!interaction.isChatInputCommand()) return;
   const komut = client.komutlar.get(interaction.commandName);
   if (!komut) return;

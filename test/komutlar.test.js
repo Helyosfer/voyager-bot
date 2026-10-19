@@ -409,3 +409,189 @@ test('hatırlatıcılar bot yeniden başlayınca kaldığı yerden kurulur; sür
     mock.timers.reset();
   }
 });
+
+// --- /yardim komut sayfaları ---
+const { EventEmitter } = require('node:events');
+const yardimKomutu = () => komut('yardim');
+const REHBER = src('yardim-rehberi');
+const { Collection: KomutListesi } = require('discord.js');
+const butunKomutlar = () => new KomutListesi(komutlar.map(({ komut: k }) => [k.data.name, k]));
+const tumYetkiler = () => new PermissionsBitField(PermissionsBitField.All);
+const veriAl = (ad) => komut(ad).data.toJSON();
+
+// Discord'a yazıldığı haliyle "/komut alt secenek:değer secenek:değer" örneğini parçalar
+function ornegiAyir(ornek) {
+  const eslesme = /^\/(\S+)(?: ([a-z0-9-]+)(?=\s|$))?/.exec(ornek);
+  const parcalar = [...ornek.matchAll(/(?:^|\s)([a-z0-9-]+):/g)];
+  const secenekler = parcalar.map((p, i) => ({
+    ad: p[1],
+    deger: ornek.slice(p.index + p[0].length, parcalar[i + 1]?.index ?? ornek.length).trim(),
+  }));
+  return { komutAdi: eslesme[1], alt: eslesme[2] ?? null, secenekler };
+}
+
+test('/yardim rehberi: her komutun anlatımı ve örneği var; örneklerdeki alt komut, seçenek ve değerler gerçek', () => {
+  const veri = Object.fromEntries(komutlar.map(({ komut: k }) => [k.data.name, k.data.toJSON()]));
+  assert.deepEqual(Object.keys(REHBER).sort(), Object.keys(veri).sort(), 'rehberde her komut bir kez olmalı');
+  for (const [ad, rehber] of Object.entries(REHBER)) {
+    assert.ok(rehber.anlatim?.length > 40, `/${ad}: anlatım yok ya da çok kısa`);
+    assert.ok(rehber.ornekler?.length, `/${ad}: örnek yok`);
+    for (const ornek of rehber.ornekler) {
+      const { komutAdi, alt, secenekler } = ornegiAyir(ornek);
+      assert.equal(komutAdi, ad, `${ornek}: başka komutun örneği`);
+      const altlar = (veri[ad].options ?? []).filter((o) => o.type === T.Subcommand);
+      let tanim = veri[ad];
+      if (altlar.length) {
+        tanim = altlar.find((o) => o.name === alt);
+        assert.ok(tanim, `${ornek}: "${alt}" diye alt komut yok`);
+      }
+      const tanimli = tanim.options ?? [];
+      for (const { ad: secenekAdi, deger } of secenekler) {
+        const s = tanimli.find((o) => o.name === secenekAdi);
+        assert.ok(s, `${ornek}: "${secenekAdi}" diye seçenek yok`);
+        assert.ok(deger, `${ornek}: ${secenekAdi} boş`);
+        if (s.choices) assert.ok(s.choices.some((c) => c.name === deger), `${ornek}: ${secenekAdi} için "${deger}" seçeneklerde yok`);
+        if (s.type === T.Boolean) assert.match(deger, /^(True|False)$/, `${ornek}: ${secenekAdi}`);
+        if (s.type === T.Integer) {
+          const sayi = Number(deger);
+          assert.ok(Number.isInteger(sayi) && sayi >= (s.min_value ?? -Infinity) && sayi <= (s.max_value ?? Infinity), `${ornek}: ${secenekAdi}=${deger} aralık dışı`);
+        }
+      }
+      for (const zorunlu of tanimli.filter((o) => o.required)) {
+        assert.ok(secenekler.some((s) => s.ad === zorunlu.name), `${ornek}: zorunlu "${zorunlu.name}" eksik`);
+      }
+    }
+  }
+});
+
+// Gömülü mesajın Discord'un saydığı toplam uzunluğu (sınır 6000)
+const gomuluUzunluk = (e) =>
+  (e.title?.length ?? 0) +
+  (e.description?.length ?? 0) +
+  (e.footer?.text.length ?? 0) +
+  (e.fields ?? []).reduce((t, f) => t + f.name.length + f.value.length, 0);
+
+test('/yardim komut sayfaları Discord sınırlarına kısaltılmadan sığar; yetki, seçenek ve örnekler yazar', () => {
+  const yardim = yardimKomutu();
+  // En uzun hal: her komut tıklanabilir bağlantıyla yazılır
+  const kimlik = new Map(komutlar.map(({ komut: k }) => [k.data.name, '123456789012345678']));
+  for (const { komut: k } of komutlar) {
+    const e = yardim.komutSayfasi(k.data.toJSON(), kimlik).toJSON();
+    const ad = k.data.name;
+    assert.ok(gomuluUzunluk(e) <= 6000, `/${ad}: ${gomuluUzunluk(e)} karakter`);
+    assert.ok(e.fields.length <= 25 && e.description.length <= 4096, `/${ad}`);
+    for (const f of e.fields) assert.ok(f.value.length <= 1024 && !f.value.endsWith('…'), `/${ad} · ${f.name} kısaltıldı`);
+  }
+
+  const ban = yardim.komutSayfasi(veriAl('ban'), kimlik).toJSON();
+  const alan = (ad) => ban.fields.find((f) => f.name.includes(ad))?.value;
+  assert.equal(alan('Kim kullanabilir'), '**Üyeleri Yasakla** yetkisi olanlar');
+  assert.ok(alan('Seçenekler').includes('› `kullanici` **(zorunlu)**: Yasaklanacak kullanıcı *(kullanıcı)*'));
+  assert.ok(alan('Seçenekler').includes('› `sebep`: Yasaklama sebebi'));
+  assert.ok(ban.description.includes('</ban:123456789012345678>'));
+  assert.ok(alan('Örnekler').includes('`/ban kullanici:@Ali'));
+
+  const koruma = yardim.komutSayfasi(veriAl('koruma'), new Map()).toJSON();
+  const spam = koruma.fields.find((f) => f.name === '▸ spam').value;
+  assert.ok(spam.startsWith('`/koruma spam`: '), 'komut yüklü değilse düz yazı');
+  assert.match(spam, /`durum` \*\*\(zorunlu\)\*\*.*Açık \/ Kapalı/);
+  assert.ok(spam.includes('0-40320'));
+  // Yönetici yetkisi "bütün yetkiler" diye açılmaz
+  assert.equal(yardim.komutSayfasi(veriAl('kitle'), kimlik).toJSON().fields[0].value, '**Yönetici** yetkisi olanlar');
+  // Seçeneği olmayan komut
+  assert.match(yardim.komutSayfasi(veriAl('ping'), kimlik).toJSON().fields.find((f) => f.name.includes('Seçenekler')).value, /Seçeneği yok/);
+});
+
+// /yardim etkileşimi sahtesi: cevaplar ve menü seçimleri için toplayıcı
+function yardimEtkilesimi({ izinler = tumYetkiler(), komut: istenen = null } = {}) {
+  const cevaplar = [];
+  const toplayici = new EventEmitter();
+  return {
+    cevaplar,
+    toplayici,
+    client: {
+      komutlar: butunKomutlar(),
+      user: { username: 'Voyager', displayAvatarURL: () => 'https://cdn.discordapp.com/avatar.png' },
+      application: { commands: { fetch: async () => new KomutListesi([['1', { name: 'ban', id: '1' }]]) } },
+    },
+    memberPermissions: izinler,
+    options: { getString: () => istenen },
+    reply: async (m) => cevaplar.push(m),
+    editReply: async (m) => cevaplar.push(m),
+    fetchReply: async () => ({ createMessageComponentCollector: () => toplayici }),
+  };
+}
+async function secimYap(e, customId, deger) {
+  let guncel;
+  e.toplayici.emit('collect', { customId, values: [deger], update: async (m) => (guncel = m) });
+  await new Promise((coz) => setImmediate(coz));
+  return guncel;
+}
+const menuler = (m) => m.components.map((r) => r.toJSON().components[0]);
+const baslik = (m) => m.embeds[0].toJSON().title;
+
+test('/yardim: bölüm seçince komut menüsü çıkar, komut seçince ayrıntı sayfası açılır; doğrudan açılabilir', async () => {
+  const yardim = yardimKomutu();
+  const e = yardimEtkilesimi();
+  await yardim.execute(e);
+  assert.equal(menuler(e.cevaplar[0]).length, 1, 'ana sayfada yalnızca bölüm menüsü');
+  assert.ok(e.cevaplar[0].embeds[0].toJSON().description.includes('/yardim komut:ban'));
+
+  const bolum = await secimYap(e, 'yardim-bolum', 'moderasyon');
+  const [bolumMenusu, komutMenusu] = menuler(bolum);
+  assert.equal(bolumMenusu.options.find((o) => o.default).value, 'moderasyon');
+  assert.deepEqual(komutMenusu.options.map((o) => o.value), ['uyari', 'sustur', 'kick', 'ban', 'unban', 'temizle']);
+
+  const sayfa = await secimYap(e, 'yardim-komut', 'ban');
+  assert.equal(baslik(sayfa), '/ban');
+  assert.ok(sayfa.embeds[0].toJSON().description.includes('</ban:1>'), 'yüklü komut tıklanabilir');
+  assert.equal(menuler(sayfa)[1].options.find((o) => o.default).value, 'ban');
+  assert.equal(sayfa.content, null);
+
+  // Başka bölüme geçince komut seçimi sıfırlanır; bilinmeyen değer ana sayfaya döner
+  assert.equal(baslik(await secimYap(e, 'yardim-bolum', 'genel')), '🧭 Genel');
+  assert.equal(menuler(await secimYap(e, 'yardim-bolum', 'uydurma')).length, 1);
+
+  const dogrudan = yardimEtkilesimi({ komut: '/Ban' });
+  await yardim.execute(dogrudan);
+  assert.equal(baslik(dogrudan.cevaplar[0]), '/ban');
+  assert.equal(dogrudan.cevaplar[0].content, undefined);
+});
+
+test('/yardim: yetkisi olmayan yönetim komutunun sayfasını açamaz; yazdığı ad cevapta biçimlendirme yapamaz', async () => {
+  const yardim = yardimKomutu();
+  const uye = yardimEtkilesimi({ izinler: new PermissionsBitField(), komut: 'ban' });
+  await yardim.execute(uye);
+  assert.ok(uye.cevaplar[0].content.includes('`/ban` diye kullanabileceğin bir komut yok'));
+  assert.notEqual(baslik(uye.cevaplar[0]), '/ban');
+  // Menüden de seçilemez: bölümünde olmayan komut istenirse bölüm sayfası kalır
+  await secimYap(uye, 'yardim-bolum', 'genel');
+  assert.equal(baslik(await secimYap(uye, 'yardim-komut', 'ban')), '🧭 Genel');
+
+  const garip = yardimEtkilesimi({ komut: '`@everyone` **x**' });
+  await yardim.execute(garip);
+  assert.ok(garip.cevaplar[0].content.startsWith('❌ `/everyonex` diye'));
+});
+
+test('/yardim komut önerileri: kullanabildiği komutlardan, adı yazılanla başlayanlar önce', async () => {
+  const yardim = yardimKomutu();
+  const oner = async (yazilan, izinler = tumYetkiler()) => {
+    let cevap;
+    await yardim.autocomplete({
+      client: { komutlar: butunKomutlar() },
+      memberPermissions: izinler,
+      options: { getFocused: () => yazilan },
+      respond: async (c) => (cevap = c),
+    });
+    return cevap;
+  };
+  const ba = await oner('ba');
+  assert.equal(ba[0].value, 'ban');
+  assert.ok(ba.every((s) => s.name.length <= 100));
+  assert.ok((await oner('')).length <= 25);
+  assert.ok((await oner('/BAN')).some((s) => s.value === 'ban'));
+  // Açıklamada geçen kelimeyle de bulunur
+  assert.ok((await oner('çekiliş')).some((s) => s.value === 'cekilis'));
+  // Yetkisi olmayan yönetim komutlarını görmez
+  assert.ok(!(await oner('ba', new PermissionsBitField())).some((s) => s.value === 'ban'));
+});
