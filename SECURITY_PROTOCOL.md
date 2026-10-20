@@ -280,8 +280,8 @@ for f in src/*.js src/commands/*.js src/yayin/*.js; do node --check "$f"; done
 - [ ] Yeni bir yetki ya da sınır kuralı eklendiyse `test/guvenlik.test.js` içine testi de eklendi.
 - [ ] Yeni dış girdi varsa bölüm 3'teki kurallar uygulandı: boyut, süre, doğrulama, kaçırma.
 - [ ] Yeni bir sır eklendiyse `.env.example`'da yalnızca adı var ve README'de nasıl üretileceği yazıyor.
-- [ ] Yeni bir özellik botta yeni bir izin gerektiriyorsa önce `site.js` içindeki `TAM_IZINLER`'e eklendi.
-      `TEMEL_IZINLER`'e (ana düğme) yalnızca her sunucunun ihtiyaç duyduğu izinler girer; gerekçesi yorumda yazıyor.
+- [ ] Yeni bir özellik botta yeni bir izin gerektiriyorsa `site.js` içindeki `IZINLER`'e eklendi ve yorumda
+      gerekçesi yazıyor. Yönetici (Administrator) eklenmez.
 - [ ] Değişiklik önce ayrı bir deneme sunucusunda, ayrı bir jetonla denendi (`test/DISCORD_DENEME.md`).
 - [ ] Yayından sonra `sudo journalctl -u voyager -f` ile açılış satırları ve ilk dakikalar izlendi.
 

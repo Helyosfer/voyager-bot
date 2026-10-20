@@ -26,8 +26,7 @@ npm run komutlar
 npm start
 ```
 
-5. Açılışta yazan adresi (`127.0.0.1:8788`) tarayıcıda aç; sayfadaki **tam izinlerle ekle** bağlantısıyla botu
-   deneme sunucusuna ekle.
+5. Açılışta yazan adresi (`127.0.0.1:8788`) tarayıcıda aç; **Sunucuna ekle** düğmesiyle botu deneme sunucusuna ekle.
 
 Her satırda beklenen sonuç yazıyor. Farklı bir şey görürsen terminaldeki kaydı not al.
 
@@ -143,8 +142,8 @@ Her satırda beklenen sonuç yazıyor. Farklı bir şey görürsen terminaldeki 
 
 ## Tanıtım sayfası
 
-- [ ] `http://127.0.0.1:8788/` açılıyor; **Sunucuna ekle** düğmesi izin ekranında kanal yönetimi istemiyor,
-      **tam izinlerle ekle** bağlantısı istiyor.
+- [ ] `http://127.0.0.1:8788/` açılıyor; bütün **Sunucuna ekle** düğmeleri aynı izin ekranını açıyor: kanal
+      yönetimi ve @everyone etiketleme var, Yönetici yok. Sayfada başka davet bağlantısı yok.
 
 ## Bittiğinde
 

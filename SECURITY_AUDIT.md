@@ -42,7 +42,7 @@ yeniden çalıştırılınca yansır (bkz. [Yayına alma notları](#7-yayına-al
 | VGR-21 | Bilgilendirme | Tanıtım sayfasında HSTS başlığı yok | Uygulandı |
 | VGR-22 | Bilgilendirme | İç hata metni komutu kullanan yöneticiye gösteriliyor | Uygulandı |
 | VGR-23 | Bilgilendirme | Kayıtlarda kullanıcının yazdığı metin | Uygulandı |
-| VGR-24 | Bilgilendirme | Davet linki bütün özelliklerin izinlerini birden istiyor | Uygulandı: ana düğme temel izinlerle ekliyor |
+| VGR-24 | Bilgilendirme | Davet linki bütün özelliklerin izinlerini birden istiyor | Sahibin kararıyla geri alındı (Ekim 2026): tek davet, bütün izinler, Yönetici yok |
 | VGR-25 | Bilgilendirme | Mağaza servislerinden gelen adresler doğrulanmadan bağlantı yapılıyor | Uygulandı |
 | VGR-26 | Bilgilendirme | Otomatik test ve CI yok | Uygulandı: 25 test ve CI (CI ilk push'ta çalışır) |
 | VGR-27 | Orta | Komutlar botun bulunmadığı sunucularda da çalıştırılabiliyor | Düzeltildi (kod); Developer Portal ayarı proje sahibinde |
@@ -510,6 +510,11 @@ Bunlar yetki politikasını, ürün davranışını ya da dağıtımı değişti
 - **Davranış değişikliği:** Ana düğmeyle ekleyen bir sunucuda `/sunucukur` ve `/kitle` ilk denemede eksik izni
   söyler; izin Sunucu Ayarları → Roller'den açılır ya da bot tam izinli bağlantıyla yeniden eklenir. Botun zaten
   bulunduğu sunucular etkilenmez.
+- **Sonraki karar (20 Ekim 2026, bot sahibi):** İki ayrı davet kullanıcıya hangi izinle ekleyeceğini seçtiriyordu ve
+  kafa karıştırıyordu. Sayfada artık tek davet var; bot bütün özellikleri için gereken izinlerle eklenir (ek olarak
+  @everyone ve rol etiketleme izni). Kabul edilen risk: `/sunucukur` ve `/kilit` kullanmayan sunucular da botu kanal
+  yönetme yetkisiyle ekler. Sınır korunur: Yönetici (Administrator) istenmez, bot yalnızca kullandığı izinleri alır;
+  test bunu denetler. Sunucu yöneticisi izinleri Sunucu Ayarları → Roller'den yine daraltabilir.
 
 #### VGR-26 · Otomatik test ve CI yok
 
