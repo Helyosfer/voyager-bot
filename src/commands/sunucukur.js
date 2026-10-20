@@ -7,8 +7,11 @@ const {
   ButtonStyle,
   EmbedBuilder,
   MessageFlags,
+  StringSelectMenuBuilder,
 } = require('discord.js');
 const topluluk = require('../topluluk');
+
+const { SABLONLAR } = topluluk;
 
 // Kurulumun eksiksiz çalışması için botta olması gereken izinler
 const GEREKLI = [
@@ -22,16 +25,43 @@ const ONERILEN = [
   [PermissionFlagsBits.Stream, 'Video'],
   [PermissionFlagsBits.AttachFiles, 'Dosya Ekle'],
 ];
+const SECIM_SURESI = 180_000;
 
 const kurulan = new Set(); // Kurulumu süren sunucular
 
+// Şablonların karşılaştırması: hangisi ne kurar
+function sablonListesi() {
+  const embed = new EmbedBuilder()
+    .setTitle('🛠️ Sunucu kurulumu · Şablon seç')
+    .setColor(0x5865f2)
+    .setDescription('Sunucunun kullanım amacına uyan şablonu aşağıdaki menüden seç. Seçince ne kurulacağını gösteririm; onaylamadan hiçbir şey değişmez.');
+  for (const sablon of Object.values(SABLONLAR)) {
+    const kanal = sablon.kategoriler.reduce((t, k) => t + k.kanallar.length, 0);
+    const ozellikler = [sablon.onay ? 'üyelik onayı' : 'onaysız', sablon.kategoriler.some((k) => k.anahtar === 'talepler') ? 'destek talepleri' : null]
+      .filter(Boolean)
+      .join(', ');
+    embed.addFields({ name: sablon.ad, value: `${sablon.aciklama}\n-# ${sablon.roller.length} rol · ${sablon.kategoriler.length} kategori · ${kanal} kanal · ${ozellikler}` });
+  }
+  return embed;
+}
+
+const sablonMenusu = () =>
+  new ActionRowBuilder().addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId('sunucukur-sablon')
+      .setPlaceholder('Bir şablon seç')
+      .addOptions(Object.entries(SABLONLAR).map(([value, s]) => ({ label: s.ad.replace(/^\S+\s/, ''), emoji: s.ad.split(' ')[0], value, description: s.aciklama.slice(0, 100) }))),
+  );
+
 function onizleme(plan, eksikOnerilen) {
+  const sablon = SABLONLAR[plan.sablon];
   const isaret = (oge) => (oge.mevcut ? '▫️' : '🟢');
   const embed = new EmbedBuilder()
-    .setTitle('🛠️ Sunucu kurulumu · Topluluk')
+    .setTitle(`🛠️ Sunucu kurulumu · ${sablon.ad}`)
     .setColor(0x5865f2)
     .setDescription(
       [
+        sablon.aciklama,
         '🟢 oluşturulacak · ▫️ zaten var, dokunulmayacak',
         '',
         `**Roller (${plan.roller.length})**`,
@@ -49,15 +79,52 @@ function onizleme(plan, eksikOnerilen) {
   embed.addFields({
     name: 'Bilmen gerekenler',
     value: [
-      `• **${plan.yeni} yeni öğe** oluşturulacak; yaklaşık 1-2 dakika sürer.`,
+      `• **${plan.yeni} yeni öğe** oluşturulacak; yaklaşık ${plan.yeni > 40 ? '1-2 dakika' : 'yarım dakika'} sürer.`,
       '• Mevcut kanal ve rollerin hiçbiri silinmez ya da değiştirilmez.',
-      '• Yeni gelenler **Yeni Gelen** rolüyle başlar; onay düğmesine basınca **Üye** olur ve topluluk kanalları açılır.',
-      '• Günlük, hoş geldin, oyun fırsatları ve yayın kanalları botun ayarlarına kendiliğinden bağlanır.',
+      sablon.onay
+        ? '• Yeni gelenler **Yeni Gelen** rolüyle başlar; onay düğmesine basınca **Üye** olur ve topluluk kanalları açılır.'
+        : '• Üyelik onayı yok: sunucuya katılan herkes kanalları hemen görür.',
+      '• Günlük, hoş geldin ve bildirim kanalları botun ayarlarına kendiliğinden bağlanır.',
+      plan.ayarlar.length ? `• Açılacak: **${plan.ayarlar.map((a) => a.ad).join(', ')}**. Sonradan ilgili komutla kapatabilirsin.` : null,
+      plan.atlanan.length
+        ? `• Açılmayacak: ${plan.atlanan.map((a) => a.ad).join(', ')}. Bunlar mesaj metnini okumayı ister, ama botta Message Content Intent kapalı.`
+        : null,
       eksikOnerilen.length ? `• ⚠️ Bende şu izinler yok: **${eksikOnerilen.join(', ')}**. Kurulum çalışır ama bu izinlere dayanan kurallar (özellikle ses kanalları) eksik kalır.` : null,
     ]
       .filter(Boolean)
       .join('\n'),
   });
+  return embed;
+}
+
+function sonucKarti(sonuc, sablon) {
+  const embed = new EmbedBuilder()
+    .setTitle(sonuc.hata ? '⚠️ Kurulum yarıda kaldı' : '✅ Kurulum tamamlandı')
+    .setColor(sonuc.hata ? 0xfee75c : 0x57f287)
+    .setDescription(
+      [
+        `${sablon.ad} şablonu: ${sonuc.olusturulan} öğe oluşturuldu.`,
+        sonuc.hata ? `Hata: ${sonuc.hata}\nOluşturulanlar yerinde duruyor; komutu yeniden çalıştırırsan kaldığı yerden devam eder.` : null,
+        ...sonuc.uyarilar.map((u) => `⚠️ ${u}`),
+      ]
+        .filter(Boolean)
+        .join('\n'),
+    );
+  if (sonuc.baglanan.length) embed.addFields({ name: 'Bota bağlananlar', value: sonuc.baglanan.join('\n').slice(0, 1024) });
+  if (sonuc.acilan.length) embed.addFields({ name: 'Açılan özellikler', value: sonuc.acilan.map((a) => `• ${a}`).join('\n') });
+  if (!sonuc.hata) {
+    embed.addFields({
+      name: 'Sıradaki adımlar',
+      value: [
+        '• **Voyager rolünü** rol listesinde yeni rollerin üstüne taşı; yoksa rol verme işleri çalışmaz.',
+        '• Ekibine yetkili rollerini ver.',
+        ...(sablon.sonraki ?? []).map((s) => `• ${s}`),
+        '• Koruma ayarları: `/koruma goster` · Saldırı anında: `/kilit kapat`.',
+      ]
+        .join('\n')
+        .slice(0, 1024),
+    });
+  }
   return embed;
 }
 
@@ -67,7 +134,13 @@ module.exports = {
 
   data: new SlashCommandBuilder()
     .setName('sunucukur')
-    .setDescription('Topluluk sunucusu kurar: roller, kategoriler, kanallar, izinler, üyelik onayı ve destek sistemi')
+    .setDescription('Hazır şablonla sunucu kurar: roller, kategoriler, kanallar, izinler ve bot ayarları')
+    .addStringOption((o) =>
+      o
+        .setName('sablon')
+        .setDescription('Kurulum şablonu (boş bırakırsan açıklamalarıyla listelenir)')
+        .addChoices(...Object.entries(SABLONLAR).map(([value, s]) => ({ name: s.ad, value }))),
+    )
     .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
     .setContexts(InteractionContextType.Guild),
 
@@ -82,10 +155,21 @@ module.exports = {
       });
     }
 
-    const plan = topluluk.planla(guild);
-    if (!plan.yeni) {
-      return interaction.reply({ content: '✅ Şablondaki her şey sunucuda zaten var; oluşturulacak bir şey yok.', flags: MessageFlags.Ephemeral });
+    // Şablon seçilmediyse önce şablonlar açıklamalarıyla gösterilir
+    let sablonAdi = interaction.options.getString('sablon');
+    let cevap; // Sonraki adımlar bu etkileşimle güncellenir
+    const sahibinSecimi = (mesaj) =>
+      mesaj.awaitMessageComponent({ filter: (i) => i.user.id === interaction.user.id, time: SECIM_SURESI }).catch(() => null);
+    if (!sablonAdi) {
+      await interaction.reply({ embeds: [sablonListesi()], components: [sablonMenusu()], flags: MessageFlags.Ephemeral });
+      cevap = await sahibinSecimi(await interaction.fetchReply());
+      if (!cevap) return interaction.editReply({ content: 'Süre doldu; hiçbir şey değiştirilmedi.', embeds: [], components: [] });
+      sablonAdi = cevap.values[0];
     }
+
+    const plan = topluluk.planla(guild, sablonAdi);
+    const goster = (icerik) => (cevap ? cevap.update(icerik) : interaction.reply({ ...icerik, flags: MessageFlags.Ephemeral }));
+    if (!plan.yeni) return goster({ content: '✅ Şablondaki her şey sunucuda zaten var; oluşturulacak bir şey yok.', embeds: [], components: [] });
 
     // Onlarca kanal ve rol oluşturan bir işlem: önce ne yapılacağını göster, onay iste
     const dugmeler = new ActionRowBuilder().addComponents(
@@ -93,11 +177,8 @@ module.exports = {
       new ButtonBuilder().setCustomId('sunucukur-vazgec').setLabel('Vazgeç').setStyle(ButtonStyle.Secondary),
     );
     const eksikOnerilen = ONERILEN.filter(([izin]) => !ben.permissions.has(izin)).map(([, ad]) => ad);
-    await interaction.reply({ embeds: [onizleme(plan, eksikOnerilen)], components: [dugmeler], flags: MessageFlags.Ephemeral });
-    const mesaj = await interaction.fetchReply();
-    const secim = await mesaj
-      .awaitMessageComponent({ filter: (i) => i.user.id === interaction.user.id, time: 180_000 })
-      .catch(() => null);
+    await goster({ embeds: [onizleme(plan, eksikOnerilen)], components: [dugmeler] });
+    const secim = await sahibinSecimi(await interaction.fetchReply());
 
     if (!secim || secim.customId === 'sunucukur-vazgec') {
       const metin = secim ? 'Kurulumdan vazgeçildi; hiçbir şey değiştirilmedi.' : 'Süre doldu; hiçbir şey değiştirilmedi.';
@@ -112,37 +193,13 @@ module.exports = {
     await secim.update({ content: '⏳ Kuruluyor…', embeds: [], components: [] });
     // Onay beklenirken sunucu değişmiş olabilir; planı güncel haliyle yeniden çıkar
     const sonuc = await topluluk
-      .kur(guild, topluluk.planla(guild), interaction.user.tag, (metin) => secim.editReply({ content: metin }))
+      .kur(guild, topluluk.planla(guild, sablonAdi), interaction.user.tag, (metin) => secim.editReply({ content: metin }))
       .finally(() => kurulan.delete(guild.id));
-
-    const embed = new EmbedBuilder()
-      .setTitle(sonuc.hata ? '⚠️ Kurulum yarıda kaldı' : '✅ Kurulum tamamlandı')
-      .setColor(sonuc.hata ? 0xfee75c : 0x57f287)
-      .setDescription(
-        [
-          `${sonuc.olusturulan} öğe oluşturuldu.`,
-          sonuc.hata ? `Hata: ${sonuc.hata}\nOluşturulanlar yerinde duruyor; komutu yeniden çalıştırırsan kaldığı yerden devam eder.` : null,
-          ...sonuc.uyarilar.map((u) => `⚠️ ${u}`),
-        ]
-          .filter(Boolean)
-          .join('\n'),
-      );
-    if (sonuc.baglanan.length) embed.addFields({ name: 'Bota bağlananlar', value: sonuc.baglanan.join('\n').slice(0, 1024) });
-    if (!sonuc.hata) {
-      embed.addFields({
-        name: 'Sıradaki adımlar',
-        value: [
-          '• **Voyager rolünü** rol listesinde yeni rollerin üstüne taşı; yoksa üyelik onayı ve rol seçimi çalışmaz.',
-          '• Ekibine **Yönetici**, **Moderatör** ve **Destek Ekibi** rollerini ver. Kendine de **Üye** rolünü ver.',
-          '• Kuralları ve rehberi sunucuna göre düzenle.',
-          '• `/yayin ekle` ile yayıncı ekle, `/koruma filtre` ile otomatik korumayı aç.',
-          '• Saldırı anında `/kilit kapat` bütün kanalları kilitler, `/kilit ac` geri açar.',
-        ].join('\n'),
-      });
-    }
-    return secim.editReply({ content: '', embeds: [embed] });
+    return secim.editReply({ content: '', embeds: [sonucKarti(sonuc, SABLONLAR[sablonAdi])] });
   },
 
   // Test için
   onizleme,
+  sablonListesi,
+  sonucKarti,
 };

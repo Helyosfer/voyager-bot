@@ -499,8 +499,9 @@ test('/yardim komut sayfaları Discord sınırlarına kısaltılmadan sığar; y
   assert.ok(filtre.includes('0-40320'));
   // Yönetici yetkisi "bütün yetkiler" diye açılmaz
   assert.equal(yardim.komutSayfasi(veriAl('kilit'), kimlik).toJSON().fields[0].value, '**Yönetici** yetkisi olanlar');
-  // Seçeneği olmayan komut
-  assert.match(yardim.komutSayfasi(veriAl('sunucukur'), kimlik).toJSON().fields.find((f) => f.name.includes('Seçenekler')).value, /Seçeneği yok/);
+  // Seçeneği olmayan komut (şu an böyle bir komut yok; sayfa yine de doğru yazmalı)
+  const seceneksiz = { name: 'deneme', description: 'Deneme komutu', options: [] };
+  assert.match(yardim.komutSayfasi(seceneksiz, kimlik).toJSON().fields.find((f) => f.name.includes('Seçenekler')).value, /Seçeneği yok/);
 });
 
 // /yardim etkileşimi sahtesi: cevaplar ve menü seçimleri için toplayıcı
