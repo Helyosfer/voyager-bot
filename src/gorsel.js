@@ -1,4 +1,4 @@
-// Dolandırıcılık görseli denetimi (/koruma gorsel): ele geçirilmiş hesapların attığı "MrBeast 2.500 $
+// Dolandırıcılık görseli denetimi (/koruma filtre tur:görsel): ele geçirilmiş hesapların attığı "MrBeast 2.500 $
 // dağıtıyor, siteye gir kodu yaz" türü ekran görüntülerini yakalar. Metin filtreleri resmin içini
 // okuyamadığı için resimler yapay zekâya (genelde Gemma) sorulur.
 //

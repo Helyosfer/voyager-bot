@@ -1,21 +1,97 @@
-const {
-  SlashCommandBuilder,
-  PermissionFlagsBits,
-  InteractionContextType,
-  ChannelType,
-  EmbedBuilder,
-  MessageFlags,
-} = require('discord.js');
-const { ayarlariGetir, ayarKaydet } = require('../depo');
-const { yazabilirMi, etiketEngeli, duzAd } = require('../yardimci');
+const { SlashCommandBuilder, PermissionFlagsBits, InteractionContextType, EmbedBuilder, MessageFlags } = require('discord.js');
+const { ayarlariGetir } = require('../depo');
+const { duzAd } = require('../yardimci');
 const yayin = require('../yayin');
+const ortak = require('../bildirim-ayar');
 
-const platformSecenegi = (o) =>
+const ANAHTARLAR = { kanal: 'yayinKanali', rol: 'yayinRol' };
+const platformAdlari = Object.entries(yayin.PLATFORMLAR).map(([value, p]) => ({ name: p.ad, value }));
+
+const platformSecenegi = (zorunlu) => (o) =>
   o
     .setName('platform')
-    .setDescription('Yayın platformu')
-    .setRequired(true)
-    .addChoices(...Object.entries(yayin.PLATFORMLAR).map(([value, p]) => ({ name: p.ad, value })));
+    .setDescription(zorunlu ? 'Yayın platformu' : 'Yayın platformu (aynı ad birden fazla platformda varsa gerekir)')
+    .setRequired(zorunlu)
+    .addChoices(...platformAdlari);
+const yayinciSecenegi = (aciklama, zorunlu) => (o) =>
+  o.setName('yayinci').setDescription(aciklama).setRequired(zorunlu).setMaxLength(200).setAutocomplete(true);
+
+const BULUNAMADI = {
+  yok: 'Listede böyle bir yayıncı yok. Takip edilenleri `/yayin ayar` gösterir.',
+  belirsiz: 'Bu ad birden fazla platformda var; `platform` seçeneğiyle hangisi olduğunu seç.',
+};
+
+// Mevcut ayarlar ve takip listesi
+function kart(sunucuId) {
+  const ayar = ayarlariGetir(sunucuId);
+  const kayitlar = yayin.liste(sunucuId);
+  const alanlar = Object.entries(yayin.PLATFORMLAR).map(([anahtar, p]) => {
+    const yayincilar = kayitlar.filter((y) => y.platform === anahtar);
+    // Alan değeri 1024 karakterle sınırlı; sığmayanlar sayıyla belirtilir
+    const sigan = [];
+    let uzunluk = 0;
+    for (const y of yayincilar) {
+      const baglanti = `[${duzAd(y.ad)}](${p.kanalAdresi(y)})${ortak.rolEtiketi(y.rol)}`;
+      if (uzunluk + baglanti.length > 900) break;
+      sigan.push(baglanti);
+      uzunluk += baglanti.length + 3;
+    }
+    const kalan = yayincilar.length - sigan.length;
+    const satirlar = [];
+    if (!p.hazir()) satirlar.push('⚠️ Bağlantı kurulmamış');
+    if (sigan.length) satirlar.push(sigan.join(' · ') + (kalan ? ` · +${kalan} daha` : ''));
+    else if (p.hazir()) satirlar.push('Henüz yayıncı eklenmemiş');
+    return { name: `${p.simge} ${p.ad} · ${yayincilar.length}`, value: satirlar.join('\n') };
+  });
+  return new EmbedBuilder()
+    .setTitle('📡 Yayın bildirimleri')
+    .setColor(0x5865f2)
+    .setDescription(
+      [
+        `**Kanal:** ${ayar.yayinKanali ? `<#${ayar.yayinKanali}>` : 'ayarlanmadı (bildirimler kapalı)'}`,
+        `**Etiketlenecek rol:** ${ayar.yayinRol ? `<@&${ayar.yayinRol}>` : 'yok'}`,
+        'Kendi rolü olan yayıncı (→ ile gösterilir) genel rol yerine onu etiketler.',
+      ].join('\n'),
+    )
+    .addFields(alanlar)
+    .setFooter({ text: `${kayitlar.length} yayıncı takip ediliyor · Değiştirmek için: /yayin ayar` });
+}
+
+// Tek bir yayıncının rolü: /yayin ayar yayinci:<ad> rol:<rol> ya da kaldir:rol
+function yayinciRolu(interaction, girdi) {
+  const rol = interaction.options.getRole('rol');
+  const kaldir = interaction.options.getString('kaldir');
+  if (interaction.options.getChannel('kanal') || kaldir === 'kanal' || interaction.options.getBoolean('test')) {
+    return { hata: 'Yayıncı seçtiğinde yalnızca o yayıncının rolü değiştirilebilir. Diğer ayarlar için `yayinci` seçeneğini boş bırak.' };
+  }
+  if (rol && kaldir === 'rol') return { hata: 'Aynı anda hem rol seçip hem rolü kaldıramazsın.' };
+  if (!rol && kaldir !== 'rol') return { hata: 'Yayıncıya ne yapılacağını seç: `rol` ile bir rol ver ya da `kaldir:Rol etiketlemesini kaldır` ile genel role döndür.' };
+  const durum = rol ? ortak.rolDenetle(interaction, rol) : {};
+  if (durum.engel) return { hata: durum.engel };
+  const { kayit, hata } = yayin.rolAyarla(interaction.guildId, interaction.options.getString('platform'), girdi, rol?.id ?? null);
+  if (hata) return { hata: BULUNAMADI[hata] };
+  const ad = `**${duzAd(kayit.ad)}** (${yayin.PLATFORMLAR[kayit.platform].ad})`;
+  if (!rol) return { satirlar: [`✅ ${ad} artık genel yayın rolünü kullanacak.`] };
+  return { satirlar: [durum.uyari ? `⚠️ ${durum.uyari}` : `✅ ${ad} yayına geçince ${rol} etiketlenecek.`] };
+}
+
+// Bildirim kanalına örnek bir bildirim gönderir; olanı anlatan satır döndürür
+async function deneme(interaction) {
+  const { yayinKanali } = ayarlariGetir(interaction.guildId);
+  if (!yayinKanali) return '❌ Deneme bildirimi için önce bir kanal seç (`kanal` seçeneği).';
+  const kanal = await interaction.guild.channels.fetch(yayinKanali).catch(() => null);
+  if (!kanal?.isTextBased()) return '❌ Bildirim kanalı bulunamadı; `kanal` seçeneğiyle yeniden seç.';
+  await kanal.send(
+    yayin.bildirimMesaji('twitch', {
+      ad: 'Örnek Yayıncı',
+      baslik: 'Bu bir deneme bildirimidir',
+      oyun: 'Just Chatting',
+      url: 'https://www.twitch.tv',
+      basladi: Date.now(),
+    }),
+  );
+  return `✅ ${kanal} kanalına deneme bildirimi gönderildi (kimse etiketlenmedi).`;
+}
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -23,63 +99,63 @@ module.exports = {
     .setDescription('Canlı yayın bildirimlerini ayarlar (Twitch, Kick, YouTube)')
     .addSubcommand((s) =>
       s
-        .setName('kanal')
-        .setDescription('Yayın bildirimlerinin gönderileceği kanalı seçer')
-        .addChannelOption((o) =>
-          o
-            .setName('kanal')
-            .setDescription('Bildirim kanalı')
-            .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
-            .setRequired(true),
-        ),
+        .setName('ayar')
+        .setDescription('Ayarları ve takip listesini gösterir; seçenek verirsen yalnızca onları değiştirir')
+        .addChannelOption(ortak.kanalSecenegi('Yayın bildirimlerinin gönderileceği kanal'))
+        .addRoleOption(ortak.rolSecenegi('Yayın başlayınca etiketlenecek rol (yayıncı seçersen yalnızca onun rolü)'))
+        .addStringOption(yayinciSecenegi('Rolü değiştirilecek yayıncı (boş: bütün yayıncıların genel rolü)', false))
+        .addStringOption(platformSecenegi(false))
+        .addStringOption(ortak.kaldirSecenegi)
+        .addBooleanOption((o) => o.setName('test').setDescription('Bildirim kanalına örnek bir bildirim gönderilsin mi?')),
     )
     .addSubcommand((s) =>
       s
         .setName('ekle')
         .setDescription('Takip edilecek bir yayıncı ekler')
-        .addStringOption(platformSecenegi)
-        .addStringOption((o) =>
-          o.setName('yayinci').setDescription('Kanal adı ya da kanal adresi').setRequired(true).setMaxLength(200),
-        ),
+        .addStringOption(platformSecenegi(true))
+        .addStringOption((o) => o.setName('yayinci').setDescription('Kanal adı ya da kanal adresi').setRequired(true).setMaxLength(200))
+        .addRoleOption((o) => o.setName('rol').setDescription('Bu yayıncı yayına geçince etiketlenecek rol (boş: genel rol)')),
     )
     .addSubcommand((s) =>
       s
         .setName('cikar')
         .setDescription('Bir yayıncıyı takipten çıkarır')
-        .addStringOption(platformSecenegi)
-        .addStringOption((o) =>
-          o.setName('yayinci').setDescription('Kanal adı ya da kanal adresi').setRequired(true).setMaxLength(200),
-        ),
+        .addStringOption(yayinciSecenegi('Çıkarılacak yayıncı: kanal adı ya da adresi', true))
+        .addStringOption(platformSecenegi(false)),
     )
-    .addSubcommand((s) => s.setName('liste').setDescription('Takip edilen yayıncıları ve ayarları gösterir'))
-    .addSubcommand((s) =>
-      s
-        .setName('rol')
-        .setDescription('Yayın başlayınca etiketlenecek rolü seçer (boş bırakırsan etiketleme kalkar)')
-        .addRoleOption((o) => o.setName('rol').setDescription('Etiketlenecek rol')),
-    )
-    .addSubcommand((s) => s.setName('test').setDescription('Bildirim kanalına örnek bir bildirim gönderir'))
-    .addSubcommand((s) => s.setName('kapat').setDescription('Yayın bildirimlerini kapatır (liste silinmez)'))
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
     .setContexts(InteractionContextType.Guild),
+
+  // yayinci seçeneğine yazarken takip edilenler önerilir (yalnızca ayar ve cikar'da; ekle'de öneri yok)
+  async autocomplete(interaction) {
+    const yazilan = interaction.options.getFocused().trim().toLowerCase();
+    const oneriler = yayin
+      .liste(interaction.guildId)
+      .filter((y) => [y.ad, y.giris].some((d) => d.toLowerCase().includes(yazilan)))
+      .slice(0, 25)
+      .map((y) => ({ name: `${yayin.PLATFORMLAR[y.platform].simge} ${y.ad} · ${yayin.PLATFORMLAR[y.platform].ad}`.slice(0, 100), value: `${y.platform}:${y.id}`.slice(0, 100) }));
+    await interaction.respond(oneriler);
+  },
 
   async execute(interaction) {
     const alt = interaction.options.getSubcommand();
     const sunucuId = interaction.guildId;
-    const cevapla = (content) => interaction.reply({ content, flags: MessageFlags.Ephemeral });
+    const cevapla = (content) => interaction.reply({ content, flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } });
 
-    if (alt === 'kanal') {
-      const kanal = interaction.options.getChannel('kanal', true);
-      if (!yazabilirMi(kanal, [PermissionFlagsBits.EmbedLinks])) {
-        return cevapla(`❌ ${kanal} kanalına yazamıyorum. Bana orada Kanalı Görüntüle, Mesaj Gönder ve Bağlantı Yerleştir izinlerini ver.`);
-      }
-      ayarKaydet(sunucuId, 'yayinKanali', kanal.id);
-      return cevapla(`✅ Yayın bildirimleri ${kanal} kanalına gönderilecek. Yayıncı eklemek için \`/yayin ekle\` kullan.`);
+    if (alt === 'ayar') {
+      const girdi = interaction.options.getString('yayinci');
+      const { hata, satirlar } = girdi ? yayinciRolu(interaction, girdi) : ortak.kanalVeRol(interaction, ANAHTARLAR, 'Yayın bildirimleri');
+      if (hata) return cevapla(`❌ ${hata}`);
+      if (interaction.options.getBoolean('test')) satirlar.push(await deneme(interaction));
+      return ortak.ayarCevabi(interaction, satirlar, kart(sunucuId));
     }
 
     if (alt === 'ekle') {
       const platform = interaction.options.getString('platform', true);
       const girdi = interaction.options.getString('yayinci', true);
+      const rol = interaction.options.getRole('rol');
+      const rolDurumu = rol ? ortak.rolDenetle(interaction, rol) : {};
+      if (rolDurumu.engel) return cevapla(`❌ ${rolDurumu.engel}`);
       // Platforma sorulduğu için 3 saniyeyi aşabilir
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
       let sonuc;
@@ -90,94 +166,24 @@ module.exports = {
         return interaction.editReply('❌ Eklenemedi: platforma ulaşılamadı ya da botun bu platformla bağlantısında sorun var. Biraz sonra yeniden dene; sürerse botun sahibine haber ver.');
       }
       if (sonuc.hata) return interaction.editReply(`❌ ${sonuc.hata}`);
-      const kanalNotu = ayarlariGetir(sunucuId).yayinKanali ? '' : ' Bildirimlerin gelmesi için `/yayin kanal` ile bir kanal seç.';
-      return interaction.editReply(
-        `✅ **${duzAd(sonuc.yayinci.ad)}** (${yayin.PLATFORMLAR[platform].ad}) takibe alındı.${kanalNotu}`,
-      );
+      if (rol) yayin.rolAyarla(sunucuId, platform, `${platform}:${sonuc.yayinci.id}`, rol.id);
+      return interaction.editReply({
+        content: [
+          `✅ **${duzAd(sonuc.yayinci.ad)}** (${yayin.PLATFORMLAR[platform].ad}) takibe alındı.`,
+          rol && (rolDurumu.uyari ? `⚠️ ${rolDurumu.uyari}` : `Yayına geçince ${rol} etiketlenecek.`),
+          ortak.kanalVarsay(interaction, ANAHTARLAR.kanal, 'yayin'),
+        ]
+          .filter(Boolean)
+          .join('\n'),
+        allowedMentions: { parse: [] },
+      });
     }
 
-    if (alt === 'cikar') {
-      const platform = interaction.options.getString('platform', true);
-      const silinen = yayin.cikar(sunucuId, platform, interaction.options.getString('yayinci', true));
-      if (!silinen) return cevapla('❌ Listede böyle bir yayıncı yok. `/yayin liste` ile kontrol et.');
-      // Başka sunucu da takip etmiyorsa platformdaki abonelik de kaldırılır
-      yayin.esitle(platform).catch((hata) => console.error('Abonelik kaldırılamadı:', hata.message));
-      return cevapla(`✅ **${duzAd(silinen.ad)}** (${yayin.PLATFORMLAR[platform].ad}) takipten çıkarıldı.`);
-    }
-
-    if (alt === 'rol') {
-      const rol = interaction.options.getRole('rol');
-      if (!rol) {
-        ayarKaydet(sunucuId, 'yayinRol', null);
-        return cevapla('✅ Yayın bildirimlerinde artık rol etiketlenmeyecek.');
-      }
-      if (rol.id === interaction.guild.id) return cevapla('❌ @everyone seçilemez; ayrı bir rol oluştur.');
-      const etiketlenemez = etiketEngeli(interaction, rol);
-      if (etiketlenemez) return cevapla(`❌ ${etiketlenemez}`);
-      ayarKaydet(sunucuId, 'yayinRol', rol.id);
-      const etiketleyebilir =
-        rol.mentionable || interaction.guild.members.me.permissions.has(PermissionFlagsBits.MentionEveryone);
-      return cevapla(
-        etiketleyebilir
-          ? `✅ Yayın başlayınca ${rol} etiketlenecek.`
-          : `⚠️ ${rol} kaydedildi ama bildirim gitmeyecek: rol ayarlarından "Bu rolden herkesin bahsetmesine izin ver" seçeneğini aç.`,
-      );
-    }
-
-    if (alt === 'kapat') {
-      ayarKaydet(sunucuId, 'yayinKanali', null);
-      return cevapla('✅ Yayın bildirimleri kapatıldı. Liste duruyor; yeniden açmak için `/yayin kanal` kullan.');
-    }
-
-    const ayar = ayarlariGetir(sunucuId);
-
-    if (alt === 'test') {
-      if (!ayar.yayinKanali) return cevapla('❌ Önce `/yayin kanal` ile bir kanal seç.');
-      const kanal = await interaction.guild.channels.fetch(ayar.yayinKanali).catch(() => null);
-      if (!kanal?.isTextBased()) return cevapla('❌ Bildirim kanalı bulunamadı; `/yayin kanal` ile yeniden seç.');
-      await kanal.send(
-        yayin.bildirimMesaji('twitch', {
-          ad: 'Örnek Yayıncı',
-          baslik: 'Bu bir deneme bildirimidir',
-          oyun: 'Just Chatting',
-          url: 'https://www.twitch.tv',
-          basladi: Date.now(),
-        }),
-      );
-      return cevapla(`✅ ${kanal} kanalına deneme bildirimi gönderildi.`);
-    }
-
-    // liste
-    const kayitlar = yayin.liste(sunucuId);
-    const alanlar = Object.entries(yayin.PLATFORMLAR).map(([anahtar, p]) => {
-      const yayincilar = kayitlar.filter((y) => y.platform === anahtar);
-      // Alan değeri 1024 karakterle sınırlı; sığmayanlar sayıyla belirtilir
-      const sigan = [];
-      let uzunluk = 0;
-      for (const y of yayincilar) {
-        const baglanti = `[${duzAd(y.ad)}](${p.kanalAdresi(y)})`;
-        if (uzunluk + baglanti.length > 900) break;
-        sigan.push(baglanti);
-        uzunluk += baglanti.length + 3;
-      }
-      const kalan = yayincilar.length - sigan.length;
-      const satirlar = [];
-      if (!p.hazir()) satirlar.push('⚠️ Bağlantı kurulmamış');
-      if (sigan.length) satirlar.push(sigan.join(' · ') + (kalan ? ` · +${kalan} daha` : ''));
-      else if (p.hazir()) satirlar.push('Henüz yayıncı eklenmemiş');
-      return { name: `${p.simge} ${p.ad} · ${yayincilar.length}`, value: satirlar.join('\n') };
-    });
-    const embed = new EmbedBuilder()
-      .setTitle('📡 Yayın bildirimleri')
-      .setColor(0x5865f2)
-      .setDescription(
-        [
-          `**Kanal:** ${ayar.yayinKanali ? `<#${ayar.yayinKanali}>` : 'ayarlanmadı (bildirimler kapalı)'}`,
-          `**Etiketlenecek rol:** ${ayar.yayinRol ? `<@&${ayar.yayinRol}>` : 'yok'}`,
-        ].join('\n'),
-      )
-      .addFields(alanlar)
-      .setFooter({ text: `${kayitlar.length} yayıncı takip ediliyor` });
-    return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+    // cikar
+    const { silinen, hata } = yayin.cikar(sunucuId, interaction.options.getString('platform'), interaction.options.getString('yayinci', true));
+    if (hata) return cevapla(`❌ ${BULUNAMADI[hata]}`);
+    // Başka sunucu da takip etmiyorsa platformdaki abonelik de kaldırılır
+    yayin.esitle(silinen.platform).catch((hata) => console.error('Abonelik kaldırılamadı:', hata.message));
+    return cevapla(`✅ **${duzAd(silinen.ad)}** (${yayin.PLATFORMLAR[silinen.platform].ad}) takipten çıkarıldı.`);
   },
 };

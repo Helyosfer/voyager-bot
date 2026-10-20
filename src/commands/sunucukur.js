@@ -135,8 +135,8 @@ module.exports = {
           '• **Voyager rolünü** rol listesinde yeni rollerin üstüne taşı; yoksa üyelik onayı ve rol seçimi çalışmaz.',
           '• Ekibine **Yönetici**, **Moderatör** ve **Destek Ekibi** rollerini ver. Kendine de **Üye** rolünü ver.',
           '• Kuralları ve rehberi sunucuna göre düzenle.',
-          '• `/yayin ekle` ile yayıncı ekle, `/koruma spam` ile otomatik korumayı aç.',
-          '• Saldırı anında `/kitle` bütün kanalları kilitler, `/kilidiac` geri açar.',
+          '• `/yayin ekle` ile yayıncı ekle, `/koruma filtre` ile otomatik korumayı aç.',
+          '• Saldırı anında `/kilit kapat` bütün kanalları kilitler, `/kilit ac` geri açar.',
         ].join('\n'),
       });
     }

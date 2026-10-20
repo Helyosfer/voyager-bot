@@ -82,7 +82,7 @@ const uyariKomutu = src('commands/uyari');
 
 test('uyarı: kural eşiğe tam gelince bir kez uygulanır', async () => {
   const { kullanici, uye } = sahteUye('h1');
-  const kural = etkilesim({ sunucu: 'u1', alt: 'kural-ekle', izinler: [P.ManageGuild, P.ModerateMembers], secenekler: { esik: 2, islem: 'sustur', dakika: 30 } });
+  const kural = etkilesim({ sunucu: 'u1', alt: 'kural', izinler: [P.ManageGuild, P.ModerateMembers], secenekler: { esik: 2, islem: 'sustur', dakika: 30 } });
   await uyariKomutu.execute(kural);
   assert.deepEqual(uyari.kurallar('u1'), [{ esik: 2, islem: 'sustur', dakika: 30 }]);
 
@@ -94,16 +94,16 @@ test('uyarı: kural eşiğe tam gelince bir kez uygulanır', async () => {
 });
 
 test('uyarı: kural yetki aşmaya yaramaz', async () => {
-  const yalnizSusturma = etkilesim({ sunucu: 'u2', alt: 'kural-ekle', izinler: [P.ManageGuild, P.ModerateMembers], secenekler: { esik: 1, islem: 'yasakla' } });
+  const yalnizSusturma = etkilesim({ sunucu: 'u2', alt: 'kural', izinler: [P.ManageGuild, P.ModerateMembers], secenekler: { esik: 1, islem: 'yasakla' } });
   await uyariKomutu.execute(yalnizSusturma);
   assert.match(yalnizSusturma.cevaplar[0].content, /^❌/, 'yasaklayamayan yasaklama kuralı ekleyemez');
 
-  const yonetimsiz = etkilesim({ sunucu: 'u2', alt: 'kural-ekle', izinler: [P.ModerateMembers, P.BanMembers], secenekler: { esik: 1, islem: 'yasakla' } });
+  const yonetimsiz = etkilesim({ sunucu: 'u2', alt: 'kural', izinler: [P.ModerateMembers, P.BanMembers], secenekler: { esik: 1, islem: 'yasakla' } });
   await uyariKomutu.execute(yonetimsiz);
   assert.match(yonetimsiz.cevaplar[0].content, /Sunucuyu Yönet/);
   assert.deepEqual(uyari.kurallar('u2'), []);
 
-  await uyariKomutu.execute(etkilesim({ sunucu: 'u2', alt: 'kural-ekle', izinler: [P.ManageGuild, P.BanMembers], secenekler: { esik: 1, islem: 'yasakla' } }));
+  await uyariKomutu.execute(etkilesim({ sunucu: 'u2', alt: 'kural', izinler: [P.ManageGuild, P.BanMembers], secenekler: { esik: 1, islem: 'yasakla' } }));
   assert.equal(uyari.kurallar('u2').length, 1);
 
   // Yalnızca susturma yetkisi olan moderatörün uyarısı yasaklamaya yol açmaz

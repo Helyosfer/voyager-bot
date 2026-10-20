@@ -59,24 +59,56 @@ async function ekle(sunucuId, platform, girdi) {
     await esitle(platform);
   } catch (hata) {
     // Abonelik kurulamadıysa bildirim hiç gelmez; listede yanıltıcı bir kayıt kalmasın
-    cikar(sunucuId, platform, yayinci.id);
+    cikar(sunucuId, platform, `${platform}:${yayinci.id}`);
     throw hata;
   }
   return { yayinci };
 }
 
-// girdi: kanal adı, adresi ya da kimliği. Çıkarılan kaydı ya da null döndürür.
-function cikar(sunucuId, platform, girdi) {
+// girdi: "platform:kimlik" (komut önerileri bunu gönderir), kanal adı, adresi ya da kimliği.
+// platform verilmezse bütün platformlarda aranır. Eşleşen kayıtların listedeki sıraları.
+function bul(kayitlar, girdi, platform = null) {
+  const [, onPlatform, onKimlik] = /^(\w+):(.+)$/.exec(girdi.trim()) ?? [];
+  if (PLATFORMLAR[onPlatform]) {
+    const sira = kayitlar.findIndex((y) => y.platform === onPlatform && y.id === onKimlik);
+    if (sira !== -1) return [sira];
+  }
   const aranan = adAyikla(girdi).toLowerCase();
+  return kayitlar.flatMap((y, sira) =>
+    (!platform || y.platform === platform) && [y.id, y.giris, y.ad].some((deger) => deger.toLowerCase() === aranan) ? [sira] : [],
+  );
+}
+
+// Eşleşen tek kaydı döndürür; yoksa { hata: 'yok' }, birden fazla platformda varsa { hata: 'belirsiz' }
+function tekKayit(kayitlar, girdi, platform) {
+  const siralar = bul(kayitlar, girdi, platform);
+  if (!siralar.length) return { hata: 'yok' };
+  if (siralar.length > 1) return { hata: 'belirsiz' };
+  return { sira: siralar[0] };
+}
+
+// Çıkarılan kaydı ya da { hata } döndürür
+function cikar(sunucuId, platform, girdi) {
   const hepsi = oku('yayincilar', {});
   const kayitlar = hepsi[sunucuId] ?? [];
-  const sira = kayitlar.findIndex(
-    (y) => y.platform === platform && [y.id, y.giris, y.ad].some((deger) => deger.toLowerCase() === aranan),
-  );
-  if (sira === -1) return null;
+  const { sira, hata } = tekKayit(kayitlar, girdi, platform);
+  if (hata) return { hata };
   const [silinen] = kayitlar.splice(sira, 1);
   yaz('yayincilar', hepsi);
-  return silinen;
+  return { silinen };
+}
+
+// Bir yayıncının bildiriminde etiketlenecek rol (rolId null: sunucunun genel yayın rolü).
+// Güncellenen kaydı ya da { hata } döndürür.
+function rolAyarla(sunucuId, platform, girdi, rolId) {
+  const hepsi = oku('yayincilar', {});
+  const kayitlar = hepsi[sunucuId] ?? [];
+  const { sira, hata } = tekKayit(kayitlar, girdi, platform);
+  if (hata) return { hata };
+  if (rolId) kayitlar[sira].rol = rolId;
+  else delete kayitlar[sira].rol;
+  yaz('yayincilar', hepsi);
+  return { kayit: kayitlar[sira] };
 }
 
 // Kanala gönderilecek bildirimin tamamı: üst satır, kart ve "Yayını izle" düğmesi
@@ -106,13 +138,14 @@ function bildirimMesaji(platform, bilgi, rol = null) {
   };
 }
 
-async function kanalaGonder(sunucuId, platform, bilgi) {
+async function kanalaGonder(sunucuId, platform, bilgi, kayit) {
   const ayar = ayarlariGetir(sunucuId);
   const guild = client.guilds.cache.get(sunucuId);
   if (!ayar.yayinKanali || !guild) return;
   const kanal = await guild.channels.fetch(ayar.yayinKanali).catch(() => null);
   if (!kanal?.isTextBased()) return;
-  await kanal.send(bildirimMesaji(platform, bilgi, ayar.yayinRol));
+  // Yayıncının kendi rolü yoksa sunucunun genel yayın rolü
+  await kanal.send(bildirimMesaji(platform, bilgi, kayit.rol ?? ayar.yayinRol));
 }
 
 // Platformlar yayın başladığında bunu çağırır. bilgi.anahtar o yayına özgüdür;
@@ -125,8 +158,9 @@ async function bildir(platform, id, bilgi) {
   yaz('yayin-durum', durum);
 
   for (const [sunucuId, kayitlar] of Object.entries(oku('yayincilar', {}))) {
-    if (!kayitlar.some((y) => y.platform === platform && y.id === id)) continue;
-    await kanalaGonder(sunucuId, platform, bilgi).catch((hata) => {
+    const kayit = kayitlar.find((y) => y.platform === platform && y.id === id);
+    if (!kayit) continue;
+    await kanalaGonder(sunucuId, platform, bilgi, kayit).catch((hata) => {
       console.error(`Yayın bildirimi gönderilemedi (${sunucuId}):`, hata.message);
     });
   }
@@ -198,4 +232,4 @@ function baslat(discordClient) {
   setInterval(hepsiniEsitle, ESITLEME_ARALIGI);
 }
 
-module.exports = { PLATFORMLAR, baslat, liste, ekle, cikar, esitle, bildir, bildirimMesaji, webhookSunucusu };
+module.exports = { PLATFORMLAR, baslat, liste, ekle, cikar, bul, rolAyarla, esitle, bildir, bildirimMesaji, webhookSunucusu };

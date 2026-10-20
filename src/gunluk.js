@@ -1,5 +1,5 @@
 // Sunucu günlüğü: üye, mesaj, ses ve yönetim olaylarını log kanalına yazar.
-// Kanal /ayarla log-kanali, kategoriler /ayarla log-kategori ile ayarlanır.
+// Kanal ve kategoriler /ayarla gunluk ile ayarlanır.
 const { AuditLogEvent, EmbedBuilder, Events } = require('discord.js');
 const { ayarlariGetir } = require('./depo');
 

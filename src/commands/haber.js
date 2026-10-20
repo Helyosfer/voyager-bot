@@ -1,16 +1,55 @@
-const {
-  SlashCommandBuilder,
-  PermissionFlagsBits,
-  InteractionContextType,
-  ChannelType,
-  EmbedBuilder,
-  MessageFlags,
-} = require('discord.js');
-const { ayarlariGetir, ayarKaydet } = require('../depo');
-const { yazabilirMi, etiketEngeli, duzAd } = require('../yardimci');
+const { SlashCommandBuilder, PermissionFlagsBits, InteractionContextType, EmbedBuilder, MessageFlags } = require('discord.js');
+const { ayarlariGetir } = require('../depo');
+const { duzAd } = require('../yardimci');
 const haber = require('../haber');
+const ortak = require('../bildirim-ayar');
 
 const eklenen = new Set(); // Şu an kaynak eklemekte olan sunucular
+const ANAHTARLAR = { kanal: 'haberKanali', rol: 'haberRol' };
+
+const kaynakSecenegi = (aciklama, zorunlu) => (o) =>
+  o.setName('kaynak').setDescription(aciklama).setRequired(zorunlu).setMaxLength(300).setAutocomplete(true);
+
+// Mevcut ayarlar ve kaynak listesi
+function kart(sunucuId) {
+  const ayar = ayarlariGetir(sunucuId);
+  const kaynaklar = haber.liste(sunucuId);
+  return new EmbedBuilder()
+    .setTitle('📰 Haber bildirimleri')
+    .setColor(0x3b82f6)
+    .setDescription(
+      [
+        `**Kanal:** ${ayar.haberKanali ? `<#${ayar.haberKanali}>` : 'ayarlanmadı (bildirimler kapalı)'}`,
+        `**Etiketlenecek rol:** ${ayar.haberRol ? `<@&${ayar.haberRol}>` : 'yok'}`,
+        'Kendi rolü olan kaynak (→ ile gösterilir) genel rol yerine onu etiketler. Böylece her konunun ayrı rolü olabilir: üyeler yalnızca ilgilendikleri haberlerde etiketlenir.',
+      ].join('\n'),
+    )
+    .addFields({
+      name: `Kaynaklar · ${kaynaklar.length}/${haber.SUNUCU_BASI_SINIR}`,
+      value:
+        kaynaklar
+          .map((k, i) => `**${i + 1}.** [${duzAd(k.ad.slice(0, 40))}](${new URL(k.adres).origin})${ortak.rolEtiketi(k.rol)}`)
+          .join('\n')
+          .slice(0, 1000) || 'Henüz kaynak eklenmemiş. `/haber ekle` ile ekle.',
+    })
+    .setFooter({ text: `Kaynaklar ${haber.KONTROL_ARALIGI / 60_000} dakikada bir kontrol edilir · Değiştirmek için: /haber ayar` });
+}
+
+// Tek bir kaynağın rolü: /haber ayar kaynak:<kaynak> rol:<rol> ya da kaldir:rol
+function kaynakRolu(interaction, kaynak) {
+  const rol = interaction.options.getRole('rol');
+  const kaldir = interaction.options.getString('kaldir');
+  if (interaction.options.getChannel('kanal') || kaldir === 'kanal') return { hata: 'Kaynak seçtiğinde yalnızca o kaynağın rolü değiştirilebilir. Kanal için `kaynak` seçeneğini boş bırak.' };
+  if (rol && kaldir === 'rol') return { hata: 'Aynı anda hem rol seçip hem rolü kaldıramazsın.' };
+  if (!rol && kaldir !== 'rol') return { hata: 'Kaynağa ne yapılacağını seç: `rol` ile bir rol ver ya da `kaldir:Rol etiketlemesini kaldır` ile genel role döndür.' };
+  const durum = rol ? ortak.rolDenetle(interaction, rol) : {};
+  if (durum.engel) return { hata: durum.engel };
+  const kayit = haber.rolAyarla(interaction.guildId, kaynak, rol?.id ?? null);
+  if (!kayit) return { hata: 'Listede böyle bir kaynak yok. Kayıtlı kaynakları `/haber ayar` gösterir.' };
+  const ad = `**${duzAd(kayit.ad)}**`;
+  if (!rol) return { satirlar: [`✅ ${ad} artık genel haber rolünü kullanacak.`] };
+  return { satirlar: [durum.uyari ? `⚠️ ${durum.uyari}` : `✅ ${ad} haberlerinde ${rol} etiketlenecek.`] };
+}
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -18,15 +57,12 @@ module.exports = {
     .setDescription('Haber sitelerinin yeni haberlerini bir kanala duyurur (RSS)')
     .addSubcommand((s) =>
       s
-        .setName('kanal')
-        .setDescription('Haberlerin gönderileceği kanalı seçer')
-        .addChannelOption((o) =>
-          o
-            .setName('kanal')
-            .setDescription('Haber kanalı')
-            .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
-            .setRequired(true),
-        ),
+        .setName('ayar')
+        .setDescription('Ayarları ve kaynakları gösterir; seçenek verirsen yalnızca onları değiştirir')
+        .addChannelOption(ortak.kanalSecenegi('Haberlerin gönderileceği kanal'))
+        .addRoleOption(ortak.rolSecenegi('Yeni haberde etiketlenecek rol (kaynak seçersen yalnızca o kaynağın rolü)'))
+        .addStringOption(kaynakSecenegi('Rolü değiştirilecek kaynak (boş: bütün kaynakların genel rolü)', false))
+        .addStringOption(ortak.kaldirSecenegi),
     )
     .addSubcommand((s) =>
       s
@@ -34,42 +70,43 @@ module.exports = {
         .setDescription('Takip edilecek bir haber kaynağı ekler')
         .addStringOption((o) =>
           o.setName('adres').setDescription('Sitenin adresi ya da RSS adresi (ör. webtekno.com)').setRequired(true).setMaxLength(300),
-        ),
+        )
+        .addRoleOption((o) => o.setName('rol').setDescription('Bu kaynağın haberlerinde etiketlenecek rol, ör. @Oyun Haberleri (boş: genel rol)')),
     )
     .addSubcommand((s) =>
-      s
-        .setName('cikar')
-        .setDescription('Bir haber kaynağını takipten çıkarır')
-        .addStringOption((o) =>
-          o.setName('kaynak').setDescription('Listedeki sıra numarası ya da kaynağın adı').setRequired(true).setMaxLength(300),
-        ),
+      s.setName('cikar').setDescription('Bir haber kaynağını takipten çıkarır').addStringOption(kaynakSecenegi('Çıkarılacak kaynak: adı ya da listedeki sıra numarası', true)),
     )
-    .addSubcommand((s) => s.setName('liste').setDescription('Takip edilen haber kaynaklarını ve ayarları gösterir'))
-    .addSubcommand((s) =>
-      s
-        .setName('rol')
-        .setDescription('Yeni haberde etiketlenecek rolü seçer (boş bırakırsan etiketleme kalkar)')
-        .addRoleOption((o) => o.setName('rol').setDescription('Etiketlenecek rol')),
-    )
-    .addSubcommand((s) => s.setName('kapat').setDescription('Haber bildirimlerini kapatır (liste silinmez)'))
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
     .setContexts(InteractionContextType.Guild),
+
+  // kaynak seçeneğine yazarken listedeki kaynaklar önerilir
+  async autocomplete(interaction) {
+    const yazilan = interaction.options.getFocused().trim().toLocaleLowerCase('tr');
+    const oneriler = haber
+      .liste(interaction.guildId)
+      .map((k, i) => ({ name: `${i + 1}. ${k.ad}`.slice(0, 100), value: k.adres.length <= 100 ? k.adres : String(i + 1), ara: `${k.ad} ${k.adres}`.toLocaleLowerCase('tr') }))
+      .filter((k) => k.ara.includes(yazilan))
+      .slice(0, 25);
+    await interaction.respond(oneriler.map(({ name, value }) => ({ name, value })));
+  },
 
   async execute(interaction) {
     const alt = interaction.options.getSubcommand();
     const sunucuId = interaction.guildId;
-    const cevapla = (content) => interaction.reply({ content, flags: MessageFlags.Ephemeral });
+    const cevapla = (content) => interaction.reply({ content, flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } });
 
-    if (alt === 'kanal') {
-      const kanal = interaction.options.getChannel('kanal', true);
-      if (!yazabilirMi(kanal, [PermissionFlagsBits.EmbedLinks])) {
-        return cevapla(`❌ ${kanal} kanalına yazamıyorum. Bana orada Kanalı Görüntüle, Mesaj Gönder ve Bağlantı Yerleştir izinlerini ver.`);
-      }
-      ayarKaydet(sunucuId, 'haberKanali', kanal.id);
-      return cevapla(`✅ Haberler ${kanal} kanalına gönderilecek. Kaynak eklemek için \`/haber ekle\` kullan.`);
+    if (alt === 'ayar') {
+      const kaynak = interaction.options.getString('kaynak');
+      const { hata, satirlar } = kaynak ? kaynakRolu(interaction, kaynak) : ortak.kanalVeRol(interaction, ANAHTARLAR, 'Haber bildirimleri');
+      if (hata) return cevapla(`❌ ${hata}`);
+      return ortak.ayarCevabi(interaction, satirlar, kart(sunucuId));
     }
 
     if (alt === 'ekle') {
+      // Rol, siteye bağlanmadan önce denetlenir: reddedilecek bir ekleme için site indirilmesin
+      const rol = interaction.options.getRole('rol');
+      const rolDurumu = rol ? ortak.rolDenetle(interaction, rol) : {};
+      if (rolDurumu.engel) return cevapla(`❌ ${rolDurumu.engel}`);
       // Her ekleme birkaç sayfa indirir; aynı sunucudan üst üste gelenler sıraya girmez, reddedilir
       if (eklenen.has(sunucuId)) return cevapla('⏳ Bu sunucuda şu an başka bir kaynak ekleniyor. Bitmesini bekle.');
       eklenen.add(sunucuId);
@@ -87,63 +124,22 @@ module.exports = {
       }
       if (!sonuc) return interaction.editReply('❌ Kaynak eklenirken bir hata oluştu.');
       if (sonuc.hata) return interaction.editReply(`❌ ${sonuc.hata}`);
-      const kanalNotu = ayarlariGetir(sunucuId).haberKanali ? '' : ' Haberlerin gelmesi için `/haber kanal` ile bir kanal seç.';
-      return interaction.editReply(
-        `✅ **${duzAd(sonuc.besleme.ad)}** takibe alındı. Bundan sonra yayınlanan haberler duyurulacak.${kanalNotu}`,
-      );
+      if (rol) haber.rolAyarla(sunucuId, sonuc.besleme.adres, rol.id);
+      return interaction.editReply({
+        content: [
+          `✅ **${duzAd(sonuc.besleme.ad)}** takibe alındı. Bundan sonra yayınlanan haberler duyurulacak.`,
+          rol && (rolDurumu.uyari ? `⚠️ ${rolDurumu.uyari}` : `Bu kaynağın haberlerinde ${rol} etiketlenecek.`),
+          ortak.kanalVarsay(interaction, ANAHTARLAR.kanal, 'haber'),
+        ]
+          .filter(Boolean)
+          .join('\n'),
+        allowedMentions: { parse: [] },
+      });
     }
 
-    if (alt === 'cikar') {
-      const silinen = haber.cikar(sunucuId, interaction.options.getString('kaynak', true));
-      if (!silinen) return cevapla('❌ Listede böyle bir kaynak yok. `/haber liste` ile sıra numarasına bak.');
-      return cevapla(`✅ **${duzAd(silinen.ad)}** takipten çıkarıldı.`);
-    }
-
-    if (alt === 'rol') {
-      const rol = interaction.options.getRole('rol');
-      if (!rol) {
-        ayarKaydet(sunucuId, 'haberRol', null);
-        return cevapla('✅ Haber bildirimlerinde artık rol etiketlenmeyecek.');
-      }
-      if (rol.id === interaction.guild.id) return cevapla('❌ @everyone seçilemez; ayrı bir rol oluştur.');
-      const etiketlenemez = etiketEngeli(interaction, rol);
-      if (etiketlenemez) return cevapla(`❌ ${etiketlenemez}`);
-      ayarKaydet(sunucuId, 'haberRol', rol.id);
-      const etiketleyebilir =
-        rol.mentionable || interaction.guild.members.me.permissions.has(PermissionFlagsBits.MentionEveryone);
-      return cevapla(
-        etiketleyebilir
-          ? `✅ Yeni haberde ${rol} etiketlenecek.`
-          : `⚠️ ${rol} kaydedildi ama bildirim gitmeyecek: rol ayarlarından "Bu rolden herkesin bahsetmesine izin ver" seçeneğini aç.`,
-      );
-    }
-
-    if (alt === 'kapat') {
-      ayarKaydet(sunucuId, 'haberKanali', null);
-      return cevapla('✅ Haber bildirimleri kapatıldı. Liste duruyor; yeniden açmak için `/haber kanal` kullan.');
-    }
-
-    // liste
-    const ayar = ayarlariGetir(sunucuId);
-    const kaynaklar = haber.liste(sunucuId);
-    const embed = new EmbedBuilder()
-      .setTitle('📰 Haber bildirimleri')
-      .setColor(0x3b82f6)
-      .setDescription(
-        [
-          `**Kanal:** ${ayar.haberKanali ? `<#${ayar.haberKanali}>` : 'ayarlanmadı (bildirimler kapalı)'}`,
-          `**Etiketlenecek rol:** ${ayar.haberRol ? `<@&${ayar.haberRol}>` : 'yok'}`,
-        ].join('\n'),
-      )
-      .addFields({
-        name: `Kaynaklar · ${kaynaklar.length}/${haber.SUNUCU_BASI_SINIR}`,
-        value:
-          kaynaklar
-            .map((k, i) => `**${i + 1}.** [${duzAd(k.ad.slice(0, 40))}](${new URL(k.adres).origin})`)
-            .join('\n')
-            .slice(0, 1000) || 'Henüz kaynak eklenmemiş',
-      })
-      .setFooter({ text: `Kaynaklar ${haber.KONTROL_ARALIGI / 60_000} dakikada bir kontrol edilir` });
-    return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+    // cikar
+    const silinen = haber.cikar(sunucuId, interaction.options.getString('kaynak', true));
+    if (!silinen) return cevapla('❌ Listede böyle bir kaynak yok. Kayıtlı kaynakları `/haber ayar` gösterir.');
+    return cevapla(`✅ **${duzAd(silinen.ad)}** takipten çıkarıldı.`);
   },
 };

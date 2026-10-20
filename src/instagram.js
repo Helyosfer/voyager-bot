@@ -165,15 +165,33 @@ async function ekle(sunucuId, girdi) {
   return { hesap };
 }
 
-function cikar(sunucuId, girdi) {
+// girdi: kullanıcı adı, profil adresi ya da görünen ad. Kaydın listedeki sırası ya da -1
+function bul(kayitlar, girdi) {
   const aranan = adAyikla(girdi).toLowerCase();
+  return kayitlar.findIndex((h) => h.giris === aranan || h.ad.toLowerCase() === aranan);
+}
+
+function cikar(sunucuId, girdi) {
   const hepsi = oku('instagram', {});
   const kayitlar = hepsi[sunucuId] ?? [];
-  const sira = kayitlar.findIndex((h) => h.giris === aranan || h.ad.toLowerCase() === aranan);
+  const sira = bul(kayitlar, girdi);
   if (sira === -1) return null;
   const [silinen] = kayitlar.splice(sira, 1);
   yaz('instagram', hepsi);
   return silinen;
+}
+
+// Bir hesabın gönderilerinde etiketlenecek rol (rolId null: sunucunun genel Instagram rolü).
+// Güncellenen kaydı, hesap yoksa null döndürür.
+function rolAyarla(sunucuId, girdi, rolId) {
+  const hepsi = oku('instagram', {});
+  const kayitlar = hepsi[sunucuId] ?? [];
+  const kayit = kayitlar[bul(kayitlar, girdi)];
+  if (!kayit) return null;
+  if (rolId) kayit.rol = rolId;
+  else delete kayit.rol;
+  yaz('instagram', hepsi);
+  return kayit;
 }
 
 const kisalt = (metin, sinir) => (metin.length > sinir ? `${metin.slice(0, sinir - 1)}…` : metin);
@@ -200,13 +218,14 @@ function bildirimMesaji(hesap, gonderi, rol = null) {
 
 async function duyur(hesap, gonderi) {
   for (const [sunucuId, kayitlar] of Object.entries(oku('instagram', {}))) {
-    if (!kayitlar.some((h) => h.giris === hesap.giris)) continue;
+    const kayit = kayitlar.find((h) => h.giris === hesap.giris);
+    if (!kayit) continue;
     const ayar = ayarlariGetir(sunucuId);
     const guild = client.guilds.cache.get(sunucuId);
     if (!ayar.instagramKanali || !guild) continue;
     try {
       const kanal = await guild.channels.fetch(ayar.instagramKanali);
-      if (kanal?.isTextBased()) await kanal.send(bildirimMesaji(hesap, gonderi, ayar.instagramRol));
+      if (kanal?.isTextBased()) await kanal.send(bildirimMesaji(hesap, gonderi, kayit.rol ?? ayar.instagramRol));
     } catch (hata) {
       console.error(`Instagram bildirimi gönderilemedi (${sunucuId}):`, hata.message);
     }
@@ -257,4 +276,4 @@ function baslat(discordClient) {
     .finally(() => setTimeout(dongu, 60_000));
 }
 
-module.exports = { baslat, hazir, liste, ekle, cikar, kontrolEt, bildirimMesaji, kontrolAraligi, izinListesi, izinli, SUNUCU_BASI_SINIR };
+module.exports = { baslat, hazir, liste, ekle, cikar, bul, rolAyarla, kontrolEt, bildirimMesaji, kontrolAraligi, izinListesi, izinli, SUNUCU_BASI_SINIR };

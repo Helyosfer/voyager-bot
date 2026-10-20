@@ -33,7 +33,7 @@ Her satırda beklenen sonuç yazıyor. Farklı bir şey görürsen terminaldeki 
 
 ## Temel
 
-- [ ] `/ping` cevap veriyor; `/yardim` komutları listeliyor.
+- [ ] `/yardim` komutları listeliyor; ana sayfanın altında gecikme yazıyor. `/ping` artık yok.
 - [ ] `/hatirlat dakika:1` bir dakika sonra seni etiketliyor. Mesaja `@everyone` yazarsan kimse etiketlenmiyor.
 - [ ] Altıncı hatırlatıcı reddediliyor.
 
@@ -56,21 +56,21 @@ Her satırda beklenen sonuç yazıyor. Farklı bir şey görürsen terminaldeki 
 
 ## Moderasyon ve günlük
 
-- [ ] `/ayarla log-kanali` sonrası: `/sustur`, `/kick`, `/ban`, `/unban`, `/temizle` çalışıyor ve log kanalına düşüyor.
+- [ ] `/ayarla gunluk kanal:` sonrası: `/sustur`, `/kick`, `/ban`, `/unban`, `/temizle` çalışıyor ve log kanalına düşüyor.
 - [ ] Moderatör hesabı kendinden yüksek roldeki üyeye `/ban` uygulayamıyor.
 - [ ] Elle (Discord arayüzünden) yapılan yasaklama da log kanalında görünüyor.
 
 ## Uyarılar
 
 - [ ] `/uyari ver` ile verilen uyarı üyeye özel mesajla geliyor ve log kanalına düşüyor; `/uyari liste` numaralarıyla gösteriyor.
-- [ ] `/uyari kural-ekle esik:2 islem:Sustur dakika:5` sonrası 2. uyarıda üye 5 dakika susturuluyor, 3. uyarıda yeniden susturulmuyor.
-- [ ] Yalnızca **Üyelere Zaman Aşımı Uygula** yetkisi olan ikinci hesap: `/uyari kural-ekle` göremiyor ya da reddediliyor;
+- [ ] `/uyari kural esik:2 islem:Sustur dakika:5` sonrası 2. uyarıda üye 5 dakika susturuluyor, 3. uyarıda yeniden susturulmuyor.
+- [ ] Yalnızca **Üyelere Zaman Aşımı Uygula** yetkisi olan ikinci hesap: `/uyari kural` ile kural ekleyemiyor (listeyi görebiliyor);
       atma kuralının eşiğine geldiğinde verdiği uyarı üyeyi atmıyor, cevapta "uygulanmadı" yazıyor.
-- [ ] `/uyari sil` ve `/uyari temizle` uyarıları siliyor ve log kanalına düşüyor.
+- [ ] `/uyari sil numara:` ve `/uyari sil hepsi:True` uyarıları siliyor ve log kanalına düşüyor; ikisi de verilmezse ne yapılacağını soruyor.
 
 ## Oto rol (yetki denetimi)
 
-- [ ] Yalnızca **Sunucuyu Yönet** yetkisi olan ikinci hesap `/ayarla oto-rol` ile rol ayarlayamıyor
+- [ ] Yalnızca **Sunucuyu Yönet** yetkisi olan ikinci hesap `/ayarla hosgeldin oto-rol:` ile rol ayarlayamıyor
       ("Rolleri Yönet yetkin olmalı").
 - [ ] Sunucu sahibi, **Üyeleri At** yetkisi olan bir rolü oto rol yapamıyor ("yönetim yetkisi taşıyor").
 - [ ] Yetkisiz bir rol oto rol yapılabiliyor ve yeni gelene veriliyor.
@@ -92,7 +92,7 @@ Her satırda beklenen sonuç yazıyor. Farklı bir şey görürsen terminaldeki 
 ## Seviye sistemi
 
 - [ ] `/seviye ayar durum:Açık` sonrası ikinci hesap mesaj yazınca `/seviye goster` XP gösteriyor; aynı dakikada ikinci mesaj XP artırmıyor.
-- [ ] `/seviye odul-ekle seviye:1` ile bir rol ekleniyor; 1. seviyeye ulaşan hesap duyuruluyor ve rolü alıyor.
+- [ ] `/seviye odul seviye:1 rol:` ile bir rol ekleniyor; 1. seviyeye ulaşan hesap duyuruluyor ve rolü alıyor.
 - [ ] Bot `systemctl restart` ile yeniden başlatılınca XP kaybolmuyor.
 - [ ] Yetkisiz hesap `/seviye ayar` kullanamıyor.
 
@@ -105,31 +105,34 @@ Her satırda beklenen sonuç yazıyor. Farklı bir şey görürsen terminaldeki 
 
 ## Acil durum kilidi
 
-- [ ] `/kitle`: ikinci hesap hiçbir kanala yazamıyor, sese giremiyor; sunucu sahibi yazabiliyor.
-- [ ] Kilitliyken ikinci `/kitle` "zaten kilitli" diyor.
+- [ ] `/kilit kapat`: ikinci hesap hiçbir kanala yazamıyor, sese giremiyor; sunucu sahibi yazabiliyor.
+- [ ] Kilitliyken ikinci `/kilit kapat` "zaten kilitli" diyor.
 - [ ] Kilitliyken eklenen başka bir bot atılıyor.
-- [ ] `/kilidiac`: kanalların izinleri kilitten öncekiyle aynı (özel izinli bir kanalda ayrıca bak).
-- [ ] Sunucu Ayarları → Entegrasyonlar → Voyager'dan `/kitle` komutunu Yönetici olmayan bir role aç: o roldeki
+- [ ] `/kilit ac`: kanalların izinleri kilitten öncekiyle aynı (özel izinli bir kanalda ayrıca bak).
+- [ ] Sunucu Ayarları → Entegrasyonlar → Voyager'dan `/kilit` komutunu Yönetici olmayan bir role aç: o roldeki
       ikinci hesap komutu görüyor ama çalıştırınca "gereken yetkin yok" cevabı alıyor.
 
 ## Otomatik koruma
 
-- [ ] `/koruma spam durum:Açık` sonrası ikinci hesap 30 saniyede üç farklı kanala yazınca mesajları siliniyor
+- [ ] `/koruma filtre tur:Spam durum:Açık` sonrası ikinci hesap 30 saniyede üç farklı kanala yazınca mesajları siliniyor
       ve susturuluyor.
-- [ ] `/koruma kufur durum:Açık` sonrası ağır küfür içeren mesaj siliniyor; mesajı düzenleyerek küfür eklemek de
+- [ ] `/koruma filtre tur:Küfür durum:Açık` sonrası ağır küfür içeren mesaj siliniyor; mesajı düzenleyerek küfür eklemek de
       yakalanıyor. "sıkıntı", "klasik" gibi masum kelimeler silinmiyor.
-- [ ] `/koruma baglanti durum:Açık` sonrası ikinci hesabın `https://dlscord.com/gift` ve `[discord.com](https://ornek.com)`
+- [ ] `/koruma filtre tur:Zararlı ve sahte bağlantı durum:Açık` sonrası ikinci hesabın `https://dlscord.com/gift` ve `[discord.com](https://ornek.com)`
       içeren mesajları siliniyor, günlüğe alan ve sebep düşüyor; `https://discord.com/channels/...` silinmiyor.
 - [ ] `/koruma alan alan:ornek.com islem:İzin ver` sonrası aynı gizli bağlantı silinmiyor.
 
 ## Bildirimler
 
-- [ ] `/oyun kanal`, sonra `/oyun simdi`: fırsatlar geliyor. Hemen ikinci `/oyun simdi` "az önce gönderildi"
+- [ ] `/oyun ayar kanal:`, sonra `/oyun simdi`: fırsatlar geliyor. Hemen ikinci `/oyun simdi` "az önce gönderildi"
       diyor (5 dakika).
-- [ ] `/haber kanal`, sonra `/haber ekle adres:<bir haber sitesi>`: kaynak ekleniyor; `/haber liste` gösteriyor.
+- [ ] Kanal seçmeden bir kanalda `/haber ekle adres:<bir haber sitesi>`: kaynak ekleniyor, komutun yazıldığı kanal haber
+      kanalı oluyor; `/haber ayar` gösteriyor.
+- [ ] `/haber ekle adres:<oyun sitesi> rol:@Oyun Haberleri`: o kaynağın haberinde yalnızca bu rol etiketleniyor,
+      diğer kaynaklarda genel rol (`/haber ayar rol:`). `/haber ayar kaynak:` yazarken kaynaklar öneriliyor.
 - [ ] `/haber ekle adres:http://127.0.0.1` ve `adres:localhost:8788` reddediliyor.
-- [ ] `/haber rol` ile, senin etiketleyemediğin bir rolü (ikinci hesapla dene) seçmek reddediliyor.
-- [ ] Platform anahtarları `.env`'de varsa: `/yayin ekle`, `/yayin test`. Yoksa `/yayin ekle` "bağlantı kurulmamış" diyor.
+- [ ] `/haber ayar rol:` ile, senin etiketleyemediğin bir rolü (ikinci hesapla dene) seçmek reddediliyor.
+- [ ] Platform anahtarları `.env`'de varsa: `/yayin ekle`, `/yayin ayar test:True`. Yoksa `/yayin ekle` "bağlantı kurulmamış" diyor.
 
 ## Tanıtım sayfası
 

@@ -50,8 +50,8 @@ test('komutlar: hepsi yüklenir, adlar tekil, Discord sınırlarına sığar, ya
     adlar.add(veri.name);
     assert.ok(karakterSayisi(veri) <= 4000, `/${veri.name}: ${karakterSayisi(veri)} karakter`);
     // Komutlar sunucu üyelerine, kanallarına ve rollerine eriştiği için özel mesajda çalışamaz.
-    // /ping ve /yardim sunucuya dokunmaz, her yerde çalışabilir.
-    if (!['ping', 'yardim'].includes(veri.name)) assert.deepEqual(veri.contexts, [0], `/${veri.name} yalnızca sunucuda kullanılabilmeli`);
+    // /yardim sunucuya dokunmaz, her yerde çalışabilir.
+    if (veri.name !== 'yardim') assert.deepEqual(veri.contexts, [0], `/${veri.name} yalnızca sunucuda kullanılabilmeli`);
   }
   // 100'den fazla genel komut Discord'a yüklenemez
   assert.ok(adlar.size <= 100);
@@ -72,7 +72,7 @@ test('komutlar: yönetim komutları Discord tarafında yetki ister', () => {
   }
   // Herkese açık komutlar bilerek yetkisiz: listede olmayan yeni bir komut yetkisiz eklenirse test bunu söyler
   const herkeseAcik = Object.values(veri).filter((v) => !v.default_member_permissions).map((v) => v.name).sort();
-  assert.deepEqual(herkeseAcik, ['hatirlat', 'ozetle', 'ping', 'seviye', 'sor', 'yardim']);
+  assert.deepEqual(herkeseAcik, ['hatirlat', 'ozetle', 'seviye', 'sor', 'yardim']);
 });
 
 test('/yardim: bölümlerdeki her ad gerçek bir komut; sahibe özel olmayan her komut bir bölümde', () => {
@@ -492,14 +492,15 @@ test('/yardim komut sayfaları Discord sınırlarına kısaltılmadan sığar; y
   assert.ok(alan('Örnekler').includes('`/ban kullanici:@Ali'));
 
   const koruma = yardim.komutSayfasi(veriAl('koruma'), new Map()).toJSON();
-  const spam = koruma.fields.find((f) => f.name === '▸ spam').value;
-  assert.ok(spam.startsWith('`/koruma spam`: '), 'komut yüklü değilse düz yazı');
-  assert.match(spam, /`durum` \*\*\(zorunlu\)\*\*.*Açık \/ Kapalı/);
-  assert.ok(spam.includes('0-40320'));
+  const filtre = koruma.fields.find((f) => f.name === '▸ filtre').value;
+  assert.ok(filtre.startsWith('`/koruma filtre`: '), 'komut yüklü değilse düz yazı');
+  assert.match(filtre, /`tur` \*\*\(zorunlu\)\*\*.*Spam/);
+  assert.match(filtre, /`durum`: .*Açık \/ Kapalı/);
+  assert.ok(filtre.includes('0-40320'));
   // Yönetici yetkisi "bütün yetkiler" diye açılmaz
-  assert.equal(yardim.komutSayfasi(veriAl('kitle'), kimlik).toJSON().fields[0].value, '**Yönetici** yetkisi olanlar');
+  assert.equal(yardim.komutSayfasi(veriAl('kilit'), kimlik).toJSON().fields[0].value, '**Yönetici** yetkisi olanlar');
   // Seçeneği olmayan komut
-  assert.match(yardim.komutSayfasi(veriAl('ping'), kimlik).toJSON().fields.find((f) => f.name.includes('Seçenekler')).value, /Seçeneği yok/);
+  assert.match(yardim.komutSayfasi(veriAl('sunucukur'), kimlik).toJSON().fields.find((f) => f.name.includes('Seçenekler')).value, /Seçeneği yok/);
 });
 
 // /yardim etkileşimi sahtesi: cevaplar ve menü seçimleri için toplayıcı

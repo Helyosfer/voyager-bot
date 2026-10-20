@@ -169,7 +169,7 @@ function otoRolEtkilesimi({ kim = 'u', izinler = [], enYuksek = 3 } = {}) {
 }
 const rol = (position, ek = {}) => ({ id: 'r', managed: false, position, permissions: izinli(), toString: () => '<@&r>', ...ek });
 
-test('/ayarla oto-rol: komutu kullanan rolü kendisi de verebiliyor olmalı', () => {
+test('/ayarla hosgeldin oto-rol: komutu kullanan rolü kendisi de verebiliyor olmalı', () => {
   const { otoRolEngeli } = yardimci;
   assert.ok(otoRolEngeli(otoRolEtkilesimi({ izinler: [P.ManageGuild], enYuksek: 9 }), rol(5)), 'Rolleri Yönet yetkisi yok');
   assert.ok(otoRolEngeli(otoRolEtkilesimi({ izinler: [P.ManageRoles], enYuksek: 5 }), rol(5)), 'rol kendi rolüne eşit');
@@ -198,9 +198,9 @@ test('yönetim yetkisi taşıyan rol oto rol yapılamaz ve yeni gelene verilmez'
   assert.deepEqual(verilen, ['normal']);
 });
 
-test('kesinYetki: /kitle, /kilidiac ve /sunucukur yetkiyi bot tarafında da ister', () => {
+test('kesinYetki: /kilit ve /sunucukur yetkiyi bot tarafında da ister', () => {
   const { komutYetkisiVar } = yardimci;
-  const komutlar = ['kitle', 'kilidiac', 'sunucukur'].map((ad) => src(`commands/${ad}`));
+  const komutlar = ['kilit', 'sunucukur'].map((ad) => src(`commands/${ad}`));
   for (const komut of komutlar) {
     assert.equal(komut.kesinYetki, true, komut.data.name);
     assert.equal(komutYetkisiVar({ memberPermissions: izinli(P.ManageGuild, P.ManageChannels) }, komut), false);
@@ -208,7 +208,7 @@ test('kesinYetki: /kitle, /kilidiac ve /sunucukur yetkiyi bot tarafında da iste
     assert.equal(komutYetkisiVar({ memberPermissions: null }, komut), false);
   }
   // Yetki bildirmeyen komut herkese açıktır
-  assert.equal(komutYetkisiVar({ memberPermissions: izinli() }, src('commands/ping')), true);
+  assert.equal(komutYetkisiVar({ memberPermissions: izinli() }, src('commands/yardim')), true);
 });
 
 test('etiketlenecek rolü seçen o rolü etiketleyebiliyor olmalı', () => {
@@ -220,7 +220,7 @@ test('etiketlenecek rolü seçen o rolü etiketleyebiliyor olmalı', () => {
 });
 
 // --- Acil durum kilidi ---
-test('üst üste binen /kitle ve /kilidiac: yalnızca biri çalışır, yedek ezilmez', async () => {
+test('üst üste binen /kilit kapat ve /kilit ac: yalnızca biri çalışır, yedek ezilmez', async () => {
   const kilit = src('kilit');
   const guild = {
     id: 'kilit-sunucusu',
@@ -242,7 +242,7 @@ test('üst üste binen /kitle ve /kilidiac: yalnızca biri çalışır, yedek ez
   assert.equal(kilit.kilitli(guild.id), false);
 });
 
-test('/kitle: "İzinleri Yönet" satırı verilemese de kanal botun elindeki izinlerle kilitlenir', async () => {
+test('/kilit kapat: "İzinleri Yönet" satırı verilemese de kanal botun elindeki izinlerle kilitlenir', async () => {
   const kilit = src('kilit');
   const yetkiYok = Object.assign(new Error('Missing Permissions'), { code: 50013 });
   const yazilan = [];

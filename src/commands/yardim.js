@@ -20,7 +20,7 @@ const BOLUMLER = [
     simge: '🧭',
     ad: 'Genel',
     ozet: 'Herkesin kullanabildiği komutlar',
-    komutlar: ['sor', 'ozetle', 'hatirlat', 'ping', 'yardim'],
+    komutlar: ['sor', 'ozetle', 'hatirlat', 'yardim'],
   },
   {
     id: 'moderasyon',
@@ -35,8 +35,8 @@ const BOLUMLER = [
     simge: '🚨',
     ad: 'Güvenlik',
     ozet: 'Spam ve küfür filtresi, saldırı anında sunucuyu kilitleme',
-    komutlar: ['koruma', 'kitle', 'kilidiac'],
-    ilkAdim: { koruma: 'spam' },
+    komutlar: ['koruma', 'kilit'],
+    ilkAdim: { koruma: 'filtre', kilit: 'kapat' },
   },
   {
     id: 'bildirim',
@@ -44,7 +44,7 @@ const BOLUMLER = [
     ad: 'Bildirimler',
     ozet: 'Oyun fırsatları, canlı yayınlar ve haberler kanalına gelsin',
     komutlar: ['oyun', 'yayin', 'haber', 'instagram'],
-    ilkAdim: { oyun: 'kanal', yayin: 'kanal', haber: 'kanal', instagram: 'kanal' },
+    ilkAdim: { oyun: 'ayar', yayin: 'ekle', haber: 'ekle', instagram: 'ekle' },
   },
   {
     id: 'topluluk',
@@ -58,7 +58,7 @@ const BOLUMLER = [
     id: 'sunucu',
     simge: '⚙️',
     ad: 'Sunucu ayarları',
-    ozet: 'Kayıt kanalı, hoş geldin mesajı, otomatik rol ve hazır sunucu kurulumu',
+    ozet: 'Günlük kanalı, hoş geldin mesajı, otomatik rol ve hazır sunucu kurulumu',
     komutlar: ['ayarla', 'sunucukur'],
     ilkAdim: { ayarla: 'goster' },
   },
@@ -149,6 +149,7 @@ function bolumleriHazirla(interaction) {
 
 function anaSayfa(interaction, bolumler) {
   const yetkili = bolumler.some((b) => b.id !== 'genel');
+  const gecikme = interaction.client.ws?.ping ?? -1; // Bağlantı yeni kurulduysa -1
   return new EmbedBuilder()
     .setTitle(`${interaction.client.user.username} · Yardım`)
     .setColor(RENK)
@@ -161,7 +162,10 @@ function anaSayfa(interaction, bolumler) {
         ...bolumler.map((b) => `${b.simge} **${b.ad}**\n${b.ozet}`),
       ].join('\n\n'),
     )
-    .setFooter({ text: yetkili ? 'Yalnızca senin kullanabildiğin komutlar listelenir.' : 'Yönetim komutları yalnızca yetkililere görünür.' });
+    // Eski /ping komutunun yerine: botun Discord'a gecikmesi
+    .setFooter({
+      text: `${yetkili ? 'Yalnızca senin kullanabildiğin komutlar listelenir.' : 'Yönetim komutları yalnızca yetkililere görünür.'}${gecikme >= 0 ? ` · Gecikme: ${gecikme} ms` : ''}`,
+    });
 }
 
 function bolumSayfasi(bolum, kimlik) {

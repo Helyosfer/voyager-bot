@@ -31,7 +31,7 @@ const POPULERLIK_OMRU = 7 * 24 * 60 * 60_000;
 // Bir fırsat bu kadar süre sonra "görüldü" listesinden silinir
 const UNUTMA_SURESI = 90 * 24 * 60 * 60_000;
 
-// /oyun bedava "magaza" seçenekleri -> GamerPower'ın platform adları
+// /oyun ayar "bedava-magaza" seçenekleri -> GamerPower'ın platform adları
 const MAGAZALAR = {
   buyuk: { ad: 'Steam, Epic ve GOG', platformlar: ['Steam', 'Epic Games Store', 'GOG'] },
   steam: { ad: 'Steam', platformlar: ['Steam'] },
@@ -47,7 +47,7 @@ const INDIRIM_MAGAZALARI = {
   gog: { ad: 'GOG', renk: 0x86328a, getir: gogIndirimleri },
 };
 
-// /oyun indirim "magaza" seçenekleri
+// /oyun ayar "indirim-magaza" seçenekleri
 const INDIRIM_SECENEKLERI = {
   buyuk: { ad: 'Steam, Epic ve GOG', magazalar: ['steam', 'epic', 'gog'] },
   steam: { ad: 'Steam', magazalar: ['steam'] },

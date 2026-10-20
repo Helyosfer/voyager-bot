@@ -1,17 +1,73 @@
-const {
-  SlashCommandBuilder,
-  PermissionFlagsBits,
-  InteractionContextType,
-  ChannelType,
-  EmbedBuilder,
-  MessageFlags,
-} = require('discord.js');
-const { ayarlariGetir, ayarKaydet } = require('../depo');
-const { yazabilirMi, etiketEngeli, duzAd } = require('../yardimci');
+const { SlashCommandBuilder, PermissionFlagsBits, InteractionContextType, EmbedBuilder, MessageFlags } = require('discord.js');
+const { ayarlariGetir } = require('../depo');
+const { duzAd } = require('../yardimci');
 const instagram = require('../instagram');
+const ortak = require('../bildirim-ayar');
 
-const hesapSecenegi = (o) =>
-  o.setName('hesap').setDescription('Kullanıcı adı ya da profil adresi').setRequired(true).setMaxLength(200);
+const ANAHTARLAR = { kanal: 'instagramKanali', rol: 'instagramRol' };
+
+const hesapSecenegi = (aciklama, zorunlu, oneri) => (o) =>
+  o.setName('hesap').setDescription(aciklama).setRequired(zorunlu).setMaxLength(200).setAutocomplete(oneri);
+
+// Mevcut ayarlar ve hesap listesi
+function kart(sunucuId) {
+  const ayar = ayarlariGetir(sunucuId);
+  const hesaplar = instagram.liste(sunucuId);
+  const dakika = Math.round(instagram.kontrolAraligi() / 60_000);
+  return new EmbedBuilder()
+    .setTitle('📸 Instagram bildirimleri')
+    .setColor(0xe1306c)
+    .setDescription(
+      [
+        instagram.hazir() ? null : '⚠️ Instagram bağlantısı kurulmamış; bildirimler çalışmıyor.',
+        `**Kanal:** ${ayar.instagramKanali ? `<#${ayar.instagramKanali}>` : 'ayarlanmadı (bildirimler kapalı)'}`,
+        `**Etiketlenecek rol:** ${ayar.instagramRol ? `<@&${ayar.instagramRol}>` : 'yok'}`,
+        'Kendi rolü olan hesap (→ ile gösterilir) genel rol yerine onu etiketler.',
+      ]
+        .filter(Boolean)
+        .join('\n'),
+    )
+    .addFields({
+      name: `Takip edilen hesaplar · ${hesaplar.length}/${instagram.SUNUCU_BASI_SINIR}`,
+      value:
+        hesaplar.map((h) => `[${duzAd(h.ad)}](https://www.instagram.com/${h.giris}/)${ortak.rolEtiketi(h.rol)}`).join(' · ').slice(0, 1000) ||
+        'Henüz hesap eklenmemiş. `/instagram ekle` ile ekle.',
+    })
+    .setFooter({ text: `Hesaplar yaklaşık ${dakika} dakikada bir kontrol edilir · Değiştirmek için: /instagram ayar` });
+}
+
+// Tek bir hesabın rolü: /instagram ayar hesap:<hesap> rol:<rol> ya da kaldir:rol
+function hesapRolu(interaction, girdi) {
+  const rol = interaction.options.getRole('rol');
+  const kaldir = interaction.options.getString('kaldir');
+  if (interaction.options.getChannel('kanal') || kaldir === 'kanal' || interaction.options.getBoolean('test')) {
+    return { hata: 'Hesap seçtiğinde yalnızca o hesabın rolü değiştirilebilir. Diğer ayarlar için `hesap` seçeneğini boş bırak.' };
+  }
+  if (rol && kaldir === 'rol') return { hata: 'Aynı anda hem rol seçip hem rolü kaldıramazsın.' };
+  if (!rol && kaldir !== 'rol') return { hata: 'Hesaba ne yapılacağını seç: `rol` ile bir rol ver ya da `kaldir:Rol etiketlemesini kaldır` ile genel role döndür.' };
+  const durum = rol ? ortak.rolDenetle(interaction, rol) : {};
+  if (durum.engel) return { hata: durum.engel };
+  const kayit = instagram.rolAyarla(interaction.guildId, girdi, rol?.id ?? null);
+  if (!kayit) return { hata: 'Listede böyle bir hesap yok. Takip edilenleri `/instagram ayar` gösterir.' };
+  const ad = `**${duzAd(kayit.ad)}** (@${kayit.giris})`;
+  if (!rol) return { satirlar: [`✅ ${ad} artık genel Instagram rolünü kullanacak.`] };
+  return { satirlar: [durum.uyari ? `⚠️ ${durum.uyari}` : `✅ ${ad} gönderilerinde ${rol} etiketlenecek.`] };
+}
+
+// Bildirim kanalına örnek bir bildirim gönderir; olanı anlatan satır döndürür
+async function deneme(interaction) {
+  const { instagramKanali } = ayarlariGetir(interaction.guildId);
+  if (!instagramKanali) return '❌ Deneme bildirimi için önce bir kanal seç (`kanal` seçeneği).';
+  const kanal = await interaction.guild.channels.fetch(instagramKanali).catch(() => null);
+  if (!kanal?.isTextBased()) return '❌ Bildirim kanalı bulunamadı; `kanal` seçeneğiyle yeniden seç.';
+  await kanal.send(
+    instagram.bildirimMesaji(
+      { giris: 'ornekhesap', ad: 'Örnek Hesap' },
+      { metin: 'Bu bir deneme bildirimidir. Gerçek bildirimlerde gönderinin açıklaması ve görseli burada görünür.', url: 'https://www.instagram.com/', zaman: Date.now() },
+    ),
+  );
+  return `✅ ${kanal} kanalına deneme bildirimi gönderildi (kimse etiketlenmedi).`;
+}
 
 module.exports = {
   // Instagram bağlantısı kurulmamışsa komut Discord'a hiç yüklenmez
@@ -22,129 +78,79 @@ module.exports = {
     .setDescription('Instagram hesaplarının yeni gönderilerini bir kanala duyurur')
     .addSubcommand((s) =>
       s
-        .setName('kanal')
-        .setDescription('Gönderi bildirimlerinin gönderileceği kanalı seçer')
-        .addChannelOption((o) =>
-          o
-            .setName('kanal')
-            .setDescription('Bildirim kanalı')
-            .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
-            .setRequired(true),
-        ),
+        .setName('ayar')
+        .setDescription('Ayarları ve takip listesini gösterir; seçenek verirsen yalnızca onları değiştirir')
+        .addChannelOption(ortak.kanalSecenegi('Gönderi bildirimlerinin gönderileceği kanal'))
+        .addRoleOption(ortak.rolSecenegi('Yeni gönderide etiketlenecek rol (hesap seçersen yalnızca onun rolü)'))
+        .addStringOption(hesapSecenegi('Rolü değiştirilecek hesap (boş: bütün hesapların genel rolü)', false, true))
+        .addStringOption(ortak.kaldirSecenegi)
+        .addBooleanOption((o) => o.setName('test').setDescription('Bildirim kanalına örnek bir bildirim gönderilsin mi?')),
     )
-    .addSubcommand((s) => s.setName('ekle').setDescription('Takip edilecek bir Instagram hesabı ekler').addStringOption(hesapSecenegi))
-    .addSubcommand((s) => s.setName('cikar').setDescription('Bir hesabı takipten çıkarır').addStringOption(hesapSecenegi))
-    .addSubcommand((s) => s.setName('liste').setDescription('Takip edilen hesapları ve ayarları gösterir'))
     .addSubcommand((s) =>
       s
-        .setName('rol')
-        .setDescription('Yeni gönderide etiketlenecek rolü seçer (boş bırakırsan etiketleme kalkar)')
-        .addRoleOption((o) => o.setName('rol').setDescription('Etiketlenecek rol')),
+        .setName('ekle')
+        .setDescription('Takip edilecek bir Instagram hesabı ekler')
+        .addStringOption(hesapSecenegi('Kullanıcı adı ya da profil adresi', true, false))
+        .addRoleOption((o) => o.setName('rol').setDescription('Bu hesabın gönderilerinde etiketlenecek rol (boş: genel rol)')),
     )
-    .addSubcommand((s) => s.setName('test').setDescription('Bildirim kanalına örnek bir bildirim gönderir'))
-    .addSubcommand((s) => s.setName('kapat').setDescription('Instagram bildirimlerini kapatır (liste silinmez)'))
+    .addSubcommand((s) => s.setName('cikar').setDescription('Bir hesabı takipten çıkarır').addStringOption(hesapSecenegi('Çıkarılacak hesap', true, true)))
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
     .setContexts(InteractionContextType.Guild),
+
+  // hesap seçeneğine yazarken takip edilenler önerilir (ayar ve cikar'da)
+  async autocomplete(interaction) {
+    const yazilan = interaction.options.getFocused().trim().toLowerCase();
+    const oneriler = instagram
+      .liste(interaction.guildId)
+      .filter((h) => h.giris.includes(yazilan) || h.ad.toLowerCase().includes(yazilan))
+      .slice(0, 25)
+      .map((h) => ({ name: `${h.ad} (@${h.giris})`.slice(0, 100), value: h.giris }));
+    await interaction.respond(oneriler);
+  },
 
   async execute(interaction) {
     const alt = interaction.options.getSubcommand();
     const sunucuId = interaction.guildId;
-    const cevapla = (content) => interaction.reply({ content, flags: MessageFlags.Ephemeral });
+    const cevapla = (content) => interaction.reply({ content, flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } });
 
-    if (alt === 'kanal') {
-      const kanal = interaction.options.getChannel('kanal', true);
-      if (!yazabilirMi(kanal, [PermissionFlagsBits.EmbedLinks])) {
-        return cevapla(`❌ ${kanal} kanalına yazamıyorum. Bana orada Kanalı Görüntüle, Mesaj Gönder ve Bağlantı Yerleştir izinlerini ver.`);
-      }
-      ayarKaydet(sunucuId, 'instagramKanali', kanal.id);
-      return cevapla(`✅ Instagram gönderileri ${kanal} kanalına gönderilecek. Hesap eklemek için \`/instagram ekle\` kullan.`);
+    if (alt === 'ayar') {
+      const girdi = interaction.options.getString('hesap');
+      const { hata, satirlar } = girdi ? hesapRolu(interaction, girdi) : ortak.kanalVeRol(interaction, ANAHTARLAR, 'Instagram bildirimleri');
+      if (hata) return cevapla(`❌ ${hata}`);
+      if (interaction.options.getBoolean('test')) satirlar.push(await deneme(interaction));
+      return ortak.ayarCevabi(interaction, satirlar, kart(sunucuId));
     }
 
     if (alt === 'ekle') {
-      const girdi = interaction.options.getString('hesap', true);
+      const rol = interaction.options.getRole('rol');
+      const rolDurumu = rol ? ortak.rolDenetle(interaction, rol) : {};
+      if (rolDurumu.engel) return cevapla(`❌ ${rolDurumu.engel}`);
       // Instagram'a sorulduğu için 3 saniyeyi aşabilir
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
       let sonuc;
       try {
-        sonuc = await instagram.ekle(sunucuId, girdi);
+        sonuc = await instagram.ekle(sunucuId, interaction.options.getString('hesap', true));
       } catch (hata) {
         console.error('/instagram ekle hatası:', hata.message);
         return interaction.editReply("❌ Eklenemedi: Instagram'a ulaşılamadı ya da botun Instagram bağlantısında sorun var. Biraz sonra yeniden dene; sürerse botun sahibine haber ver.");
       }
       if (sonuc.hata) return interaction.editReply(`❌ ${sonuc.hata}`);
-      const kanalNotu = ayarlariGetir(sunucuId).instagramKanali ? '' : ' Bildirimlerin gelmesi için `/instagram kanal` ile bir kanal seç.';
-      return interaction.editReply(
-        `✅ **${duzAd(sonuc.hesap.ad)}** (@${sonuc.hesap.giris}) takibe alındı. Bundan sonraki gönderileri duyurulacak.${kanalNotu}`,
-      );
-    }
-
-    if (alt === 'cikar') {
-      const silinen = instagram.cikar(sunucuId, interaction.options.getString('hesap', true));
-      if (!silinen) return cevapla('❌ Listede böyle bir hesap yok. `/instagram liste` ile kontrol et.');
-      return cevapla(`✅ **${duzAd(silinen.ad)}** (@${silinen.giris}) takipten çıkarıldı.`);
-    }
-
-    if (alt === 'rol') {
-      const rol = interaction.options.getRole('rol');
-      if (!rol) {
-        ayarKaydet(sunucuId, 'instagramRol', null);
-        return cevapla('✅ Instagram bildirimlerinde artık rol etiketlenmeyecek.');
-      }
-      if (rol.id === interaction.guild.id) return cevapla('❌ @everyone seçilemez; ayrı bir rol oluştur.');
-      const etiketlenemez = etiketEngeli(interaction, rol);
-      if (etiketlenemez) return cevapla(`❌ ${etiketlenemez}`);
-      ayarKaydet(sunucuId, 'instagramRol', rol.id);
-      const etiketleyebilir =
-        rol.mentionable || interaction.guild.members.me.permissions.has(PermissionFlagsBits.MentionEveryone);
-      return cevapla(
-        etiketleyebilir
-          ? `✅ Yeni gönderide ${rol} etiketlenecek.`
-          : `⚠️ ${rol} kaydedildi ama bildirim gitmeyecek: rol ayarlarından "Bu rolden herkesin bahsetmesine izin ver" seçeneğini aç.`,
-      );
-    }
-
-    if (alt === 'kapat') {
-      ayarKaydet(sunucuId, 'instagramKanali', null);
-      return cevapla('✅ Instagram bildirimleri kapatıldı. Liste duruyor; yeniden açmak için `/instagram kanal` kullan.');
-    }
-
-    const ayar = ayarlariGetir(sunucuId);
-
-    if (alt === 'test') {
-      if (!ayar.instagramKanali) return cevapla('❌ Önce `/instagram kanal` ile bir kanal seç.');
-      const kanal = await interaction.guild.channels.fetch(ayar.instagramKanali).catch(() => null);
-      if (!kanal?.isTextBased()) return cevapla('❌ Bildirim kanalı bulunamadı; `/instagram kanal` ile yeniden seç.');
-      await kanal.send(
-        instagram.bildirimMesaji(
-          { giris: 'ornekhesap', ad: 'Örnek Hesap' },
-          { metin: 'Bu bir deneme bildirimidir. Gerçek bildirimlerde gönderinin açıklaması ve görseli burada görünür.', url: 'https://www.instagram.com/', zaman: Date.now() },
-        ),
-      );
-      return cevapla(`✅ ${kanal} kanalına deneme bildirimi gönderildi.`);
-    }
-
-    // liste
-    const hesaplar = instagram.liste(sunucuId);
-    const dakika = Math.round(instagram.kontrolAraligi() / 60_000);
-    const embed = new EmbedBuilder()
-      .setTitle('📸 Instagram bildirimleri')
-      .setColor(0xe1306c)
-      .setDescription(
-        [
-          instagram.hazir() ? null : '⚠️ Instagram bağlantısı kurulmamış; bildirimler çalışmıyor.',
-          `**Kanal:** ${ayar.instagramKanali ? `<#${ayar.instagramKanali}>` : 'ayarlanmadı (bildirimler kapalı)'}`,
-          `**Etiketlenecek rol:** ${ayar.instagramRol ? `<@&${ayar.instagramRol}>` : 'yok'}`,
+      if (rol) instagram.rolAyarla(sunucuId, sonuc.hesap.giris, rol.id);
+      return interaction.editReply({
+        content: [
+          `✅ **${duzAd(sonuc.hesap.ad)}** (@${sonuc.hesap.giris}) takibe alındı. Bundan sonraki gönderileri duyurulacak.`,
+          rol && (rolDurumu.uyari ? `⚠️ ${rolDurumu.uyari}` : `Bu hesabın gönderilerinde ${rol} etiketlenecek.`),
+          ortak.kanalVarsay(interaction, ANAHTARLAR.kanal, 'instagram'),
         ]
           .filter(Boolean)
           .join('\n'),
-      )
-      .addFields({
-        name: `Takip edilen hesaplar · ${hesaplar.length}/${instagram.SUNUCU_BASI_SINIR}`,
-        value:
-          hesaplar.map((h) => `[${duzAd(h.ad)}](https://www.instagram.com/${h.giris}/)`).join(' · ').slice(0, 1000) ||
-          'Henüz hesap eklenmemiş',
-      })
-      .setFooter({ text: `Hesaplar yaklaşık ${dakika} dakikada bir kontrol edilir` });
-    return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+        allowedMentions: { parse: [] },
+      });
+    }
+
+    // cikar
+    const silinen = instagram.cikar(sunucuId, interaction.options.getString('hesap', true));
+    if (!silinen) return cevapla('❌ Listede böyle bir hesap yok. Takip edilenleri `/instagram ayar` gösterir.');
+    return cevapla(`✅ **${duzAd(silinen.ad)}** (@${silinen.giris}) takipten çıkarıldı.`);
   },
 };
