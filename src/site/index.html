@@ -197,13 +197,12 @@
     padding-bottom: 0.06em;
   }
   .vitrin p { max-width: 40rem; }
-  /* İkincil bağlantılar: tam izinlerle ekleme */
-  .yan-link, .dipnot a { color: var(--text); border-bottom: 1px solid rgba(255, 255, 255, 0.3); transition: border-color 0.2s; }
-  .yan-link:hover, .dipnot a:hover { border-color: #fff; }
+  /* İkincil bağlantılar */
+  .yan-link { color: var(--text); border-bottom: 1px solid rgba(255, 255, 255, 0.3); transition: border-color 0.2s; }
+  .yan-link:hover { border-color: #fff; }
   .yan-link { display: inline-block; margin-top: 20px; font-size: 0.95rem; font-weight: 500; }
   .yan-link.satir-ici { display: inline; margin: 0; font-size: inherit; font-weight: inherit; }
-  .dipnot { max-width: 30rem; margin: 22px auto 0; font-size: 0.9rem; line-height: 1.5; color: var(--muted); }
-  .yan-link:focus-visible, .dipnot a:focus-visible { border-radius: 4px; }
+  .yan-link:focus-visible { border-radius: 4px; }
 
   /* Yapay zekâ: her özellik yanında örnek bir Discord mesajıyla */
   .ozellikler { display: grid; gap: 18px; margin-top: 56px; }
@@ -506,7 +505,6 @@
           <li><b>55</b>kanal</li>
         </ul>
         <p>Sohbetten desteğe, oyundan etkinliğe kadar her şey izinleriyle birlikte hazır gelir. Günlük, hoş geldin, yayın ve oyun fırsatı kanalları kurulumla birlikte bağlanır; ayrıca ayar yapman gerekmez.</p>
-        <a class="yan-link" href="{{DAVET_TAM}}" rel="noopener">Kurulum izinleriyle ekle ›</a>
       </article>
 
       <div class="cards">
@@ -672,7 +670,6 @@
         <li><b>3</b>Gerisi için <span>/yardim</span></li>
       </ol>
       <a class="btn btn-primary btn-large reveal" href="{{DAVET}}" rel="noopener">Sunucuna ekle</a>
-      <p class="dipnot reveal">Bu düğme botu temel izinlerle ekler. Sunucu kurulumunu ve acil durum kilidini de kullanacaksan <a href="{{DAVET_TAM}}" rel="noopener">tam izinlerle ekle</a>.</p>
     </div>
   </section>
 </main>

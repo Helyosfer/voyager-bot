@@ -712,16 +712,23 @@ test('haber havuzu yayın bildirimleriyle aynı oranda: tek sunucu havuzu doldur
 });
 
 // --- Tanıtım sayfası: davet linkleri ---
-test('ana düğme temel izinlerle, ikinci bağlantı tam izinlerle ekler', async () => {
+test('sayfada tek davet var: üç düğme de botu bütün özellikleri için gereken izinlerle ekler', async () => {
   const govde = await hamIstek('GET', '/');
-  const izinler = [...govde.matchAll(/discord\.com\/oauth2\/authorize\?client_id=0&amp;scope=bot\+applications\.commands&amp;permissions=(\d+)/g)].map((e) => e[1]);
-  const temel = new PermissionsBitField(BigInt('1099780156550'));
-  assert.equal(izinler.filter((i) => i === '1099780156550').length, 3, 'üç ana düğme');
-  assert.equal(izinler.filter((i) => i === '1477757234902').length, 2, 'iki "tam izin" bağlantısı');
+  const davetler = [...govde.matchAll(/discord\.com\/oauth2\/authorize[^"]*/g)].map((e) => e[0]);
+  assert.equal(davetler.length, 3, 'üst menü, giriş ve sayfa sonu düğmeleri');
+  assert.equal(new Set(davetler).size, 1, 'bütün düğmeler aynı davete gider');
+  const [, izin] = /^discord\.com\/oauth2\/authorize\?client_id=0&amp;scope=bot\+applications\.commands&amp;permissions=(\d+)$/.exec(davetler[0]);
+  const izinler = new PermissionsBitField(BigInt(izin));
   assert.ok(!govde.includes('{{'), 'doldurulmamış yer tutucu kalmamalı');
-  // Temel küme kanal yönetimi içermez; moderasyon ve rol yönetimi içerir
-  assert.equal(temel.has(P.ManageChannels), false);
-  assert.ok(temel.has([P.BanMembers, P.KickMembers, P.ModerateMembers, P.ManageMessages, P.ManageRoles, P.ViewAuditLog]));
+  // Moderasyon, günlük, rol işleri, /sunucukur, /kilit ve @everyone bildirimleri için gerekenlerin hepsi var
+  assert.ok(izinler.has([
+    P.ViewChannel, P.SendMessages, P.EmbedLinks, P.AttachFiles, P.AddReactions, P.ReadMessageHistory,
+    P.ManageMessages, P.KickMembers, P.BanMembers, P.ModerateMembers, P.ManageRoles, P.ViewAuditLog,
+    P.ManageChannels, P.MentionEveryone, P.SendMessagesInThreads, P.CreatePublicThreads, P.CreatePrivateThreads,
+    P.Connect, P.Speak, P.Stream, P.MoveMembers,
+  ], false));
+  // Yönetici istenmez; bot yalnızca kullandığı izinleri alır
+  assert.equal(izinler.has(P.Administrator, false), false);
 });
 
 // --- Sınırlar ve yardımcılar ---

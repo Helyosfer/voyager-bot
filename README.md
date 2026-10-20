@@ -5,7 +5,7 @@ göremediği dolandırıcılık resimlerini yakalar. Bunun yanında hazır toplu
 koruma, acil durum kilidi, sunucu günlüğü; yayın, haber ve oyun fırsatı bildirimleri tek botta.
 
 **Site:** [voyager.helyosfer.me](https://voyager.helyosfer.me) · botu sunucuna eklemek için sitedeki **Sunucuna ekle**
-düğmesini kullan. `/sunucukur` ve `/kilit` kullanacaksan sayfadaki **tam izinlerle ekle** bağlantısıyla ekle.
+düğmesini kullan. Düğme botu bütün özellikleri için gereken izinlerle ekler; ayrıca izin seçmen gerekmez.
 
 Node.js ve [discord.js](https://discord.js.org) ile yazıldı. Kodu alıp kendi botunu da çalıştırabilirsin; adımlar
 [Kendi botunu çalıştırmak](#kendi-botunu-çalıştırmak) bölümünde.
@@ -540,9 +540,9 @@ Komutlar genel yüklenir: bot hangi sunucuya eklenirse orada kendiliğinden gör
 
 ### 5. Botu sunucuna ekle
 
-Bot çalışırken tarayıcıda <http://localhost:8788> adresini aç. **Sunucuna ekle** düğmesi botu temel izinlerle
-(moderasyon, günlük, bildirimler, oto rol) ekler; `/sunucukur` ve `/kilit` için gereken kanal yönetimi izinlerini
-isteyen **tam izinlerle ekle** bağlantısı sayfanın altındadır. İki link de `bot` kapsamını ve izinleri açıkça taşır;
+Bot çalışırken tarayıcıda <http://localhost:8788> adresini aç. Sayfadaki bütün **Sunucuna ekle** düğmeleri aynı
+davete gider: bot, moderasyon, günlük, bildirimler, `/sunucukur` ve `/kilit` dahil bütün özellikleri için gereken
+izinlerle eklenir. Yönetici (Administrator) izni istenmez. Davet `bot` kapsamını ve izinleri açıkça taşır;
 Developer Portal'daki varsayılan kurulum ayarlarına bağlı değildir.
 
 Sonra Discord'da `/yardim` yaz; ana sayfanın altında botun gecikmesi görünür.
