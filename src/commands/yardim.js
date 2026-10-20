@@ -5,65 +5,31 @@ const {
   StringSelectMenuBuilder,
   EmbedBuilder,
   MessageFlags,
+  PermissionFlagsBits,
   PermissionsBitField,
 } = require('discord.js');
 const REHBER = require('../yardim-rehberi');
+const { GOREVLER, BASLANGIC } = require('../yardim-gorevler');
 
 const RENK = 0x5865f2;
-const ACIK_KALMA = 5 * 60 * 1000; // Menü bu süre boyunca çalışır
+const ACIK_KALMA = 10 * 60 * 1000; // Menüler bu süre boyunca çalışır
 
-// Yardım sayfaları. Bir komut hiçbir bölümde yoksa "Diğer" sayfasına düşer.
-// ilkAdim: alt komutları olan komutlarda nereden başlanacağını gösterir.
+// Yardım bölümleri. Bir komut hiçbir bölümde yoksa "Diğer" bölümüne düşer.
 const BOLUMLER = [
-  {
-    id: 'genel',
-    simge: '🧭',
-    ad: 'Genel',
-    ozet: 'Herkesin kullanabildiği komutlar',
-    komutlar: ['sor', 'ozetle', 'hatirlat', 'yardim'],
-  },
-  {
-    id: 'moderasyon',
-    simge: '🛡️',
-    ad: 'Moderasyon',
-    ozet: 'Üyeleri uyarma, susturma, atma, yasaklama ve mesaj temizleme',
-    komutlar: ['uyari', 'sustur', 'kick', 'ban', 'unban', 'temizle'],
-    ilkAdim: { uyari: 'ver' },
-  },
-  {
-    id: 'guvenlik',
-    simge: '🚨',
-    ad: 'Güvenlik',
-    ozet: 'Spam ve küfür filtresi, saldırı anında sunucuyu kilitleme',
-    komutlar: ['koruma', 'kilit'],
-    ilkAdim: { koruma: 'filtre', kilit: 'kapat' },
-  },
-  {
-    id: 'bildirim',
-    simge: '📣',
-    ad: 'Bildirimler',
-    ozet: 'Oyun fırsatları, canlı yayınlar ve haberler kanalına gelsin',
-    komutlar: ['oyun', 'yayin', 'haber', 'instagram'],
-    ilkAdim: { oyun: 'ayar', yayin: 'ekle', haber: 'ekle', instagram: 'ekle' },
-  },
-  {
-    id: 'topluluk',
-    simge: '🎉',
-    ad: 'Topluluk',
-    ozet: 'Seviyeler ve sıralama, çekilişler, düğmeyle rol alma menüleri',
-    komutlar: ['seviye', 'cekilis', 'rolmenu'],
-    ilkAdim: { seviye: 'goster', cekilis: 'baslat' },
-  },
-  {
-    id: 'sunucu',
-    simge: '⚙️',
-    ad: 'Sunucu ayarları',
-    ozet: 'Günlük kanalı, hoş geldin mesajı, otomatik rol ve hazır sunucu kurulumu',
-    komutlar: ['ayarla', 'sunucukur'],
-    ilkAdim: { ayarla: 'goster' },
-  },
+  { id: 'genel', simge: '🧭', ad: 'Genel', ozet: 'Herkesin kullanabildiği komutlar', komutlar: ['sor', 'ozetle', 'hatirlat', 'yardim'] },
+  { id: 'moderasyon', simge: '🛡️', ad: 'Moderasyon', ozet: 'Uyarma, susturma, atma, yasaklama, mesaj temizleme', komutlar: ['uyari', 'sustur', 'kick', 'ban', 'unban', 'temizle'] },
+  { id: 'guvenlik', simge: '🚨', ad: 'Güvenlik', ozet: 'Spam, küfür ve dolandırıcılık filtresi; acil durum kilidi', komutlar: ['koruma', 'kilit'] },
+  { id: 'bildirim', simge: '📣', ad: 'Bildirimler', ozet: 'Oyun fırsatları, canlı yayınlar, haberler', komutlar: ['oyun', 'yayin', 'haber', 'instagram'] },
+  { id: 'topluluk', simge: '🎉', ad: 'Topluluk', ozet: 'Seviyeler, çekilişler, rol menüleri', komutlar: ['seviye', 'cekilis', 'rolmenu'] },
+  { id: 'sunucu', simge: '⚙️', ad: 'Sunucu ayarları', ozet: 'Günlük, hoş geldin, otomatik rol, hazır kurulum', komutlar: ['ayarla', 'sunucukur'] },
 ];
 const DIGER = { id: 'diger', simge: '📦', ad: 'Diğer', ozet: 'Diğer komutlar', komutlar: [] };
+// Bölüm menüsünün başındaki sayfalar
+const OZEL_SAYFALAR = [
+  { id: 'ana', simge: '🏠', ad: 'Ana sayfa', ozet: 'Yardımın başı' },
+  { id: 'baslangic', simge: '🚀', ad: 'Başlangıç', ozet: 'İlk adımlar' },
+  { id: 'gorevler', simge: '📖', ad: 'Nasıl yapılır?', ozet: 'Adım adım rehberler: bildirim kur, korumayı aç…' },
+];
 
 // Komutların istediği yetkilerin Discord'daki Türkçe adları
 const YETKI_ADLARI = {
@@ -131,6 +97,11 @@ const baglayici = (kimlik) => (komut, alt) => {
   return kimlik.has(komut) ? `</${tam}:${kimlik.get(komut)}>` : `\`/${tam}\``;
 };
 
+// Rehber metnindeki {komut alt} yazımlarını komut bağlantısına çevirir
+const BAGLANTI = /\{([a-z]+)(?: ([a-z-]+))?\}/g;
+const baglantila = (metin, bag) => metin.replace(BAGLANTI, (_, komut, alt) => bag(komut, alt));
+const anilanKomutlar = (metinler) => [...new Set(metinler.flatMap((m) => [...m.matchAll(BAGLANTI)].map((e) => e[1])))];
+
 // Üyenin kullanabildiği komutlar, bölümlere ayrılmış halde
 function bolumleriHazirla(interaction) {
   const komutlar = new Map(
@@ -147,8 +118,20 @@ function bolumleriHazirla(interaction) {
     .filter((b) => b.komutlar.length);
 }
 
-function anaSayfa(interaction, bolumler) {
-  const yetkili = bolumler.some((b) => b.id !== 'genel');
+// Üyenin görebileceği rehberler: anlattığı bütün komutları ve rehberin istediği yetkiyi kullanabiliyor olmalı
+function gorevleriHazirla(bolumler, izinler) {
+  const kullanilabilir = new Set(bolumler.flatMap((b) => b.komutlar.map((k) => k.name)));
+  return GOREVLER.filter(
+    (g) =>
+      (!g.yetki || izinler?.has(PermissionFlagsBits[g.yetki])) &&
+      anilanKomutlar([...g.adimlar, ...(g.ipuclari ?? [])]).every((ad) => kullanilabilir.has(ad)),
+  );
+}
+
+const yoneticiMi = (interaction) => Boolean(interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild));
+
+// --- Sayfalar ---
+function anaSayfa(interaction, bolumler, gorevler) {
   const gecikme = interaction.client.ws?.ping ?? -1; // Bağlantı yeni kurulduysa -1
   return new EmbedBuilder()
     .setTitle(`${interaction.client.user.username} · Yardım`)
@@ -156,43 +139,70 @@ function anaSayfa(interaction, bolumler) {
     .setThumbnail(interaction.client.user.displayAvatarURL())
     .setDescription(
       [
-        'Aşağıdaki menüden bir bölüm seç; o bölümdeki komutları gösteririm. Sonra ikinci menüden bir komut seçersen ' +
-          'ne işe yaradığını, seçeneklerini ve örnek kullanımlarını ayrıntılı anlatırım.',
-        'Bir komuta doğrudan bakmak için: `/yardim komut:ban`',
-        ...bolumler.map((b) => `${b.simge} **${b.ad}**\n${b.ozet}`),
-      ].join('\n\n'),
+        'Aşağıdaki menüden seç:',
+        '',
+        '🚀 **Başlangıç** · ilk adımlar',
+        gorevler.length ? `📖 **Nasıl yapılır?** · ${gorevler.length} adım adım rehber` : null,
+        ...bolumler.map((b) => `${b.simge} **${b.ad}** · ${b.ozet}`),
+        '',
+        'Bir komuta doğrudan bak: `/yardim komut:ban` · alt komut için `/yardim komut:oyun ayar`',
+      ]
+        .filter((s) => s !== null)
+        .join('\n'),
     )
-    // Eski /ping komutunun yerine: botun Discord'a gecikmesi
     .setFooter({
-      text: `${yetkili ? 'Yalnızca senin kullanabildiğin komutlar listelenir.' : 'Yönetim komutları yalnızca yetkililere görünür.'}${gecikme >= 0 ? ` · Gecikme: ${gecikme} ms` : ''}`,
+      text: `${bolumler.some((b) => b.id !== 'genel') ? 'Yalnızca senin kullanabildiğin komutlar listelenir.' : 'Yönetim komutları yalnızca yetkililere görünür.'}${gecikme >= 0 ? ` · Gecikme: ${gecikme} ms` : ''}`,
     });
 }
 
-function bolumSayfasi(bolum, kimlik) {
-  const bag = baglayici(kimlik);
-  const bloklar = bolum.komutlar.map((komut) => {
+function baslangicSayfasi(interaction, bag) {
+  const yonetici = yoneticiMi(interaction);
+  const adimlar = yonetici ? BASLANGIC.yonetici : BASLANGIC.uye;
+  return new EmbedBuilder()
+    .setTitle(yonetici ? '🚀 Başlangıç · Sunucuna Voyager\'ı kur' : '🚀 Başlangıç')
+    .setColor(RENK)
+    .setDescription(adimlar.map((a, i) => `**${i + 1}.** ${baglantila(a, bag)}`).join('\n\n'))
+    .setFooter({ text: 'Bir komuta dokununca yazı kutusuna gelir; Discord gereken bilgileri adım adım sorar.' });
+}
+
+function gorevlerSayfasi(gorevler) {
+  return new EmbedBuilder()
+    .setTitle('📖 Nasıl yapılır?')
+    .setColor(RENK)
+    .setDescription(
+      [
+        'Yapmak istediğin şeyi aşağıdaki menüden seç; adım adım anlatayım.',
+        '',
+        ...gorevler.map((g) => `${g.simge} ${g.ad}`),
+      ].join('\n'),
+    );
+}
+
+function gorevSayfasi(gorev, bag) {
+  const embed = new EmbedBuilder()
+    .setTitle(`${gorev.simge} ${gorev.ad}`)
+    .setColor(RENK)
+    .setDescription(gorev.adimlar.map((a, i) => `**${i + 1}.** ${baglantila(a, bag)}`).join('\n\n'));
+  if (gorev.ipuclari?.length) embed.addFields({ name: '💡 İpuçları', value: gorev.ipuclari.map((i) => `• ${baglantila(i, bag)}`).join('\n') });
+  return embed.setFooter({ text: 'Diğer rehberler için menüden seç · Komutların ayrıntısı bölüm sayfalarında' });
+}
+
+function bolumSayfasi(bolum, bag) {
+  const satir = (komut) => {
     const altlar = altKomutlar(komut).map((s) => s.tamAd);
-    if (!altlar.length) return `${bag(komut.name)}\n${komut.description}`;
-    const ilk = altlar.includes(bolum.ilkAdim?.[komut.name]) ? bolum.ilkAdim[komut.name] : altlar[0];
-    const kalan = altlar.filter((ad) => ad !== ilk);
-    return [
-      `**/${komut.name}**`,
-      komut.description,
-      `Buradan başla: ${bag(komut.name, ilk)}`,
-      kalan.length ? `Diğerleri: ${kalan.map((ad) => bag(komut.name, ad)).join(' · ')}` : null,
-    ]
-      .filter(Boolean)
-      .join('\n');
-  });
+    return altlar.length
+      ? `**/${komut.name}** · ${komut.description}\n-# ${altlar.map((ad) => bag(komut.name, ad)).join(' · ')}`
+      : `${bag(komut.name)} · ${komut.description}`;
+  };
   return new EmbedBuilder()
     .setTitle(`${bolum.simge} ${bolum.ad}`)
     .setColor(RENK)
-    .setDescription(bloklar.join('\n\n'))
-    .setFooter({ text: 'Bir komutun ayrıntılı anlatımı için aşağıdaki ikinci menüden komutu seç.' });
+    .setDescription(bolum.komutlar.map(satir).join('\n\n'))
+    .setFooter({ text: 'Ayrıntı için aşağıdaki ikinci menüden komutu seç.' });
 }
 
-// Bir komutun ayrıntılı sayfası: elle yazılmış anlatım (yardim-rehberi.js) ve komutun tanımından okunan
-// alt komutlar ile seçenekler
+// Komutun genel sayfası: ne işe yaradığı, kimin kullanabileceği, alt komutları (birer satır), örnekler.
+// Alt komutların seçenekleri kendi sayfalarında; alt komutu olmayan komutun seçenekleri burada.
 function komutSayfasi(komut, kimlik) {
   const rehber = REHBER[komut.name] ?? {};
   const bag = baglayici(kimlik);
@@ -204,85 +214,139 @@ function komutSayfasi(komut, kimlik) {
     .addFields({ name: '👤 Kim kullanabilir', value: kisalt(rehber.kim ?? yetkiMetni(komut.default_member_permissions), 1024) });
 
   if (altlar.length) {
-    for (const alt of altlar) {
-      const satirlar = [`${bag(komut.name, alt.tamAd)}: ${alt.description}`, ...(alt.options ?? []).map(secenekSatiri)];
-      embed.addFields({ name: `▸ ${alt.tamAd}`, value: kisalt(satirlar.join('\n'), 1024) });
-    }
+    embed.addFields({ name: '▸ Alt komutlar', value: kisalt(altlar.map((a) => `${bag(komut.name, a.tamAd)} · ${a.description}`).join('\n'), 1024) });
   } else {
     const secenekler = (komut.options ?? []).map(secenekSatiri);
     embed.addFields({ name: '⚙️ Seçenekler', value: secenekler.length ? kisalt(secenekler.join('\n'), 1024) : 'Seçeneği yok; yazıp göndermen yeterli.' });
   }
   if (rehber.ornekler?.length) embed.addFields({ name: '💡 Örnekler', value: kisalt(rehber.ornekler.map((o) => `\`${o}\``).join('\n'), 1024) });
   if (rehber.notlar?.length) embed.addFields({ name: '📌 Bilmen gerekenler', value: kisalt(rehber.notlar.map((n) => `• ${n}`).join('\n'), 1024) });
-  return embed.setFooter({ text: 'Komutu yazarken Discord seçenekleri adım adım sorar; zorunlu olmayanları boş bırakabilirsin.' });
+  return embed.setFooter({ text: altlar.length ? 'Bir alt komutun seçenekleri ve örnekleri için üçüncü menüden seç.' : 'Komutu yazarken Discord seçenekleri adım adım sorar; zorunlu olmayanları boş bırakabilirsin.' });
 }
 
-const bolumMenusu = (bolumler, secili) =>
-  new ActionRowBuilder().addComponents(
-    new StringSelectMenuBuilder()
-      .setCustomId('yardim-bolum')
-      .setPlaceholder('Bir bölüm seç')
-      .addOptions(
-        { label: 'Ana sayfa', value: 'ana', emoji: '🏠', default: secili === 'ana' },
-        ...bolumler.map((b) => ({ label: b.ad, description: kisalt(b.ozet, 100), value: b.id, emoji: b.simge, default: secili === b.id })),
-      ),
-  );
+// Alt komutun ayrıntılı sayfası: açıklama, elle yazılmış anlatım, bütün seçenekleri, kendi örnekleri ve notları
+function altKomutSayfasi(komut, altAd, kimlik) {
+  const alt = altKomutlar(komut).find((a) => a.tamAd === altAd);
+  const rehber = REHBER[komut.name] ?? {};
+  const ozel = rehber.altlar?.[altAd] ?? {};
+  const bag = baglayici(kimlik);
+  const ornekler = (rehber.ornekler ?? []).filter((o) => o === `/${komut.name} ${altAd}` || o.startsWith(`/${komut.name} ${altAd} `));
+  const embed = new EmbedBuilder()
+    .setTitle(`/${komut.name} ${altAd}`)
+    .setColor(RENK)
+    .setDescription(kisalt([alt.description, ozel.anlatim, `**Kullanım:** ${bag(komut.name, altAd)}`].filter(Boolean).join('\n\n'), 4096));
+  const secenekler = (alt.options ?? []).map(secenekSatiri);
+  embed.addFields({ name: '⚙️ Seçenekler', value: secenekler.length ? kisalt(secenekler.join('\n'), 1024) : 'Seçeneği yok; yazıp göndermen yeterli.' });
+  if (ornekler.length) embed.addFields({ name: '💡 Örnekler', value: kisalt(ornekler.map((o) => `\`${o}\``).join('\n'), 1024) });
+  if (ozel.notlar?.length) embed.addFields({ name: '📌 Bilmen gerekenler', value: kisalt(ozel.notlar.map((n) => `• ${n}`).join('\n'), 1024) });
+  return embed.setFooter({ text: `Komutun genel sayfası ve diğer alt komutlar: /yardim komut:${komut.name}` });
+}
 
+// --- Menüler ---
+const menu = (customId, yer, secenekler) =>
+  new ActionRowBuilder().addComponents(new StringSelectMenuBuilder().setCustomId(customId).setPlaceholder(yer).addOptions(secenekler.slice(0, 25)));
+
+const bolumMenusu = (bolumler, gorevler, secili) =>
+  menu(
+    'yardim-bolum',
+    'Bir bölüm seç',
+    [...OZEL_SAYFALAR.filter((s) => s.id !== 'gorevler' || gorevler.length), ...bolumler].map((b) => ({
+      label: b.ad,
+      description: kisalt(b.ozet, 100),
+      value: b.id,
+      emoji: b.simge,
+      default: secili === b.id,
+    })),
+  );
+const gorevMenusu = (gorevler, secili) =>
+  menu('yardim-gorev', 'Ne yapmak istiyorsun?', gorevler.map((g) => ({ label: kisalt(g.ad, 100), value: g.id, emoji: g.simge, default: g.id === secili })));
 const komutMenusu = (bolum, secili) =>
-  new ActionRowBuilder().addComponents(
-    new StringSelectMenuBuilder()
-      .setCustomId('yardim-komut')
-      .setPlaceholder('Bir komutun ayrıntısına bak')
-      .addOptions(
-        bolum.komutlar.slice(0, 25).map((k) => ({ label: `/${k.name}`, description: kisalt(k.description, 100), value: k.name, default: k.name === secili })),
-      ),
+  menu('yardim-komut', 'Bir komutun ayrıntısına bak', bolum.komutlar.map((k) => ({ label: `/${k.name}`, description: kisalt(k.description, 100), value: k.name, default: k.name === secili })));
+const altMenusu = (komut, secili) =>
+  menu(
+    'yardim-alt',
+    'Bir alt komutun ayrıntısına bak',
+    altKomutlar(komut).map((a) => ({ label: `/${komut.name} ${a.tamAd}`, description: kisalt(a.description, 100), value: a.tamAd, default: a.tamAd === secili })),
   );
 
-// durum: { bolum: bölüm kimliği ya da 'ana', komut: komut adı ya da null }
+// durum: { sayfa: 'ana' | 'baslangic' | 'gorevler' | bölüm kimliği, gorev, komut, alt }
 function sayfa(interaction, bolumler, kimlik, durum) {
-  const bolum = bolumler.find((b) => b.id === durum.bolum);
+  const bag = baglayici(kimlik);
+  const gorevler = gorevleriHazirla(bolumler, interaction.memberPermissions);
+  const bolum = bolumler.find((b) => b.id === durum.sayfa);
   const komut = bolum && durum.komut ? bolum.komutlar.find((k) => k.name === durum.komut) : null;
-  const embed = komut ? komutSayfasi(komut, kimlik) : bolum ? bolumSayfasi(bolum, kimlik) : anaSayfa(interaction, bolumler);
-  const satirlar = [bolumMenusu(bolumler, bolum ? bolum.id : 'ana')];
+  const alt = komut && durum.alt && altKomutlar(komut).some((a) => a.tamAd === durum.alt) ? durum.alt : null;
+  const gorev = durum.sayfa === 'gorevler' ? gorevler.find((g) => g.id === durum.gorev) : null;
+
+  let embed;
+  if (alt) embed = altKomutSayfasi(komut, alt, kimlik);
+  else if (komut) embed = komutSayfasi(komut, kimlik);
+  else if (bolum) embed = bolumSayfasi(bolum, bag);
+  else if (gorev) embed = gorevSayfasi(gorev, bag);
+  else if (durum.sayfa === 'gorevler' && gorevler.length) embed = gorevlerSayfasi(gorevler);
+  else if (durum.sayfa === 'baslangic') embed = baslangicSayfasi(interaction, bag);
+  else embed = anaSayfa(interaction, bolumler, gorevler);
+
+  const secili = bolum ? bolum.id : ['baslangic', 'gorevler'].includes(durum.sayfa) && (durum.sayfa !== 'gorevler' || gorevler.length) ? durum.sayfa : 'ana';
+  const satirlar = [bolumMenusu(bolumler, gorevler, secili)];
+  if (secili === 'gorevler') satirlar.push(gorevMenusu(gorevler, gorev?.id));
   if (bolum) satirlar.push(komutMenusu(bolum, komut?.name));
+  if (komut && altKomutlar(komut).length) satirlar.push(altMenusu(komut, alt));
   return { embeds: [embed], components: satirlar };
 }
 
-// "/Ban" ya da "ban" yazılabilir; cevaba geri yazıldığı için yalnızca komut adında olabilecek harfler kalır
-const komutAdi = (metin) => kucuk(metin ?? '').replace(/^\//, '').replace(/[^a-z0-9çğıöşü-]/g, '').slice(0, 32);
+// "/Ban", "ban" ya da "oyun ayar" yazılabilir; cevaba geri yazıldığı için yalnızca komut adında olabilecek harfler kalır
+const komutAdi = (metin) =>
+  kucuk(metin ?? '')
+    .trim()
+    .replace(/^\//, '')
+    .replace(/[^a-z0-9çğıöşü\s-]/g, '')
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p.slice(0, 32));
 
 module.exports = {
   // Test için
   BOLUMLER,
   bolumleriHazirla,
+  gorevleriHazirla,
   komutSayfasi,
+  altKomutSayfasi,
   sayfa,
+  BAGLANTI,
 
   data: new SlashCommandBuilder()
     .setName('yardim')
-    .setDescription('Komutları bölüm bölüm gösterir ve ne işe yaradıklarını anlatır')
-    .addStringOption((o) => o.setName('komut').setDescription('Ayrıntısını görmek istediğin komut (ör. ban)').setAutocomplete(true)),
+    .setDescription('Komutları, adım adım rehberleri ve başlangıç adımlarını gösterir')
+    .addStringOption((o) => o.setName('komut').setDescription('Ayrıntısını görmek istediğin komut ya da alt komut (ör. ban, oyun ayar)').setAutocomplete(true)),
 
-  // komut seçeneğine yazarken, üyenin kullanabildiği komutlardan eşleşenler önerilir; adı yazılanla başlayanlar önce
+  // komut seçeneğine yazarken, üyenin kullanabildiği komutlar ve alt komutlar önerilir; adı yazılanla başlayanlar önce
   async autocomplete(interaction) {
     const yazilan = kucuk(interaction.options.getFocused()).trim().replace(/^\//, '');
-    const eslesen = bolumleriHazirla(interaction)
+    const adaylar = bolumleriHazirla(interaction)
       .flatMap((b) => b.komutlar)
-      .filter((k) => k.name.includes(yazilan) || kucuk(k.description).includes(yazilan))
-      .sort((a, b) => Number(!a.name.startsWith(yazilan)) - Number(!b.name.startsWith(yazilan)))
+      .flatMap((k) => [
+        { ad: k.name, aciklama: k.description },
+        ...altKomutlar(k).map((a) => ({ ad: `${k.name} ${a.tamAd}`, aciklama: a.description })),
+      ]);
+    const eslesen = adaylar
+      .filter((a) => a.ad.includes(yazilan) || kucuk(a.aciklama).includes(yazilan))
+      // Önce adı yazılanla başlayanlar, sonra ana komutlar
+      .sort((a, b) => Number(!a.ad.startsWith(yazilan)) - Number(!b.ad.startsWith(yazilan)) || Number(a.ad.includes(' ')) - Number(b.ad.includes(' ')))
       .slice(0, 25);
-    await interaction.respond(eslesen.map((k) => ({ name: kisalt(`/${k.name} · ${k.description}`, 100), value: k.name })));
+    await interaction.respond(eslesen.map((a) => ({ name: kisalt(`/${a.ad} · ${a.aciklama}`, 100), value: a.ad })));
   },
 
   async execute(interaction) {
     const bolumler = bolumleriHazirla(interaction);
     const kimlik = await kimlikler(interaction.client);
-    let durum = { bolum: 'ana', komut: null };
+    let durum = { sayfa: 'ana' };
     let uyari = null;
-    const istenen = komutAdi(interaction.options.getString('komut'));
+    const [istenen, istenenAlt] = komutAdi(interaction.options.getString('komut'));
     if (istenen) {
       const bolum = bolumler.find((b) => b.komutlar.some((k) => k.name === istenen));
-      if (bolum) durum = { bolum: bolum.id, komut: istenen };
+      if (bolum) durum = { sayfa: bolum.id, komut: istenen, alt: istenenAlt ?? null };
       else uyari = `❌ \`/${istenen}\` diye kullanabileceğin bir komut yok. Aşağıdaki menüden bölüm bölüm bakabilirsin.`;
     }
 
@@ -291,8 +355,10 @@ module.exports = {
     const toplayici = mesaj.createMessageComponentCollector({ time: ACIK_KALMA });
     toplayici.on('collect', (secim) => {
       const deger = secim.values?.[0];
-      if (secim.customId === 'yardim-bolum') durum = { bolum: bolumler.some((b) => b.id === deger) ? deger : 'ana', komut: null };
-      else if (secim.customId === 'yardim-komut') durum = { ...durum, komut: deger };
+      if (secim.customId === 'yardim-bolum') durum = { sayfa: deger };
+      else if (secim.customId === 'yardim-gorev') durum = { sayfa: 'gorevler', gorev: deger };
+      else if (secim.customId === 'yardim-komut') durum = { sayfa: durum.sayfa, komut: deger };
+      else if (secim.customId === 'yardim-alt') durum = { ...durum, alt: deger };
       // content: null, varsa "böyle bir komut yok" uyarısını kaldırır
       secim.update({ ...sayfa(interaction, bolumler, kimlik, durum), content: null }).catch((hata) => console.error('Yardım sayfası gösterilemedi:', hata.message));
     });

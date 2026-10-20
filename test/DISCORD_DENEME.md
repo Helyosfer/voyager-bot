@@ -33,7 +33,10 @@ Her satırda beklenen sonuç yazıyor. Farklı bir şey görürsen terminaldeki 
 
 ## Temel
 
-- [ ] `/yardim` komutları listeliyor; ana sayfanın altında gecikme yazıyor. `/ping` artık yok.
+- [ ] `/yardim` ana sayfası sade; altında gecikme yazıyor. `/ping` artık yok.
+- [ ] `/yardim` → **Nasıl yapılır?** → bir rehber: adımlar numaralı, komutlara dokununca yazı kutusuna geliyor.
+      Yetkisiz hesap yalnızca herkese açık rehberleri görüyor.
+- [ ] `/yardim komut:oyun ayar` doğrudan alt komut sayfasını açıyor; bölüm → komut → alt komut menüleriyle de gidiliyor.
 - [ ] `/hatirlat dakika:1` bir dakika sonra seni etiketliyor. Mesaja `@everyone` yazarsan kimse etiketlenmiyor.
 - [ ] Altıncı hatırlatıcı reddediliyor.
 
