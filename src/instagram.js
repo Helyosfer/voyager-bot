@@ -9,6 +9,7 @@ const crypto = require('node:crypto');
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, escapeMarkdown } = require('discord.js');
 const { oku, yaz, ayarlariGetir } = require('./depo');
 const { adAyikla } = require('./yayin/ortak');
+const { agHatasi } = require('./ag');
 const { baglantisiz, sahibinToplami } = require('./yardimci');
 
 const { META_APP_ID: UYGULAMA, META_APP_SECRET: GIZLI, INSTAGRAM_TOKEN: ILK_JETON } = process.env;
@@ -238,7 +239,7 @@ async function kontrolEt() {
     try {
       hesap = await hesapGetir(kullaniciAdi);
     } catch (hata) {
-      console.error(`Instagram hesabı okunamadı (@${kullaniciAdi}):`, hata.message);
+      console.error(`Instagram hesabı okunamadı (@${kullaniciAdi}):`, agHatasi(hata));
       continue;
     }
     const durum = oku('instagram-durum', {});

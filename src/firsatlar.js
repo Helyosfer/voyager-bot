@@ -7,6 +7,7 @@
 const { EmbedBuilder, PermissionFlagsBits, embedLength, escapeMarkdown } = require('discord.js');
 const { oku, yaz, ayarlariGetir } = require('./depo');
 const inceleme = require('./inceleme');
+const { agHatasi } = require('./ag');
 
 const KONTROL_ARALIGI = 15 * 60_000;
 const OZET_ARALIGI = 3 * 60 * 60_000; // Önemli olmayan fırsatlar en fazla bu sıklıkta toplu gönderilir
@@ -197,7 +198,7 @@ async function gogIndirimleri() {
 async function hepsiniGetir() {
   const guvenli = (ad, soz) =>
     soz.catch((hata) => {
-      console.error(`${ad} alınamadı:`, hata.message);
+      console.error(`${ad} alınamadı:`, agHatasi(hata));
       return null;
     });
   const magazalar = Object.entries(INDIRIM_MAGAZALARI);
@@ -279,7 +280,7 @@ async function populerlik(ad, steamId = null) {
     return sonuc;
   } catch (hata) {
     // Ulaşılamazsa popüler değil say ama saklama; bir sonraki sefer yeniden denensin
-    console.error(`Popülerlik alınamadı (${ad}):`, hata.message);
+    console.error(`Popülerlik alınamadı (${ad}):`, agHatasi(hata));
     return { steamId, yorum: 0 };
   }
 }

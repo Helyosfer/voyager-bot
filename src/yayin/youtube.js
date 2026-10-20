@@ -1,6 +1,7 @@
 // YouTube: canlı yayın için anında bildirim servisi yok. Takip edilen kanalların
 // video akışı düzenli aralıklarla okunur, yeni videoların canlı olup olmadığı sorulur.
 const { adAyikla } = require('./ortak');
+const { agHatasi } = require('../ag');
 
 const ANAHTAR = process.env.YOUTUBE_API_KEY;
 const API = 'https://www.googleapis.com/youtube/v3';
@@ -46,7 +47,7 @@ async function kontrolEt() {
   const adaylar = new Set();
   for (const kanalId of takipEdilenler()) {
     const idler = await kanalVideolari(kanalId).catch((hata) => {
-      console.error(`YouTube kanalı okunamadı (${kanalId}):`, hata.message);
+      console.error(`YouTube kanalı okunamadı (${kanalId}):`, agHatasi(hata));
       return [];
     });
     for (const id of idler) if (!bitenler.has(id)) adaylar.add(id);
@@ -83,7 +84,7 @@ function baslat(secenek) {
     try {
       await kontrolEt();
     } catch (hata) {
-      console.error('YouTube kontrolü başarısız:', hata.message);
+      console.error('YouTube kontrolü başarısız:', agHatasi(hata));
     } finally {
       calisiyor = false;
     }

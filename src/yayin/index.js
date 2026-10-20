@@ -5,6 +5,7 @@ const http = require('node:http');
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, escapeMarkdown } = require('discord.js');
 const { oku, yaz, ayarlariGetir } = require('../depo');
 const { adAyikla } = require('./ortak');
+const { agHatasi } = require('../ag');
 const site = require('../site');
 
 const PLATFORMLAR = {
@@ -202,7 +203,7 @@ function webhookSunucusu() {
         const sonuc = await platform.webhook(istek.headers, Buffer.concat(parcalar));
         yanit.writeHead(sonuc.durum, sonuc.basliklar ?? {}).end(sonuc.govde ?? '');
       } catch (hata) {
-        console.error(`${platform.ad} webhook hatası:`, hata.message);
+        console.error(`${platform.ad} webhook hatası:`, agHatasi(hata));
         yanit.writeHead(500).end();
       }
     });
