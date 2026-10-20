@@ -10,6 +10,7 @@
 const yapayzeka = require('./yapayzeka');
 const { oku, yaz } = require('./depo');
 const { baglantisiz } = require('./yardimci');
+const { agHatasi } = require('./ag');
 
 const OMUR = 60 * 24 * 60 * 60_000; // Bir inceleme bu kadar süre saklanır
 const MAGAZA_METNI = 3000; // Modele verilen mağaza açıklamasının en fazla uzunluğu (karakter)
@@ -151,7 +152,7 @@ async function incele(steamId) {
 
   const is = (async () => {
     const bilgi = await steamBilgisi(steamId).catch((hata) => {
-      console.error(`İnceleme için Steam bilgisi alınamadı (${steamId}):`, hata.message);
+      console.error(`İnceleme için Steam bilgisi alınamadı (${steamId}):`, agHatasi(hata));
       return null;
     });
     if (!bilgi) return null;

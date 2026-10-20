@@ -10,6 +10,7 @@ const { Worker } = require('node:worker_threads');
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
 const { oku, yaz, ayarlariGetir } = require('./depo');
 const { ayristir } = require('./haber-ayristir');
+const { agHatasi } = require('./ag');
 const { baglantisiz, sahibinToplami } = require('./yardimci');
 
 const KONTROL_ARALIGI = 10 * 60_000;
@@ -348,7 +349,7 @@ async function kaynagiIsle(adres, okuyucu) {
     const sayi = (sorunSayisi.get(adres) ?? 0) + 1;
     sorunSayisi.set(adres, sayi);
     // Sürekli çalışmayan bir kaynak kayıtları doldurmasın: ilk hatada ve sonra seyrek yaz
-    if (sayi === 1 || sayi % 36 === 0) console.error(`Haber kaynağı okunamadı (${adres}, ${sayi}. kez):`, hata.message);
+    if (sayi === 1 || sayi % 36 === 0) console.error(`Haber kaynağı okunamadı (${adres}, ${sayi}. kez):`, agHatasi(hata));
     return;
   }
   if (Date.now() - basladi > YAVAS_SURE) sorunSayisi.set(adres, (sorunSayisi.get(adres) ?? 0) + 1);

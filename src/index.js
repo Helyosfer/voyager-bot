@@ -1,4 +1,6 @@
 require('dotenv').config({ quiet: true }); // quiet: her açılışta kayda bilgi satırı yazmasın
+const { agAyarla } = require('./ag');
+agAyarla(); // Bağlantı denemelerine daha uzun süre tanı; sebebi src/ag.js'de
 const fs = require('node:fs');
 const path = require('node:path');
 const { Client, Collection, Events, GatewayIntentBits, MessageFlags, Partials } = require('discord.js');
