@@ -40,7 +40,7 @@ function ayarCoz(ayar) {
 // Yalnızca ağır küfürler. Kalıplar kelimenin BAŞINDAN eşleşir ve bilerek dardır:
 // "sıkıntı", "klasik", "götür", "yara", "pic", "got" gibi masum kelimeler ve
 // Türkçe karaktersiz yazımları ("sikinti", "canimi sikiyor") yakalanmamalı.
-// "amk", "aq" gibi kısaltmalar listede yok; isteyen sunucu /koruma kelime-ekle ile ekler.
+// "amk", "aq" gibi kısaltmalar listede yok; isteyen sunucu /koruma kelime ile ekler.
 const AGIR_KUFURLER = [
   /^s(?:ik|k)t[iı]?r/, // siktir, sktr
   /^sik(?:er|ey|ec|em$|icem|ti[gğ]|ik$|ikler)/,
@@ -113,7 +113,7 @@ function kufurBul(metin, ekKelimeler = []) {
   return null;
 }
 
-// /koruma kelime-ekle için: kelimeyi filtrenin karşılaştırdığı biçime çevirir
+// /koruma kelime için: kelimeyi filtrenin karşılaştırdığı biçime çevirir
 const kelimeBicimi = (girdi) => kelimeler(girdi).map(sadelestir).join('');
 
 // --- Ortak ---

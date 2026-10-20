@@ -98,7 +98,7 @@ async function otoRolVer(uye, rolId) {
     new EmbedBuilder()
       .setTitle('⚠️ Oto rol verilmiyor')
       .setColor(0xfee75c)
-      .setDescription(`${rol} rolü yönetim yetkisi taşıdığı için yeni gelenlere verilmiyor. Rolün yetkilerini kaldır ya da \`/ayarla oto-rol\` ile başka bir rol seç.`),
+      .setDescription(`${rol} rolü yönetim yetkisi taşıdığı için yeni gelenlere verilmiyor. Rolün yetkilerini kaldır ya da \`/ayarla hosgeldin oto-rol:\` ile başka bir rol seç.`),
   );
 }
 

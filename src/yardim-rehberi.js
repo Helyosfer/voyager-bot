@@ -39,31 +39,34 @@ module.exports = {
       'O zamana kadar kanala yazma iznini kaybedersen ya da susturulursan hatırlatma gönderilmez.',
     ],
   },
-  ping: {
-    anlatim: 'Botun çalışıp çalışmadığını ve Discord\'a bağlantısının gecikmesini milisaniye olarak gösterir. Bot cevap vermiyor gibi göründüğünde ilk buna bak.',
-    ornekler: ['/ping'],
-    notlar: ['Gecikme genelde 50-200 ms arasındadır; çok yüksekse Discord tarafında yavaşlık olabilir.'],
-  },
   yardim: {
     anlatim: 'Komutları bölüm bölüm gösterir. Bir bölüm seçtikten sonra ikinci menüden bir komut seçersen o komutun ayrıntılı sayfası açılır: ne işe yaradığı, seçenekleri, örnekleri ve bilmen gerekenler.',
     ornekler: ['/yardim', '/yardim komut:ban'],
-    notlar: ['Yalnızca senin kullanabildiğin komutlar listelenir.', '`komut` seçeneğine yazmaya başlayınca Discord eşleşen komutları önerir.'],
+    notlar: [
+      'Yalnızca senin kullanabildiğin komutlar listelenir.',
+      '`komut` seçeneğine yazmaya başlayınca Discord eşleşen komutları önerir.',
+      'Ana sayfanın altında botun Discord\'a gecikmesi yazar; bot yavaşsa önce ona bak.',
+    ],
   },
 
   // --- Moderasyon ---
   uyari: {
     anlatim:
       'Üyelere kalıcı uyarı verir ve uyarıları saklar. Uyarı sayısı belirlediğin bir eşiğe gelince bot kendiliğinden susturur, atar ya da yasaklar. Tek seferlik cezalar yerine üyenin geçmişini tutmak için kullan.',
-    kim: 'Üyelere Zaman Aşımı Uygula yetkisi olanlar. `kural-ekle` ve `kural-sil` ayrıca Sunucuyu Yönet ister.',
+    kim: 'Üyelere Zaman Aşımı Uygula yetkisi olanlar. Kural eklemek ve kaldırmak ayrıca Sunucuyu Yönet ister.',
     ornekler: [
       '/uyari ver kullanici:@Ali sebep:Kanalda reklam',
       '/uyari liste kullanici:@Ali',
-      '/uyari kural-ekle esik:3 islem:Sustur dakika:1440',
-      '/uyari kural-ekle esik:5 islem:At',
+      '/uyari sil kullanici:@Ali numara:2',
+      '/uyari sil kullanici:@Ali hepsi:True',
+      '/uyari kural esik:3 islem:Sustur dakika:1440',
+      '/uyari kural esik:5 islem:At',
+      '/uyari kural',
     ],
     notlar: [
       'Uyarılan üyeye sebebiyle birlikte özel mesaj gider.',
       'Kural, uyarı sayısı **tam** eşiğe geldiğinde bir kez uygulanır. En fazla 5 kural, üye başına en fazla 50 uyarı.',
+      '`/uyari kural` seçeneksiz yazılırsa kuralları listeler; `islem:Kuralı kaldır` o eşikteki kuralı siler.',
       'Kural yetki aşmaya yaramaz: uyarıyı veren kişi kuralın işlemini kendisi yapamıyorsa işlem uygulanmaz.',
       'Kendinle aynı ya da daha yüksek roldeki birine uyarı veremezsin. Bütün işlemler günlüğe yazılır.',
     ],
@@ -111,37 +114,35 @@ module.exports = {
   // --- Güvenlik ---
   koruma: {
     anlatim:
-      'Otomatik korumayı ayarlar: spam, ağır küfür, Discord\'u ya da Steam\'i taklit eden zararlı bağlantılar ve dolandırıcılık resimleri. Açtığın korumalar mesajları kendiliğinden siler ve gerekirse yazanı susturur. Hepsi varsayılan olarak kapalıdır.',
+      'Otomatik korumayı ayarlar: spam, ağır küfür, Discord\'u ya da Steam\'i taklit eden zararlı bağlantılar ve dolandırıcılık resimleri. Açtığın korumalar mesajları kendiliğinden siler ve gerekirse yazanı susturur. Hepsi varsayılan olarak kapalıdır; her biri `/koruma filtre` ile tek tek açılır.',
     ornekler: [
-      '/koruma spam durum:Açık',
-      '/koruma kufur durum:Açık susturma-dakika:10',
-      '/koruma baglanti durum:Açık kisaltici:True',
+      '/koruma filtre tur:Spam (kısa sürede çok kanala yazma, tekrar) durum:Açık',
+      '/koruma filtre tur:Küfür durum:Açık susturma-dakika:10',
+      '/koruma filtre tur:Zararlı ve sahte bağlantı durum:Açık kisaltici:True',
+      '/koruma filtre tur:Dolandırıcılık görseli (yapay zekâ) durum:Açık kapsam:Yalnızca riskli olanlar',
+      '/koruma kelime kelime:ornekkelime',
       '/koruma alan alan:ornek-site.com islem:İzin ver',
-      '/koruma gorsel durum:Açık kapsam:Yalnızca riskli olanlar',
     ],
     notlar: [
       'Mesajları Yönet yetkisi olanlar ve botlar korumadan muaftır.',
       '**Spam:** 30 saniyede 3 farklı kanala yazan ya da aynı şeyi 4 kez tekrarlayan hesabın mesajları silinir, hesap susturulur (ele geçirilmiş hesaplar için; banlamaz).',
-      '**Küfür:** yalnızca ağır küfürler yakalanır; `kelime-ekle` ile sunucuna özel kelime ekleyebilirsin.',
+      '**Küfür:** yalnızca ağır küfürler yakalanır; `/koruma kelime` ile sunucuna özel kelime ekleyip çıkarabilirsin.',
+      '`/koruma filtre` yalnızca türü seçerek yazılırsa bütün ayarları gösterir; `durum` vermeden yalnızca susturma süresini de değiştirebilirsin.',
       '**Bağlantı:** bağlantılar açılmaz, karar adresten verilir. Yanlış alarm olursa `alan` ile izin listesine ekle.',
       '**Görsel:** resimler yapay zekâyla denetlenir ve Google\'a gönderilir; karar 30-70 saniye sürebilir. Yakalanan mesaj silinir, kanıtı günlüğe düşer.',
     ],
   },
-  kitle: {
+  kilit: {
     anlatim:
-      'Acil durum kilidi: bir saldırı ya da baskın anında bütün kanalları tek komutla kilitler. Sunucu sahibi dışında kimse yazamaz, tepki ekleyemez, konu açamaz ve sesli kanala giremez. Her kanalın izinleri saklanır.',
-    ornekler: ['/kitle'],
+      'Acil durum kilidi: bir saldırı ya da baskın anında `/kilit kapat` bütün kanalları tek komutla kilitler. Sunucu sahibi dışında kimse yazamaz, tepki ekleyemez, konu açamaz ve sesli kanala giremez. Her kanalın izinleri saklanır; `/kilit ac` hepsini kilitten önceki haline birebir döndürür.',
+    ornekler: ['/kilit kapat', '/kilit ac'],
     notlar: [
-      'Kilidi açmak için `/kilidiac`: bütün izinler kilitten önceki haline birebir döner.',
+      'Saldırı anında hız önemli olduğu için onay sorulmaz.',
       'Kilitliyken sunucuya eklenen botlar kendiliğinden atılır; yetki varsa sesli kanaldakiler çıkarılır.',
       'Administrator izni olan roller Discord kuralı gereği kilitten etkilenmez.',
       'Bot bir izni ancak kendisinde de varsa kilitleyebilir; eksik kalanlar cevapta listelenir.',
+      'Açılamayan bir kanal olursa cevapta yazar; sorunu giderip `/kilit ac` komutunu yeniden çalıştırınca kalanlar açılır.',
     ],
-  },
-  kilidiac: {
-    anlatim: '`/kitle` ile kilitlenen kanalları açar: her kanalın izinleri kilitten önceki haline birebir döner.',
-    ornekler: ['/kilidiac'],
-    notlar: ['Açılamayan bir kanal olursa cevapta yazar; sorunu giderip komutu yeniden çalıştırınca kalanlar açılır.'],
   },
 
   // --- Bildirimler ---
@@ -149,45 +150,63 @@ module.exports = {
     anlatim:
       'Bedava oyunları ve mağaza indirimlerini (Steam, Epic Games, GOG) Türkiye fiyatlarıyla seçtiğin kanala duyurur. Popüler oyunlardaki önemli fırsatlar yapay zekâ incelemesi ve puanıyla anında gelir; diğerleri 3 saatte bir tek liste halinde.',
     ornekler: [
-      '/oyun kanal kanal:#oyun-fırsatları',
-      '/oyun indirim durum:Açık magaza:Steam en-az-yuzde:75',
-      '/oyun bedava durum:Açık magaza:Tüm PC mağazaları',
-      '/oyun rol rol:@Oyuncular',
+      '/oyun ayar kanal:#oyun-fırsatları',
+      '/oyun ayar indirim:Açık indirim-magaza:Steam en-az-yuzde:75',
+      '/oyun ayar bedava-magaza:Tüm PC mağazaları',
+      '/oyun ayar rol:@Oyuncular everyone:Açık',
+      '/oyun ayar',
+      '/oyun simdi',
     ],
     notlar: [
-      'Bildirimler `/oyun kanal` ile başlar; kanal seçildiği anda yayında olanlar gönderilmez, yalnızca sonradan çıkanlar.',
-      'Fırsatlar 15 dakikada bir kontrol edilir. `/oyun simdi` güncel fırsatları hemen gönderir (5 dakikada bir).',
-      '`/oyun everyone` açıksa önemli fırsatlarda en fazla 6 saatte bir @everyone atılır; bot için @everyone etiketleme izni gerekir.',
+      'Bildirimler kanal seçilince başlar; varsayılan olarak hem bedava oyunlar hem en az %50 indirimler gelir. Yalnızca değiştirmek istediğin seçeneği ver, gerisi olduğu gibi kalır.',
+      '`/oyun ayar` seçeneksiz yazılırsa bütün ayarları gösterir. `kaldir` ile rol etiketlemesini kaldırabilir ya da bildirimleri kapatabilirsin.',
+      'Kanal seçildiği anda yayında olanlar gönderilmez, yalnızca sonradan çıkanlar. Fırsatlar 15 dakikada bir kontrol edilir; `/oyun simdi` güncel fırsatları hemen gönderir (5 dakikada bir).',
+      '`everyone` açıksa önemli fırsatlarda en fazla 6 saatte bir @everyone atılır; bot için @everyone etiketleme izni gerekir.',
     ],
   },
   yayin: {
     anlatim: 'Takip ettiğin yayıncılar Twitch, Kick ya da YouTube\'da yayına başlayınca seçtiğin kanala haber verir.',
     ornekler: [
-      '/yayin kanal kanal:#yayınlar',
       '/yayin ekle platform:Twitch yayinci:pqueen',
+      '/yayin ekle platform:Kick yayinci:ornekyayinci rol:@Kick Yayınları',
       '/yayin ekle platform:YouTube yayinci:https://www.youtube.com/@kanal',
-      '/yayin rol rol:@Yayın Bildirimi',
+      '/yayin ayar kanal:#yayınlar rol:@Yayın Bildirimi',
+      '/yayin ayar yayinci:pqueen rol:@PQueen Hayranları',
+      '/yayin ayar test:True',
+      '/yayin cikar yayinci:pqueen',
     ],
     notlar: [
       'Twitch ve Kick bildirimleri anında, YouTube bildirimleri 1-3 dakika içinde gelir.',
-      'Sunucu başına en fazla 50 yayıncı. `/yayin test` kanala örnek bir bildirim atar.',
+      'Kanal seçmeden ilk yayıncıyı eklersen komutu yazdığın kanal bildirim kanalı olur.',
+      '**Yayıncı başına rol:** `ekle` ya da `ayar yayinci:` ile bir yayıncıya kendi rolünü verirsen o yayına geçince genel rol yerine o rol etiketlenir. Üyeler bu rolleri rol menüsünden alırsa yalnızca sevdikleri yayıncılar için bildirim alır.',
+      'Sunucu başına en fazla 50 yayıncı. `ayar test:True` kanala örnek bir bildirim atar.',
       'Bir platform bot sahibi tarafından kurulmamışsa o platformdan yayıncı eklenemez.',
       'Etiketlenecek rolü yalnızca o rolü kendisi de etiketleyebilen biri seçebilir.',
     ],
   },
   haber: {
     anlatim: 'Haber sitelerinin yeni haberlerini seçtiğin kanala duyurur. Sitenin adresini vermen yeterli; bot sitenin RSS beslemesini kendisi bulur.',
-    ornekler: ['/haber kanal kanal:#haberler', '/haber ekle adres:webtekno.com', '/haber cikar kaynak:2', '/haber liste'],
+    ornekler: [
+      '/haber ekle adres:webtekno.com',
+      '/haber ekle adres:oyungezer.com.tr rol:@Oyun Haberleri',
+      '/haber ayar kanal:#haberler',
+      '/haber ayar kaynak:webtekno.com rol:@Teknoloji Haberleri',
+      '/haber ayar',
+      '/haber cikar kaynak:2',
+    ],
     notlar: [
+      '**Konuya göre etiket:** her kaynağa kendi rolünü verebilirsin (ör. oyun sitelerine @Oyun Haberleri, teknoloji sitelerine @Teknoloji Haberleri). Üyeler bu rolleri rol menüsünden alır; böylece yalnızca ilgilendikleri haberlerde etiketlenirler. Kendi rolü olmayan kaynak genel rolü kullanır.',
+      'Kanal seçmeden ilk kaynağı eklersen komutu yazdığın kanal haber kanalı olur.',
       'Kaynaklar 10 dakikada bir kontrol edilir; bir kaynaktan tek seferde en fazla 3 haber gelir.',
       'Kaynak eklendiğinde eski haberler gönderilmez, yalnızca sonradan yayınlananlar. Sunucu başına en fazla 15 kaynak.',
-      '`/haber kapat` bildirimleri durdurur ama kaynak listesini silmez.',
+      '`/haber ayar kaldir:Bildirimleri kapat` bildirimleri durdurur ama kaynak listesini silmez.',
     ],
   },
   instagram: {
     anlatim: 'Seçtiğin Instagram hesaplarının yeni gönderilerini bir kanala duyurur.',
-    ornekler: ['/instagram kanal kanal:#instagram', '/instagram ekle hesap:nasa', '/instagram test'],
+    ornekler: ['/instagram ekle hesap:nasa', '/instagram ayar kanal:#instagram', '/instagram ayar hesap:nasa rol:@Uzay', '/instagram ayar test:True'],
     notlar: [
+      'Her hesaba kendi rolünü verebilirsin; o hesabın gönderilerinde genel rol yerine o rol etiketlenir.',
       'Yalnızca herkese açık **profesyonel** (işletme ya da içerik üreticisi) hesaplar takip edilebilir.',
       'Anında değildir: hesaplar yaklaşık 5 dakikada bir kontrol edilir. Sunucu başına en fazla 20 hesap.',
       'Bot sahibinin Meta bağlantısını kurmuş olması gerekir; kurulmamışsa komut görünmez.',
@@ -198,16 +217,17 @@ module.exports = {
   seviye: {
     anlatim:
       'Üyeler mesaj yazdıkça XP kazanır ve seviye atlar; seviye atlayan kanalda duyurulur. Belirli seviyelere ödül rolleri bağlayabilir, sunucunun en aktif üyelerini sıralamada görebilirsin.',
-    kim: 'Herkes kendi seviyesine ve sıralamaya bakabilir. `ayar`, `odul-ekle`, `odul-sil` ve `sifirla` Sunucuyu Yönet ister.',
+    kim: 'Herkes kendi seviyesine ve sıralamaya bakabilir. `ayar`, `odul` ve `sifirla` Sunucuyu Yönet ister.',
     ornekler: [
       '/seviye ayar durum:Açık kanal:#seviye-duyuru',
-      '/seviye odul-ekle seviye:10 rol:@Aktif Üye',
+      '/seviye odul seviye:10 rol:@Aktif Üye',
+      '/seviye odul seviye:10',
       '/seviye goster kullanici:@Ali',
       '/seviye siralama',
     ],
     notlar: [
       'Her mesaj 15-25 XP kazandırır, ama dakikada en fazla bir kez; art arda yazmak XP kazandırmaz.',
-      'Seviye atlamak giderek zorlaşır (0→1: 100 XP, 9→10: 1.005 XP). En fazla 10 ödül rolü.',
+      'Seviye atlamak giderek zorlaşır (0→1: 100 XP, 9→10: 1.005 XP). En fazla 10 ödül rolü; `odul` komutunda rolü boş bırakırsan o seviyenin ödülü kaldırılır.',
       'Otomatik korumanın sildiği mesajlar XP kazandırmaz. Sistem kapatılınca XP silinmez.',
     ],
   },
@@ -242,13 +262,14 @@ module.exports = {
   ayarla: {
     anlatim: 'Botun sunucundaki temel ayarlarını yapar: olayların yazılacağı günlük (log) kanalı, hoş geldin kanalı, yeni gelenlere verilecek otomatik rol ve kanal özetleri.',
     ornekler: [
-      '/ayarla log-kanali kanal:#günlük',
-      '/ayarla log-kategori kategori:Ses kanalları (girme, çıkma, kanal değiştirme) durum:Kapalı',
-      '/ayarla oto-rol rol:@Üye',
+      '/ayarla gunluk kanal:#günlük',
+      '/ayarla gunluk kategori:Ses kanalları (girme, çıkma, kanal değiştirme) durum:Kapalı',
+      '/ayarla hosgeldin kanal:#hoş-geldin oto-rol:@Üye',
       '/ayarla goster',
     ],
     notlar: [
-      'Günlüğe yazılanlar kategorilere ayrılır (moderasyon, üyeler, mesajlar, ses, sunucu); hepsi varsayılan olarak açıktır.',
+      'Her alt komut seçeneksiz yazılırsa mevcut ayarları gösterir; yalnızca verdiğin seçenekler değişir.',
+      'Günlüğe yazılanlar kategorilere ayrılır (moderasyon, üyeler, mesajlar, ses, sunucu); hepsi varsayılan olarak açıktır. Kategori seçmeden `durum` verirsen hepsine uygulanır.',
       'Oto rol yönetim yetkisi taşıyamaz ve botun rolünden aşağıda olmalı.',
       '`/ayarla sifirla` bir ayarı kaldırır. `/ayarla ozet` ile `/ozetle` komutu bu sunucuda açılır.',
       'Elle yapılan banların da günlükte görünmesi için botta Denetim Kaydını Görüntüle izni olmalı.',

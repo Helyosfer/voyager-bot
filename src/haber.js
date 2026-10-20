@@ -254,19 +254,37 @@ async function ekle(sunucuId, girdi) {
   return { besleme: kayit, adet: bulunan.besleme.haberler.length };
 }
 
-// girdi: listedeki sıra numarası, kaynağın adı ya da adresinin bir parçası
-function cikar(sunucuId, girdi) {
+// girdi: kaynağın tam adresi (komut önerileri bunu gönderir), listedeki sıra numarası, adı ya da
+// adresinin bir parçası. Kaydın listedeki sırasını, bulunamazsa -1 döndürür.
+function bul(kayitlar, girdi) {
   const aranan = girdi.trim().toLocaleLowerCase('tr');
+  const tam = kayitlar.findIndex((b) => b.adres.toLowerCase() === aranan);
+  if (tam !== -1) return tam;
+  const sira = /^\d+$/.test(aranan) ? Number(aranan) - 1 : -1;
+  if (kayitlar[sira]) return sira;
+  return kayitlar.findIndex((b) => b.ad.toLocaleLowerCase('tr').includes(aranan) || b.adres.toLowerCase().includes(aranan));
+}
+
+function cikar(sunucuId, girdi) {
   const hepsi = oku('haber', {});
   const kayitlar = hepsi[sunucuId] ?? [];
-  let sira = /^\d+$/.test(aranan) ? Number(aranan) - 1 : -1;
-  if (!kayitlar[sira]) {
-    sira = kayitlar.findIndex((b) => b.ad.toLocaleLowerCase('tr').includes(aranan) || b.adres.toLowerCase().includes(aranan));
-  }
-  if (sira === -1 || !kayitlar[sira]) return null;
+  const sira = bul(kayitlar, girdi);
+  if (sira === -1) return null;
   const [silinen] = kayitlar.splice(sira, 1);
   yaz('haber', hepsi);
   return silinen;
+}
+
+// Bir kaynağın haberlerinde etiketlenecek rol (rolId null: sunucunun genel haber rolü kullanılır).
+// Güncellenen kaydı, kaynak yoksa null döndürür.
+function rolAyarla(sunucuId, girdi, rolId) {
+  const hepsi = oku('haber', {});
+  const kayit = (hepsi[sunucuId] ?? [])[bul(hepsi[sunucuId] ?? [], girdi)];
+  if (!kayit) return null;
+  if (rolId) kayit.rol = rolId;
+  else delete kayit.rol;
+  yaz('haber', hepsi);
+  return kayit;
 }
 
 const kisalt = (metin, sinir) => (metin.length > sinir ? `${metin.slice(0, sinir - 1)}…` : metin);
@@ -301,7 +319,8 @@ async function duyur(adres, haber) {
     if (!ayar.haberKanali || !guild) continue;
     try {
       const kanal = await guild.channels.fetch(ayar.haberKanali);
-      if (kanal?.isTextBased()) await kanal.send(bildirimMesaji(kayit.ad, haber, ayar.haberRol));
+      // Kaynağın kendi rolü yoksa sunucunun genel haber rolü
+      if (kanal?.isTextBased()) await kanal.send(bildirimMesaji(kayit.ad, haber, kayit.rol ?? ayar.haberRol));
     } catch (hata) {
       console.error(`Haber gönderilemedi (${sunucuId}):`, hata.message);
     }
@@ -382,7 +401,7 @@ function baslat(discordClient) {
 }
 
 module.exports = {
-  baslat, liste, ekle, cikar, kontrolEt, bildirimMesaji, SUNUCU_BASI_SINIR, SAHIP_BASI_SINIR, TOPLAM_SINIR, KONTROL_ARALIGI,
+  baslat, liste, ekle, cikar, bul, rolAyarla, kontrolEt, bildirimMesaji, SUNUCU_BASI_SINIR, SAHIP_BASI_SINIR, TOPLAM_SINIR, KONTROL_ARALIGI,
   // Test için
   indir, ayristir, incele, beslemeBul, herkeseAcik,
 };

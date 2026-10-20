@@ -10,12 +10,12 @@ const instagram = require('./instagram');
 // Temel izinler: Kanalları Gör, Mesaj Gönder, Bağlantı Yerleştir, Mesaj Geçmişini Oku,
 // Mesajları Yönet, Üyeleri At, Üyeleri Yasakla, Zaman Aşımı Uygula, Rolleri Yönet,
 // Denetim Kaydını Görüntüle.
-// Tam izinler bunlara ek olarak: Kanalları Yönet (/sunucukur için). /kitle bir izni ancak botta
+// Tam izinler bunlara ek olarak: Kanalları Yönet (/sunucukur için). /kilit bir izni ancak botta
 // da varsa kilitleyebildiği için ayrıca: Dosya Ekle, Tepki Ekle, konu izinleri, Bağlan,
 // Konuş, Video, Üyeleri Taşı.
 const TAM_IZINLER = '1477757234902';
 // Sayfadaki ana düğme botu yalnızca temel izinlerle ekler: moderasyon, günlük, bildirimler,
-// oto rol. /sunucukur ve /kitle kullanmayacak sunucu bota kanal yönetme yetkisi vermek zorunda
+// oto rol. /sunucukur ve /kilit kullanmayacak sunucu bota kanal yönetme yetkisi vermek zorunda
 // kalmaz. İkisi de eksik izni söyler; izin sonradan Sunucu Ayarları → Roller'den açılabilir.
 const TEMEL_IZINLER = '1099780156550';
 const davet = (izinler) =>

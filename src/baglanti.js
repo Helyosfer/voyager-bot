@@ -1,4 +1,4 @@
-// Zararlı bağlantı denetimi (/koruma baglanti): mesajdaki bağlantıların alan adlarına bakar.
+// Zararlı bağlantı denetimi (/koruma filtre tur:bağlantı): mesajdaki bağlantıların alan adlarına bakar.
 // Hiçbir bağlantı açılmaz ve dışarı gönderilmez; karar yalnızca adresin kendisinden verilir.
 //
 // Yakalananlar:

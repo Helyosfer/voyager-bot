@@ -41,12 +41,34 @@ function siralama(interaction) {
   return interaction.reply({ embeds: [embed], allowedMentions: { parse: [] } });
 }
 
-function ayarla(interaction) {
-  const acik = interaction.options.getString('durum', true) === 'acik';
+// Seçeneksiz: mevcut ayarlar. durum ve kanal verilirse yalnızca onlar değişir.
+function ayarla(interaction, ayar) {
+  const durum = interaction.options.getString('durum');
   const kanal = interaction.options.getChannel('kanal');
+  if (!durum && !kanal) {
+    const embed = new EmbedBuilder()
+      .setTitle('📈 Seviye sistemi')
+      .setColor(RENK)
+      .setDescription(
+        [
+          `**Durum:** ${ayar.acik ? '🟢 Açık' : '⚫ Kapalı'}`,
+          `**Duyuru kanalı:** ${ayar.kanal ? `<#${ayar.kanal}>` : 'mesajın yazıldığı kanal'}`,
+          `**Rol ödülleri:** ${ayar.oduller.length ? ayar.oduller.map((o) => `${o.seviye}. seviye → <@&${o.rolId}>`).join(' · ') : 'yok'}`,
+        ].join('\n'),
+      )
+      .setFooter({ text: 'Değiştirmek için: /seviye ayar durum · kanal · Ödül için: /seviye odul' });
+    return interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } });
+  }
+  // Yalnızca kanal verildiyse sistemin açık/kapalı durumu değişmez
+  const acik = durum ? durum === 'acik' : ayar.acik;
   ayarKaydet(interaction.guildId, 'seviyeAcik', acik);
   if (kanal) ayarKaydet(interaction.guildId, 'seviyeKanali', kanal.id);
-  if (!acik) return interaction.reply({ content: '✅ Seviye sistemi kapatıldı. Kazanılmış XP silinmez; yeniden açınca kaldığı yerden sürer.', flags: MessageFlags.Ephemeral });
+  if (!acik) {
+    const metin = durum
+      ? '✅ Seviye sistemi kapatıldı. Kazanılmış XP silinmez; yeniden açınca kaldığı yerden sürer.'
+      : `✅ Duyuru kanalı ${kanal} olarak kaydedildi. Seviye sistemi şu an kapalı; açmak için \`durum:Açık\` ekle.`;
+    return interaction.reply({ content: metin, flags: MessageFlags.Ephemeral });
+  }
   const duyuruKanali = kanal?.id ?? ayarlariGetir(interaction.guildId).seviyeKanali;
   const duyuru = duyuruKanali && `<#${duyuruKanali}>`;
   return interaction.reply({
@@ -54,7 +76,7 @@ function ayarla(interaction) {
       '✅ Seviye sistemi açık. Üyeler mesaj yazdıkça XP kazanır (dakikada en fazla bir kez, mesaj başı 15-25 XP).',
       duyuru ? `Seviye atlayanlar ${duyuru} kanalında duyurulur.` : 'Seviye atlayanlar mesajı yazdıkları kanalda duyurulur. Ayrı bir kanal için `kanal` seçeneğini kullan.',
       kanal && !yazabilirMi(kanal) ? `⚠️ ${kanal} kanalına yazamıyorum; bana Kanalı Gör ve Mesaj Gönder izni ver.` : null,
-      'Rol ödülleri için `/seviye odul-ekle`.',
+      'Rol ödülleri için `/seviye odul seviye: rol:`.',
     ]
       .filter(Boolean)
       .join('\n'),
@@ -62,14 +84,16 @@ function ayarla(interaction) {
   });
 }
 
-function odulEkle(interaction, ayar) {
+// rol verilirse ödül eklenir (aynı seviyedekinin yerine geçer), verilmezse o seviyenin ödülü kaldırılır
+function odul(interaction, ayar) {
   const sv = interaction.options.getInteger('seviye', true);
-  const rol = interaction.options.getRole('rol', true);
+  const rol = interaction.options.getRole('rol');
+  if (!rol) return odulSil(interaction, ayar, sv);
   const engel = rolVermeEngeli(interaction, rol, { kime: 'Bu seviyeye ulaşan herkese', amac: 'Rolü ödül yapabilmen' });
   if (engel) return interaction.reply({ content: `❌ ${engel}`, flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } });
   const diger = ayar.oduller.filter((o) => o.seviye !== sv);
   if (diger.length >= seviye.ODUL_SINIRI) {
-    return interaction.reply({ content: `❌ En fazla ${seviye.ODUL_SINIRI} ödül olabilir. Önce \`/seviye odul-sil\` ile birini kaldır.`, flags: MessageFlags.Ephemeral });
+    return interaction.reply({ content: `❌ En fazla ${seviye.ODUL_SINIRI} ödül olabilir. Önce \`/seviye odul seviye:\` (rolü boş bırakarak) ile birini kaldır.`, flags: MessageFlags.Ephemeral });
   }
   ayarKaydet(interaction.guildId, 'seviyeOdulleri', [...diger, { seviye: sv, rolId: rol.id }].sort((a, b) => a.seviye - b.seviye));
   return interaction.reply({
@@ -85,8 +109,7 @@ function odulEkle(interaction, ayar) {
   });
 }
 
-function odulSil(interaction, ayar) {
-  const sv = interaction.options.getInteger('seviye', true);
+function odulSil(interaction, ayar, sv) {
   const kalan = ayar.oduller.filter((o) => o.seviye !== sv);
   if (kalan.length === ayar.oduller.length) return interaction.reply({ content: `❌ ${sv}. seviye için bir ödül yok.`, flags: MessageFlags.Ephemeral });
   ayarKaydet(interaction.guildId, 'seviyeOdulleri', kalan);
@@ -99,8 +122,8 @@ function sifirla(interaction) {
   return interaction.reply({ content: oldu ? `✅ **${hedef.tag}** kişisinin XP'si sıfırlandı.` : `❌ **${hedef.tag}** henüz XP kazanmamış.`, flags: MessageFlags.Ephemeral });
 }
 
-const ALT_KOMUTLAR = { goster, siralama, ayar: ayarla, 'odul-ekle': odulEkle, 'odul-sil': odulSil, sifirla };
-const YONETIM = new Set(['ayar', 'odul-ekle', 'odul-sil', 'sifirla']);
+const ALT_KOMUTLAR = { goster, siralama, ayar: ayarla, odul, sifirla };
+const YONETIM = new Set(['ayar', 'odul', 'sifirla']);
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -116,9 +139,9 @@ module.exports = {
     .addSubcommand((s) =>
       s
         .setName('ayar')
-        .setDescription('Seviye sistemini açar ya da kapatır (Sunucuyu Yönet gerekir)')
+        .setDescription('Seviye ayarlarını gösterir; seçenek verirsen değiştirir (Sunucuyu Yönet gerekir)')
         .addStringOption((o) =>
-          o.setName('durum').setDescription('Açık mı kapalı mı?').setRequired(true).addChoices({ name: 'Açık', value: 'acik' }, { name: 'Kapalı', value: 'kapali' }),
+          o.setName('durum').setDescription('Açık mı kapalı mı?').addChoices({ name: 'Açık', value: 'acik' }, { name: 'Kapalı', value: 'kapali' }),
         )
         .addChannelOption((o) =>
           o.setName('kanal').setDescription('Seviye atlayanların duyurulacağı kanal (varsayılan: mesajın yazıldığı kanal)').addChannelTypes(ChannelType.GuildText),
@@ -126,16 +149,10 @@ module.exports = {
     )
     .addSubcommand((s) =>
       s
-        .setName('odul-ekle')
-        .setDescription('Bir seviyeye ulaşanlara verilecek rolü belirler (Sunucuyu Yönet gerekir)')
+        .setName('odul')
+        .setDescription('Bir seviyeye ulaşanlara verilecek rolü belirler; rolü boş bırakırsan ödülü kaldırır')
         .addIntegerOption((o) => o.setName('seviye').setDescription('Kaçıncı seviyede?').setRequired(true).setMinValue(1).setMaxValue(200))
-        .addRoleOption((o) => o.setName('rol').setDescription('Verilecek rol').setRequired(true)),
-    )
-    .addSubcommand((s) =>
-      s
-        .setName('odul-sil')
-        .setDescription('Bir seviye ödülünü kaldırır (Sunucuyu Yönet gerekir)')
-        .addIntegerOption((o) => o.setName('seviye').setDescription('Ödülü kaldırılacak seviye').setRequired(true).setMinValue(1).setMaxValue(200)),
+        .addRoleOption((o) => o.setName('rol').setDescription('Verilecek rol (boş: bu seviyenin ödülünü kaldır)')),
     )
     .addSubcommand((s) =>
       s
