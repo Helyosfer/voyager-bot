@@ -199,7 +199,7 @@ module.exports = {
       'Kanal seçmeden ilk kaynağı eklersen komutu yazdığın kanal haber kanalı olur.',
       'Kaynaklar 10 dakikada bir kontrol edilir; bir kaynaktan tek seferde en fazla 3 haber gelir.',
       'Kaynak eklendiğinde eski haberler gönderilmez, yalnızca sonradan yayınlananlar. Sunucu başına en fazla 15 kaynak.',
-      '`/haber ayar kaldir:Bildirimleri kapat` bildirimleri durdurur ama kaynak listesini silmez.',
+      '`/haber ayar kaldir:Bildirimleri kapat (kanalı kaldır)` bildirimleri durdurur ama kaynak listesini silmez.',
     ],
   },
   instagram: {
@@ -295,3 +295,101 @@ module.exports = {
     notlar: [],
   },
 };
+
+// Alt komut sayfalarına özel anlatım ve notlar: /yardim'da üçüncü menüden alt komut seçilince
+// ya da /yardim komut:<komut> <alt> yazılınca gösterilir. Seçenekler komutun tanımından okunur.
+const ALTLAR = {
+  oyun: {
+    ayar: {
+      anlatim:
+        'Seçeneksiz yazarsan bütün fırsat ayarlarını gösterir. Seçenek verirsen yalnızca onları değiştirir; vermediklerin olduğu gibi (ya da varsayılan) kalır. Bildirimleri başlatmak için yalnızca `kanal` seçmen yeterli.',
+      notlar: [
+        'Varsayılanlar: bedava oyunlar açık (Steam, Epic ve GOG), indirimler açık (Steam, Epic ve GOG, en az %50), @everyone kapalı.',
+        '`kaldir` ile rol etiketlemesini kaldırırsın ya da bildirimleri kapatırsın (ayarlar silinmez).',
+        'Rolü yalnızca o rolü kendisi de etiketleyebilen biri seçebilir; rolün "herkes bahsedebilir" ayarı kapalıysa ve botta @everyone izni yoksa bildirim gitmeyeceği söylenir.',
+      ],
+    },
+    simdi: {
+      anlatim: 'Ayarlarına uyan ve şu an yayında olan bütün fırsatları hemen fırsat kanalına gönderir; daha önce gönderilmiş olsalar da.',
+      notlar: ['Sunucu başına 5 dakikada bir kullanılabilir (mağazalara istek atar).'],
+    },
+  },
+  yayin: {
+    ayar: {
+      anlatim:
+        'Seçeneksiz yazarsan takip edilen yayıncıları ve ayarları gösterir. `kanal` bildirim kanalını, `rol` yayın başlayınca etiketlenecek genel rolü seçer. `yayinci` ile birlikte `rol` verirsen yalnızca o yayıncının rolü değişir.',
+      notlar: [
+        '`test:True` bildirim kanalına örnek bir bildirim gönderir (kimse etiketlenmez).',
+        '`yayinci` yazarken takip edilenler önerilir. Aynı ad birden fazla platformda varsa `platform` seç.',
+        '`kaldir` ile rol etiketlemesini kaldırırsın (yayıncı seçiliyse genel role döner) ya da bildirimleri kapatırsın.',
+      ],
+    },
+    ekle: {
+      anlatim: 'Platformu seç, yayıncının kanal adını ya da adresini yaz. İstersen `rol` ile bu yayıncıya özel etiket rolü ver.',
+      notlar: ['Bildirim kanalı seçilmemişse komutu yazdığın kanal bildirim kanalı olur.', 'Sunucu başına en fazla 50 yayıncı.'],
+    },
+    cikar: { anlatim: 'Yayıncıyı takipten çıkarır. Yazarken takip edilenler önerilir.' },
+  },
+  haber: {
+    ayar: {
+      anlatim:
+        'Seçeneksiz yazarsan kaynakları ve ayarları gösterir. `kanal` haber kanalını, `rol` genel haber rolünü seçer. `kaynak` ile birlikte `rol` verirsen yalnızca o kaynağın haberlerinde o rol etiketlenir: böylece her konunun (oyun, teknoloji, spor…) ayrı rolü olur.',
+      notlar: [
+        '`kaynak` yazarken listedeki kaynaklar önerilir; sıra numarası ya da adı da yazılabilir.',
+        '`kaldir:Rol etiketlemesini kaldır` kaynak seçiliyse o kaynağı genel role döndürür, değilse genel rolü kaldırır.',
+        '`kaldir:Bildirimleri kapat (kanalı kaldır)` haberleri durdurur; kaynak listesi silinmez.',
+      ],
+    },
+    ekle: {
+      anlatim: 'Sitenin adresini (ör. webtekno.com) ya da RSS adresini yaz; bot beslemeyi kendisi bulur. İstersen `rol` ile bu kaynağın konusuna ait etiket rolünü ver (ör. @Oyun Haberleri).',
+      notlar: ['Kanal seçilmemişse komutu yazdığın kanal haber kanalı olur.', 'Eski haberler gönderilmez, yalnızca eklendikten sonra yayınlananlar.'],
+    },
+    cikar: { anlatim: 'Kaynağı takipten çıkarır. Yazarken kaynaklar önerilir; sıra numarası da yazılabilir.' },
+  },
+  instagram: {
+    ayar: {
+      anlatim:
+        'Seçeneksiz yazarsan hesapları ve ayarları gösterir. `hesap` ile birlikte `rol` verirsen yalnızca o hesabın gönderilerinde o rol etiketlenir. `test:True` örnek bildirim gönderir.',
+    },
+    ekle: { anlatim: 'Kullanıcı adını ya da profil adresini yaz. Yalnızca herkese açık profesyonel hesaplar takip edilebilir.' },
+  },
+  koruma: {
+    filtre: {
+      anlatim:
+        'Bir filtreyi (`tur`) açar, kapatır ya da ayarlar. Yalnızca türü seçersen bütün koruma ayarlarını gösterir. `durum` vermeden yalnızca susturma süresini (ya da görselde `kapsam`, bağlantıda `kisaltici`) değiştirebilirsin; filtrenin açık/kapalı durumu değişmez.',
+      notlar: [
+        '**Spam:** 30 saniyede 3 farklı kanala yazan ya da aynı şeyi tekrarlayan hesabın mesajları silinir, hesap susturulur (varsayılan 60 dakika).',
+        '**Küfür:** yalnızca ağır küfürler; varsayılan olarak yalnızca silinir.',
+        '**Dolandırıcılık görseli:** yapay zekâ gerekir; varsayılan 1 gün susturma.',
+        '**Zararlı ve sahte bağlantı:** taklit siteler ve yanıltıcı bağlantılar; varsayılan 60 dakika susturma.',
+        '`susturma-dakika:0` yalnızca mesajı siler, susturmaz.',
+      ],
+    },
+    kelime: { anlatim: 'Küfür filtresine bu sunucuya özel kelime ekler (varsayılan) ya da `islem:Çıkar` ile çıkarır. Yalnızca tam kelime yakalanır.' },
+    alan: { anlatim: 'Bağlantı denetiminde bir alanı engeller ya da yanlış alarm veren bir alanı izin listesine ekler. Alt alan adları da kapsanır.' },
+  },
+  uyari: {
+    sil: { anlatim: 'Tek bir uyarıyı `numara` ile (numaraları `/uyari liste` gösterir) ya da üyenin bütün uyarılarını `hepsi:True` ile siler.' },
+    kural: {
+      anlatim:
+        'Seçeneksiz yazarsan kuralları listeler. `esik` (kaçıncı uyarıda) ve `islem` verirsen kural ekler; aynı eşikte kural varsa yerine geçer. `islem:Kuralı kaldır` o eşikteki kuralı siler.',
+      notlar: ['Kural eklemek ve kaldırmak Sunucuyu Yönet ister; listeyi görmek istemez.', 'Susturma kuralında `dakika` verilmezse 60 dakika.'],
+    },
+  },
+  seviye: {
+    ayar: { anlatim: 'Seçeneksiz yazarsan seviye ayarlarını ve ödülleri gösterir. `durum` sistemi açar ya da kapatır; yalnızca `kanal` verirsen açık/kapalı durumu değişmez.' },
+    odul: { anlatim: '`seviye` ve `rol` verirsen o seviyeye ulaşanlara rol verilir (aynı seviyedeki ödülün yerine geçer). Rolü boş bırakırsan o seviyenin ödülü kaldırılır.' },
+  },
+  ayarla: {
+    gunluk: {
+      anlatim:
+        'Seçeneksiz yazarsan ayarları gösterir. `kanal` günlük kanalını seçer. `kategori` ve `durum` ile olay türlerini tek tek açıp kapatırsın; kategori seçmeden `durum` verirsen hepsine uygulanır.',
+    },
+    hosgeldin: { anlatim: 'Seçeneksiz yazarsan ayarları gösterir. `kanal` hoş geldin mesajlarının kanalını, `oto-rol` yeni gelenlere verilecek rolü seçer.' },
+  },
+  kilit: {
+    kapat: { anlatim: 'Bütün kanalları hemen kilitler; onay sormaz. Her kanalın izinleri saklanır.' },
+    ac: { anlatim: 'Kilitlenen kanalları kilitten önceki izinlerine birebir döndürür. Açılamayan kanal kalırsa komutu yeniden çalıştır.' },
+  },
+};
+for (const [komut, altlar] of Object.entries(ALTLAR)) module.exports[komut].altlar = altlar;
