@@ -39,12 +39,16 @@ Her satırda beklenen sonuç yazıyor. Farklı bir şey görürsen terminaldeki 
 
 ## Sunucu kurulumu
 
-- [ ] `/sunucukur` önce listeyi gösteriyor; **Vazgeç** hiçbir şey oluşturmuyor.
+- [ ] `/sunucukur` (şablonsuz) şablonları açıklamalarıyla listeliyor; menüden **Oyun topluluğu** seçince ne kurulacağını
+      ve açılacak ayarları gösteriyor; **Vazgeç** hiçbir şey oluşturmuyor.
 - [ ] **Kur** ile roller, kategoriler ve kanallar oluşuyor; sonuç mesajı "Kurulum tamamlandı" diyor.
 - [ ] Komutu yeniden çalıştırınca "oluşturulacak bir şey yok" diyor (hiçbir şey çift oluşmuyor).
 - [ ] Voyager rolünü yeni rollerin üstüne taşıdıktan sonra: ikinci hesap sunucuya girince **Yeni Gelen** rolünü
       alıyor, `üyelik-onay` düğmesiyle **Üye** oluyor, `rol-seçimi` menüsünden ilgi rolü alıp bırakabiliyor.
 - [ ] İkinci hesap `/sunucukur` komutunu göremiyor.
+- [ ] Boş bir deneme sunucusunda `/sunucukur sablon:🎥 Yayıncı`: üyelik onayı yok, herkes kanalları görüyor;
+      `rol-seçimi` menüsünden **Yayın Bildirimi** rolü alınabiliyor; `/yayin ayar` kanalı ve rolü bağlı gösteriyor.
+- [ ] Kurulumdan önce `/koruma filtre tur:Spam durum:Kapalı` yapılmış sunucuda kurulum spam korumasını açmıyor.
 
 ## Destek talepleri
 

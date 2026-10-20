@@ -1,9 +1,5 @@
-// Topluluk sunucusu şablonu: /sunucukur ile kurulan roller, kategoriler, kanallar ve
-// bunlara bağlı akışlar (üyelik onayı, ilgi rolleri, destek talepleri).
-//
-// İzin mantığı: erişim kategori düzeyinde tanımlanır ve kanallar kategorisiyle
-// eşitlenmiş (senkron) oluşturulur. Yalnızca farklı davranması gereken kanallar
-// (duyuru, kurallar, bot akışları...) kendi iznini taşır.
+// Sunucu kurulumu (/sunucukur) ve kurulan sunucudaki akışlar: üyelik onayı, ilgi ve bildirim
+// rolleri, destek talepleri. Şablonlar (roller, kategoriler, kanallar, izinler) sablonlar.js'te.
 const {
   ActionRowBuilder,
   ButtonBuilder,
@@ -21,216 +17,32 @@ const {
 } = require('discord.js');
 const { ayarlariGetir, ayarKaydet } = require('./depo');
 const { beklemeSayaci, neZaman } = require('./yardimci');
+const { icerikOkunabilir } = require('./koruma');
+const { SABLONLAR, POLITIKALAR, ERISIMLER, DESTEK, GOR, YAZ, BOT, rolleri } = require('./sablonlar');
 
-// --- Roller: hiyerarşi sırasıyla, en üstteki en başta ---
-const ROLLER = [
-  { k: 'yonetici', ad: '⚙️ Yönetici', renk: 0xe74c3c, ayri: true, izinler: [P.KickMembers, P.BanMembers, P.ModerateMembers, P.ManageMessages, P.ViewAuditLog] },
-  { k: 'moderator', ad: '🛡️ Moderatör', renk: 0xe67e22, ayri: true, izinler: [P.KickMembers, P.ModerateMembers, P.ManageMessages, P.ViewAuditLog] },
-  { k: 'destek', ad: '🆘 Destek Ekibi', renk: 0x1abc9c, ayri: true },
-  { k: 'etkinlik', ad: '📅 Etkinlik Ekibi', renk: 0x3498db, ayri: true },
-  { k: 'uretici', ad: '🎥 İçerik Üreticisi', renk: 0xe84393, ayri: true },
-  { k: 'destekci', ad: '💎 Destekçi', renk: 0xf1c40f, ayri: true },
-  { k: 'uye', ad: '✅ Üye', renk: 0x2ecc71 },
-  { k: 'yeni', ad: '🆕 Yeni Gelen', renk: 0x95a5a6 },
-  { k: 'bildirim', ad: '🔔 Etkinlik Bildirimleri', renk: 0xf1c40f, ilgi: 'Etkinlik duyurularında etiketlen' },
-  { k: 'oyuncu', ad: '🎮 Oyuncu', renk: 0x5865f2, ilgi: 'Oyun sohbetleri ve takım arama' },
-  { k: 'teknoloji', ad: '💻 Teknoloji', renk: 0x3498db, ilgi: 'Donanım, ürünler, haberler' },
-  { k: 'yazilim', ad: '👨‍💻 Yazılım', renk: 0x2ecc71, ilgi: 'Programlama ve projeler' },
-  { k: 'tasarim', ad: '🎨 Tasarım', renk: 0xe84393, ilgi: 'Görsel, UI ve fotoğraf' },
-  { k: 'muzik', ad: '🎵 Müzik', renk: 0x9b59b6, ilgi: 'Müzik önerileri' },
-  { k: 'film', ad: '🎬 Film & Dizi', renk: 0xe67e22, ilgi: 'Film, dizi, belgesel' },
-];
-
-const YONETIM = ['yonetici'];
-const MOD = ['yonetici', 'moderator'];
-const DESTEK = ['yonetici', 'moderator', 'destek'];
-const EKIP = ['yonetici', 'moderator', 'destek', 'etkinlik'];
-
-const GOR = [P.ViewChannel, P.ReadMessageHistory];
-const YAZ = [P.SendMessages];
-const SES = [P.Connect, P.Speak, P.Stream];
-// Bağlan: bot ses kanalına girmez, ama Discord o kanalın izinlerini düzenleyebilmesi (ör. /kilit) için ister
-const BOT = [P.ViewChannel, P.ReadMessageHistory, P.SendMessages, P.EmbedLinks, P.AttachFiles, P.Connect];
-
-const kural = (roller, izin = [], yasak = []) => roller.map((rol) => ({ rol, izin, yasak }));
-
-// Kategori politikaları. "herkes" = @everyone
-const POLITIKALAR = {
-  // Herkes görür, yalnızca ekip yazar; kanallar gerekirse kendi iznini taşır
-  baslangic: [...kural(['herkes', 'yeni', 'uye'], GOR, YAZ), ...kural(EKIP, [...GOR, ...YAZ])],
-  // Yalnızca üyeliğini onaylamış olanlar
-  uyeler: [...kural(['herkes'], [], [P.ViewChannel]), ...kural(['uye', ...EKIP], [...GOR, ...YAZ])],
-  ses: [...kural(['herkes'], [], [P.ViewChannel, P.Connect]), ...kural(['uye', ...EKIP], [...GOR, ...YAZ, ...SES])],
-  ozel: [...kural(['herkes'], [], [P.ViewChannel, P.Connect]), ...kural(['destekci', 'uretici', ...EKIP], [...GOR, ...YAZ, ...SES])],
-  // Herkes görür, üyeler yazar
-  destekAcik: [...kural(['herkes', 'yeni'], GOR, YAZ), ...kural(['uye', ...EKIP], [...GOR, ...YAZ])],
-  destekOzel: [...kural(['herkes'], [], [P.ViewChannel]), ...kural(DESTEK, [...GOR, ...YAZ])],
-  moderasyon: [...kural(['herkes'], [], [P.ViewChannel]), ...kural(MOD, [...GOR, ...YAZ])],
-  ekip: [...kural(['herkes'], [], [P.ViewChannel, P.Connect]), ...kural(EKIP, [...GOR, ...YAZ, ...SES])],
-  yonetim: [...kural(['herkes'], [], [P.ViewChannel]), ...kural(YONETIM, [...GOR, ...YAZ])],
-};
-
-// Kategorisinden farklı davranan kanalların izinleri
-const ERISIMLER = {
-  // Herkes okur, ekip yazar (duyuru, düğmeli kanallar)
-  salt: [...kural(['herkes', 'yeni', 'uye'], GOR, YAZ), ...kural(EKIP, [...GOR, ...YAZ])],
-  // Herkes okur, yalnızca yöneticiler yazar
-  yoneticiYazar: [...kural(['herkes', 'yeni', 'uye'], GOR, YAZ), ...kural(EKIP, GOR, YAZ), ...kural(YONETIM, [...GOR, ...YAZ])],
-  // Yalnızca üyeler görür ve yazar (herkese açık kategoride)
-  uyeYazar: [...kural(['herkes', 'yeni'], [], [P.ViewChannel]), ...kural(['uye', ...EKIP], [...GOR, ...YAZ])],
-  // Yalnızca üyeler görür, ekip yazar
-  uyeSalt: [...kural(['herkes', 'yeni'], [], [P.ViewChannel]), ...kural(['uye'], GOR, YAZ), ...kural(EKIP, [...GOR, ...YAZ])],
-  // Üyeler okur; etkinlik ekibi ve yöneticiler yazar
-  etkinlikYazar: [...kural(['herkes'], [], [P.ViewChannel]), ...kural(['uye', ...EKIP], GOR, YAZ), ...kural(['etkinlik', ...YONETIM], [...GOR, ...YAZ])],
-  // Üyeler okur; botun doldurduğu akış (fırsatlar, yayınlar)
-  botAkisi: [...kural(['herkes'], [], [P.ViewChannel]), ...kural(['uye', ...EKIP], GOR, YAZ), ...kural(YONETIM, [...GOR, ...YAZ])],
-  // Ekip okur, yalnızca yöneticiler yazar
-  ekipSalt: [...kural(['herkes'], [], [P.ViewChannel]), ...kural(EKIP, GOR, YAZ), ...kural(YONETIM, [...GOR, ...YAZ])],
-};
-
-// Kanal alanları: ad, konu, yavas (saniye), erisim (yoksa kategoriyle eşitlenir), ses,
-// ayar (botun bu ayarı o kanala bağlanır), anahtar (akışların kullandığı kanal)
-const KATEGORILER = [
-  {
-    ad: '📌・BAŞLANGIÇ', politika: 'baslangic',
-    kanallar: [
-      { ad: '👋・hoş-geldin', konu: 'Sunucuya hoş geldin! Önce kuralları ve rehberi oku.', erisim: 'salt', ayar: 'hosgeldinKanali', anahtar: 'hosgeldin' },
-      { ad: '📜・kurallar', konu: 'Sunucudaki herkes için geçerli temel kurallar.', erisim: 'yoneticiYazar', anahtar: 'kurallar' },
-      { ad: '📢・duyurular', konu: 'Sunucu duyuruları ve önemli güncellemeler.', erisim: 'salt' },
-      { ad: '🧭・sunucu-rehberi', konu: 'Kategoriler ve kanallar hakkında kısa rehber.', erisim: 'yoneticiYazar', anahtar: 'rehber' },
-      { ad: '✅・üyelik-onay', konu: 'Kuralları okuduktan sonra düğmeye basarak üye ol.', erisim: 'salt', anahtar: 'onay' },
-      { ad: '🎭・rol-seçimi', konu: 'İlgi alanlarını seç; istediğin zaman değiştirebilirsin.', erisim: 'uyeSalt', anahtar: 'rol' },
-      { ad: '🙋・tanışma', konu: 'Kendini tanıt. Adres, telefon gibi kişisel bilgilerini paylaşma.', yavas: 10, erisim: 'uyeYazar' },
-    ],
-  },
-  {
-    ad: '💬・TOPLULUK', politika: 'uyeler',
-    kanallar: [
-      { ad: '💬・genel-sohbet', konu: 'Günlük sohbet ve topluluk muhabbeti.', yavas: 2 },
-      { ad: '🗞️・gündem', konu: 'Güncel konular; saygılı ve kaynaklı tartışma.', yavas: 3 },
-      { ad: '😂・mizah', konu: 'Mizah ve eğlenceli paylaşımlar.', yavas: 2 },
-      { ad: '🖼️・medya', konu: 'Görsel, video ve bağlantı paylaşımları.', yavas: 2 },
-      { ad: '❓・yardım-sorular', konu: 'Sorunu açıkça yaz; çözülünce sonucu paylaş.', yavas: 5 },
-      { ad: '💡・öneriler', konu: 'Sunucu ve topluluk için öneriler.', yavas: 5 },
-      { ad: '🤖・bot-komut', konu: 'Bot komutlarını burada kullan. /yardim ile başla.', yavas: 2 },
-    ],
-  },
-  {
-    ad: '🎮・OYUN', politika: 'uyeler',
-    kanallar: [
-      { ad: '🎮・oyun-sohbeti', konu: 'Oyunlar, güncellemeler ve deneyimler.', yavas: 2 },
-      { ad: '🤝・takım-arama', konu: 'Birlikte oynayacak oyuncu ya da takım arkadaşı bul.', yavas: 5 },
-      { ad: '⛏️・minecraft', konu: 'Minecraft sohbeti, yapılar ve sunucular.', yavas: 3 },
-      { ad: '🤠・rdr2-gta', konu: 'Red Dead Redemption, GTA ve açık dünya oyunları.', yavas: 3 },
-      { ad: '🏷️・oyun-fırsatları', konu: 'İndirimler ve bedava oyunlar. Voyager kendiliğinden paylaşır.', erisim: 'botAkisi', ayar: 'oyunKanali' },
-      { ad: '📡・yayınlar', konu: 'Takip edilen yayıncılar yayına geçince burada duyurulur.', erisim: 'botAkisi', ayar: 'yayinKanali' },
-    ],
-  },
-  {
-    ad: '💻・TEKNOLOJİ & YAZILIM', politika: 'uyeler',
-    kanallar: [
-      { ad: '📱・teknoloji', konu: 'Teknoloji haberleri, ürünler ve genel sohbet.', yavas: 3 },
-      { ad: '🖥️・donanım', konu: 'PC donanımı, çevre birimleri ve sistem toplama.', yavas: 3 },
-      { ad: '📦・mini-pc', konu: 'Mini PC seçenekleri, performans ve deneyimler.', yavas: 3 },
-      { ad: '👨‍💻・yazılım', konu: 'Programlama, hata ayıklama ve yazılım geliştirme.', yavas: 3 },
-      { ad: '🐧・linux-sunucular', konu: 'Linux, VPS, SSH, kendi sunucunu barındırma.', yavas: 3 },
-      { ad: '🔐・siber-güvenlik', konu: 'Savunma, gizlilik ve güvenli yapılandırma. İzinsiz erişim paylaşımı yasaktır.', yavas: 5 },
-      { ad: '🚀・projeler', konu: 'Kişisel projelerini ve açık kaynak çalışmalarını paylaş.', yavas: 5 },
-    ],
-  },
-  {
-    ad: '🎨・MEDYA & HOBİ', politika: 'uyeler',
-    kanallar: [
-      { ad: '🎵・müzik', konu: 'Müzik önerileri ve sohbet.', yavas: 3 },
-      { ad: '🎬・film-dizi', konu: 'Film, dizi ve belgesel önerileri. Sürprizbozanları gizle.', yavas: 3 },
-      { ad: '📷・fotoğraf-tasarım', konu: 'Fotoğraf, illüstrasyon, arayüz ve tasarım çalışmaları.', yavas: 3 },
-    ],
-  },
-  {
-    ad: '🔊・SES KANALLARI', politika: 'ses',
-    kanallar: [
-      { ad: '🎙️ Genel Sohbet', ses: true },
-      { ad: '☕ Dinlenme Odası', ses: true },
-      { ad: '🎮 Oyun Odası 1', ses: true },
-      { ad: '🎮 Oyun Odası 2', ses: true },
-      { ad: '📚 Birlikte Çalışma', ses: true },
-      { ad: '💤 AFK', ses: true },
-    ],
-  },
-  {
-    ad: '📅・ETKİNLİKLER', politika: 'ses',
-    kanallar: [
-      { ad: '📣・etkinlik-duyuru', konu: 'Resmî etkinlik ilanları ve programları.', erisim: 'etkinlikYazar' },
-      { ad: '🎉・etkinlik-sohbeti', konu: 'Etkinlikler hakkında sohbet ve katılım planları.', yavas: 3 },
-      { ad: '🎤 Etkinlik Sahnesi', ses: true },
-    ],
-  },
-  {
-    ad: '🌟・ÖZEL ALAN', politika: 'ozel',
-    kanallar: [
-      { ad: '💎・destekçi-sohbet', konu: 'Destekçiler ve içerik üreticileri için özel sohbet.', yavas: 3 },
-      { ad: '🎥・içerik-üretici', konu: 'İçerik üretimi, yayın ve topluluk projeleri.', yavas: 3 },
-      { ad: '💎 Özel Ses', ses: true },
-    ],
-  },
-  {
-    ad: '🆘・DESTEK MERKEZİ', politika: 'destekAcik',
-    kanallar: [
-      { ad: '🎫・destek-merkezi', konu: 'Özel destek odası açmak için düğmeyi kullan.', erisim: 'salt', anahtar: 'destek' },
-      { ad: '🆘・destek-sohbeti', konu: 'Genel yardım soruları. Özel bilgilerini burada paylaşma.', yavas: 5 },
-    ],
-  },
-  { ad: '🎫・DESTEK TALEPLERİ', politika: 'destekOzel', anahtar: 'talepler', kanallar: [] },
-  {
-    ad: '🧰・DESTEK EKİBİ', politika: 'destekOzel',
-    kanallar: [
-      { ad: '🧰・destek-ekip', konu: 'Destek ekibinin koordinasyon alanı.' },
-      { ad: '🗂️・destek-kayıtları', konu: 'Destek taleplerinin açılış ve kapanış kayıtları.', anahtar: 'destekKayit' },
-    ],
-  },
-  {
-    ad: '🛡️・MODERASYON', politika: 'moderasyon',
-    kanallar: [
-      { ad: '🛡️・mod-sohbeti', konu: 'Moderatör ekibinin koordinasyonu.' },
-      { ad: '📋・mod-log', konu: 'Voyager sunucu günlüğü: üye, mesaj, ses ve yönetim olayları.', ayar: 'logKanali' },
-      { ad: '⚖️・ceza-kayıtları', konu: 'Uyarı, susturma, atma ve yasaklama kararlarının gerekçeli kayıtları.' },
-      { ad: '🚩・rapor-inceleme', konu: 'Üye raporlarının ve kanıtların incelenmesi.' },
-    ],
-  },
-  {
-    ad: '🔐・EKİP ALANI', politika: 'ekip',
-    kanallar: [
-      { ad: '🔐・ekip-sohbeti', konu: 'Sunucu ekibinin iç iletişimi.' },
-      { ad: '📌・ekip-duyurular', konu: 'Ekip içi önemli duyurular.', erisim: 'ekipSalt' },
-      { ad: '🔐 Ekip Sesi', ses: true },
-    ],
-  },
-  {
-    ad: '⚙️・YÖNETİM', politika: 'yonetim',
-    kanallar: [
-      { ad: '⚙️・yönetim', konu: 'Sunucu yapılandırması ve yönetim notları.' },
-      { ad: '🤖・bot-notları', konu: 'Bot ayarları ve otomasyon notları.' },
-    ],
-  },
-];
-
+// Bir şablonun üyelerin kendisi seçtiği (ilgi ve bildirim) rolleri
+const ilgiRolleri = (sablon) => rolleri(sablon).filter((r) => r.ilgi);
+// Kurulum bilgisi şablon adı taşımıyorsa (eski kurulum) topluluk şablonudur
+const kurulumSablonu = (t) => SABLONLAR[t?.sablon] ?? SABLONLAR.topluluk;
 const RENK = 0x5865f2;
 const turu = (kanal) => (kanal.ses ? ChannelType.GuildVoice : ChannelType.GuildText);
 
 // Şablonu sunucunun mevcut haliyle karşılaştırır. Aynı adda olan öğeler "mevcut" sayılır
-// ve onlara dokunulmaz.
-function planla(guild) {
+// ve onlara dokunulmaz. ayarlar: kurulumla açılacak varsayılanlar (zaten ayarlı olanlar ve
+// botun kullanamayacakları atlanır).
+function planla(guild, sablonAdi = 'topluluk') {
+  const sablon = SABLONLAR[sablonAdi];
   const kanallar = [...guild.channels.cache.values()];
   const roller = [...guild.roles.cache.values()];
-  const plan = { roller: [], kategoriler: [], yeni: 0, mevcut: 0 };
+  const plan = { sablon: sablonAdi, roller: [], kategoriler: [], ayarlar: [], atlanan: [], yeni: 0, mevcut: 0 };
   const say = (bulunan) => (bulunan ? plan.mevcut++ : plan.yeni++);
 
-  for (const rol of ROLLER) {
+  for (const rol of rolleri(sablon)) {
     const mevcut = roller.find((r) => r.name === rol.ad) ?? null;
     say(mevcut);
     plan.roller.push({ ...rol, mevcut });
   }
-  for (const kategori of KATEGORILER) {
+  for (const kategori of sablon.kategoriler) {
     const mevcut = kanallar.find((k) => k.type === ChannelType.GuildCategory && k.name === kategori.ad) ?? null;
     say(mevcut);
     const alt = kategori.kanallar.map((kanal) => {
@@ -240,18 +52,28 @@ function planla(guild) {
     });
     plan.kategoriler.push({ ...kategori, mevcut, kanallar: alt });
   }
+
+  const ayar = ayarlariGetir(guild.id);
+  for (const varsayilan of sablon.ayarlar ?? []) {
+    // Sunucu bu ayarı daha önce (açık ya da kapalı) seçtiyse ona dokunulmaz
+    if (ayar[varsayilan.anahtar] !== undefined) continue;
+    if (varsayilan.icerik && !icerikOkunabilir(guild.client)) plan.atlanan.push(varsayilan);
+    else plan.ayarlar.push(varsayilan);
+  }
   return plan;
 }
 
 // Planı uygular. ilerleme(metin) varsa her kategoriden sonra çağrılır.
 async function kur(guild, plan, yapan, ilerleme = async () => {}) {
+  const sablon = SABLONLAR[plan.sablon];
   const sebep = `Voyager /sunucukur (${yapan})`;
   const ben = guild.members.me;
-  const sonuc = { olusturulan: 0, baglanan: [], uyarilar: [], hata: null };
+  const sonuc = { olusturulan: 0, baglanan: [], acilan: [], uyarilar: [], hata: null };
   const roller = {};
   // Bot yalnızca kendisinde olan izinleri verebilir ya da yasaklayabilir
   const suz = (izinler) => izinler.filter((izin) => ben.permissions.has(izin));
 
+  // Şablonda olmayan rollerin kuralları atlanır
   const izinListesi = (kurallar) => [
     ...kurallar
       .map(({ rol, izin, yasak }) => ({
@@ -271,7 +93,8 @@ async function kur(guild, plan, yapan, ilerleme = async () => {}) {
           name: rol.ad,
           color: rol.renk,
           hoist: Boolean(rol.ayri),
-          mentionable: rol.k === 'bildirim',
+          // Bildirim rolleri etiketlenebilir: bot ve yöneticiler duyurularda kullanır
+          mentionable: Boolean(rol.bildirim),
           permissions: suz(rol.izinler ?? []),
           reason: sebep,
         }));
@@ -281,9 +104,11 @@ async function kur(guild, plan, yapan, ilerleme = async () => {}) {
     // Yeni rolleri hiyerarşiye diz: listenin başındaki en üstte. Yalnızca bu kurulumda
     // oluşturulanlar taşınır; mevcut rollerin sırasına dokunulmaz.
     const yeniRoller = plan.roller.filter((r) => !r.mevcut).map((r) => roller[r.k]);
-    await guild.roles
-      .setPositions(yeniRoller.map((rol, i) => ({ role: rol.id, position: yeniRoller.length - i })))
-      .catch(() => sonuc.uyarilar.push('Roller sıralanamadı; Sunucu Ayarları → Roller bölümünden elle sıralaman gerekebilir.'));
+    if (yeniRoller.length) {
+      await guild.roles
+        .setPositions(yeniRoller.map((rol, i) => ({ role: rol.id, position: yeniRoller.length - i })))
+        .catch(() => sonuc.uyarilar.push('Roller sıralanamadı; Sunucu Ayarları → Roller bölümünden elle sıralaman gerekebilir.'));
+    }
 
     const kanallar = {};
     const kategoriler = {};
@@ -324,21 +149,37 @@ async function kur(guild, plan, yapan, ilerleme = async () => {}) {
 
     // Akışların (onay, roller, destek) kullanacağı kimlikleri sakla
     ayarKaydet(guild.id, 'topluluk', {
+      sablon: plan.sablon,
       roller: Object.fromEntries(Object.entries(roller).map(([k, r]) => [k, r.id])),
       kanallar: Object.fromEntries(Object.entries(kanallar).map(([k, v]) => [k, v.id])),
       kategoriler,
     });
+
     // Yeni gelenler "Yeni Gelen" rolüyle başlar; onay düğmesi "Üye"ye çevirir
-    if (roller.yeni.position < ben.roles.highest.position) {
-      ayarKaydet(guild.id, 'otoRol', roller.yeni.id);
-      sonuc.baglanan.push(`Yeni gelenlere ${roller.yeni} rolü verilecek`);
-    } else {
-      sonuc.uyarilar.push('"Yeni Gelen" rolü benim rolümün üstünde olduğu için otomatik veremiyorum. Voyager rolünü yukarı taşı.');
+    if (sablon.onay && roller.yeni) {
+      if (roller.yeni.position < ben.roles.highest.position) {
+        ayarKaydet(guild.id, 'otoRol', roller.yeni.id);
+        sonuc.baglanan.push(`Yeni gelenlere ${roller.yeni} rolü verilecek`);
+      } else {
+        sonuc.uyarilar.push('"Yeni Gelen" rolü benim rolümün üstünde olduğu için otomatik veremiyorum. Voyager rolünü yukarı taşı.');
+      }
+    }
+
+    // Varsayılan ayarlar ve bildirimlerde etiketlenecek roller (önceden seçilmiş olanlara dokunulmaz)
+    for (const { anahtar, deger, ad } of plan.ayarlar) {
+      ayarKaydet(guild.id, anahtar, deger);
+      sonuc.acilan.push(ad);
+    }
+    const mevcutAyar = ayarlariGetir(guild.id);
+    for (const [anahtar, rolAnahtari] of Object.entries(sablon.rolAyarlari ?? {})) {
+      if (mevcutAyar[anahtar] || !roller[rolAnahtari]) continue;
+      ayarKaydet(guild.id, anahtar, roller[rolAnahtari].id);
+      sonuc.baglanan.push(`${AYAR_ADLARI[anahtar]} → ${roller[rolAnahtari]} etiketlenecek`);
     }
 
     // Tanıtım mesajları yalnızca bu kurulumda oluşturulan kanallara atılır
     for (const [anahtar, hazirla] of Object.entries(MESAJLAR)) {
-      if (kanallar[anahtar]?.yeni) await kanallar[anahtar].kanal.send(hazirla(kanallar)).catch(() => {});
+      if (kanallar[anahtar]?.yeni) await kanallar[anahtar].kanal.send(hazirla(kanallar, sablon)).catch(() => {});
     }
   } catch (hata) {
     sonuc.hata = hata.message;
@@ -351,28 +192,36 @@ const AYAR_ADLARI = {
   hosgeldinKanali: 'hoş geldin mesajları',
   oyunKanali: 'oyun fırsatları',
   yayinKanali: 'yayın bildirimleri',
+  haberKanali: 'haber bildirimleri',
+  oyunRol: 'Oyun fırsatlarında',
+  yayinRol: 'Yayın bildirimlerinde',
+  haberRol: 'Haber bildirimlerinde',
 };
 
 const etiket = (kanallar, anahtar) => (kanallar[anahtar] ? `<#${kanallar[anahtar].id}>` : `#${anahtar}`);
 const kart = (baslik, aciklama) => new EmbedBuilder().setTitle(baslik).setColor(RENK).setDescription(aciklama);
 
-// Kanallara atılan ilk mesajlar
+// Kanallara atılan ilk mesajlar. k: bu kurulumdaki anahtarlı kanallar
 const MESAJLAR = {
-  hosgeldin: (k) => ({
-    embeds: [
-      kart(
-        '👋 Hoş geldin!',
-        [
-          `**1.** ${etiket(k, 'kurallar')} kanalını oku.`,
-          `**2.** ${etiket(k, 'onay')} kanalındaki düğmeye basarak üye ol.`,
-          `**3.** ${etiket(k, 'rol')} kanalından ilgi alanlarını seç.`,
-          `**4.** Yardıma ihtiyacın olursa ${etiket(k, 'destek')} kanalından özel destek odası aç.`,
-          '',
-          'Güvenliğin için şifre, token ya da adres gibi özel bilgilerini kimseyle paylaşma.',
-        ].join('\n'),
-      ),
-    ],
-  }),
+  hosgeldin: (k) => {
+    // Şablonda olmayan kanallar (ör. onaysız sunucuda üyelik onayı) atlanır
+    const adimlar = [
+      k.kurallar && `${etiket(k, 'kurallar')} kanalını oku.`,
+      k.onay && `${etiket(k, 'onay')} kanalındaki düğmeye basarak üye ol.`,
+      k.rol && `${etiket(k, 'rol')} kanalından ilgi alanlarını ve bildirim rollerini seç.`,
+      k.destek && `Yardıma ihtiyacın olursa ${etiket(k, 'destek')} kanalından özel destek odası aç.`,
+    ].filter(Boolean);
+    return {
+      embeds: [
+        kart(
+          '👋 Hoş geldin!',
+          [...adimlar.map((a, i) => `**${i + 1}.** ${a}`), adimlar.length ? '' : null, 'Güvenliğin için şifre, token ya da adres gibi özel bilgilerini kimseyle paylaşma.']
+            .filter((s) => s !== null)
+            .join('\n'),
+        ),
+      ],
+    };
+  },
   kurallar: () => ({
     embeds: [
       kart(
@@ -383,7 +232,7 @@ const MESAJLAR = {
           '**3.** Kişisel bilgileri, şifreleri, API anahtarlarını ya da tokenları paylaşma.',
           '**4.** Telif ihlali, dolandırıcılık, zararlı yazılım ve izinsiz erişim yönlendirmesi paylaşma.',
           '**5.** Tartışmalarda konuya odaklan; sürprizbozan ve hassas içerikleri belirt.',
-          '**6.** Moderatör kararlarına itirazını özel destek odasından, saygılı biçimde yap.',
+          '**6.** Yönetimin kararlarına itirazını saygılı biçimde, özelden ilet.',
           '**7.** Yetkililer senden asla şifre ya da token istemez. Şüpheli bir durumu bildir.',
           '',
           'Sunucuda bulunmak bu kurallara uymayı kabul ettiğin anlamına gelir.',
@@ -391,39 +240,42 @@ const MESAJLAR = {
       ).setFooter({ text: 'Bu metni sunucuna göre düzenleyebilirsin.' }),
     ],
   }),
-  rehber: () => ({
-    embeds: [
-      kart(
-        '🧭 Sunucu rehberi',
-        [
-          '**💬 Topluluk** · genel sohbet, gündem, sorular ve öneriler',
-          '**🎮 Oyun** · oyun sohbeti, takım arama, fırsatlar ve yayın bildirimleri',
-          '**💻 Teknoloji & Yazılım** · donanım, programlama, Linux ve güvenlik',
-          '**🎨 Medya & Hobi** · müzik, film/dizi, fotoğraf ve tasarım',
-          '**🔊 Ses kanalları** · sohbet, dinlenme, oyun ve birlikte çalışma',
-          '**📅 Etkinlikler** · etkinlik duyuruları ve katılımcı sohbeti',
-          '**🆘 Destek** · herkese açık sorular ve özel destek odaları',
-        ].join('\n'),
-      ),
-    ],
+  // Rehber, şablondaki kategorilerin açıklamalarından oluşur
+  rehber: (k, sablon) => ({
+    embeds: [kart('🧭 Sunucu rehberi', sablon.kategoriler.filter((c) => c.rehber).map((c) => `**${c.ad.replace('・', ' ')}** · ${c.rehber}`).join('\n'))],
   }),
   onay: () => ({
     embeds: [kart('✅ Üyeliğini etkinleştir', 'Kuralları okuyup kabul ettikten sonra aşağıdaki düğmeye bas. **Üye** rolünü alırsın ve topluluk kanalları açılır.')],
     components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('tp:onay').setLabel('Kuralları okudum, üye ol').setEmoji('✅').setStyle(ButtonStyle.Success))],
   }),
-  rol: () => ({
-    embeds: [kart('🎭 İlgi alanı rolleri', 'Aşağıdaki menüden ilgi alanlarını seç. Birden fazla seçebilir, istediğin zaman değiştirebilirsin; seçmediklerin kaldırılır.')],
-    components: [
-      new ActionRowBuilder().addComponents(
-        new StringSelectMenuBuilder()
-          .setCustomId('tp:rol')
-          .setPlaceholder('İlgi alanlarını seç')
-          .setMinValues(0)
-          .setMaxValues(ROLLER.filter((r) => r.ilgi).length)
-          .addOptions(ROLLER.filter((r) => r.ilgi).map((r) => ({ label: r.ad.replace(/^\S+\s/, ''), value: r.k, description: r.ilgi, emoji: r.ad.split(' ')[0] }))),
-      ),
-    ],
-  }),
+  rol: (k, sablon) => {
+    const secenekler = ilgiRolleri(sablon);
+    return {
+      embeds: [
+        kart(
+          '🎭 Roller',
+          'Aşağıdaki menüden ilgi alanlarını ve bildirim rollerini seç. Bildirim rolü aldığın konuda (ör. oyun fırsatları, yayınlar, haberler) bir bildirim gelince etiketlenirsin; almadığın konularda rahatsız edilmezsin. Birden fazla seçebilir, istediğin zaman değiştirebilirsin; seçmediklerin kaldırılır.',
+        ),
+      ],
+      components: [
+        new ActionRowBuilder().addComponents(
+          new StringSelectMenuBuilder()
+            .setCustomId('tp:rol')
+            .setPlaceholder('Rollerini seç')
+            .setMinValues(0)
+            .setMaxValues(secenekler.length)
+            .addOptions(
+              secenekler.map((r) => ({
+                label: r.ad.replace(/^\S+\s/, ''),
+                value: r.k,
+                description: r.ilgi,
+                emoji: r.ad.split(' ')[0],
+              })),
+            ),
+        ),
+      ],
+    };
+  },
   destek: () => ({
     embeds: [kart('🆘 Özel destek talebi', 'Düğmeye basıp konuyu kısaca yaz. Yalnızca senin ve destek ekibinin görebildiği bir oda açılır. İşin bitince odadaki **Talebi kapat** düğmesini kullan.')],
     components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('tp:talep').setLabel('Destek talebi aç').setEmoji('🎫').setStyle(ButtonStyle.Primary))],
@@ -451,13 +303,14 @@ async function uyeOl(interaction, t) {
 
 async function rolSec(interaction, t) {
   const { member } = interaction;
-  if (!member.roles.cache.has(t.roller.uye)) {
+  // Üyelik onayı olmayan şablonlarda (Üye rolü yok) herkes seçebilir
+  if (t.roller.uye && !member.roles.cache.has(t.roller.uye)) {
     return gizli(interaction, `❌ Önce ${t.kanallar.onay ? `<#${t.kanallar.onay}>` : 'üyelik onayı'} kanalından üye ol.`);
   }
   const secilen = new Set(interaction.values);
   const verilen = [];
   try {
-    for (const rol of ROLLER.filter((r) => r.ilgi)) {
+    for (const rol of ilgiRolleri(kurulumSablonu(t))) {
       const id = t.roller[rol.k];
       if (!id) continue;
       if (secilen.has(rol.k)) {
@@ -659,4 +512,4 @@ async function etkilesim(interaction) {
   return islem(interaction, t);
 }
 
-module.exports = { ROLLER, KATEGORILER, planla, kur, etkilesim, kisaAd };
+module.exports = { SABLONLAR, planla, kur, etkilesim, kisaAd, ilgiRolleri };

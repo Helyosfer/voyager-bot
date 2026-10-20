@@ -277,10 +277,12 @@ module.exports = {
   },
   sunucukur: {
     anlatim:
-      'Boş ya da yeni bir sunucuya eksiksiz bir topluluk düzeni kurar: roller, kategoriler, kanallar ve izinler, yeni gelenler için üyelik onayı, ilgi rolleri ve destek talebi sistemi.',
-    ornekler: ['/sunucukur'],
+      'Boş ya da yeni bir sunucuyu hazır bir şablonla kurar: roller, kategoriler, kanallar, izinler ve botun ayarları. Şablonlar: **Topluluk** (her konuya kanal, üyelik onayı, destek talepleri), **Oyun topluluğu** (oyun türü rolleri, takım arama, fırsatlar, oyun haberleri, turnuvalar), **Yayıncı** (Kick/Twitch/YouTube duyurusu, klipler, abone alanı), **Basit** (arkadaş grubu), **Eğitim** (sınıf ya da kurs), **Yazılım ve teknoloji**, **Ürün ve destek**.',
+    ornekler: ['/sunucukur', '/sunucukur sablon:🎮 Oyun topluluğu', '/sunucukur sablon:🎥 Yayıncı'],
     notlar: [
-      'Önce ne oluşturulacağını gösterir ve onay ister. Mevcut kanal ve roller silinmez; aynı adda olanlar atlanır.',
+      'Şablon seçmezsen hepsi açıklamalarıyla listelenir. Önce ne oluşturulacağını gösterir ve onay ister. Mevcut kanal ve roller silinmez; aynı adda olanlar atlanır.',
+      'Bildirim kanalları (günlük, hoş geldin, oyun fırsatları, yayınlar, haberler) bota bağlanır; bildirimlerde etiketlenecek roller (ör. 🎁 Oyun Fırsatları, 🔴 Yayın Bildirimi) oluşturulur ve üyeler bunları rol seçimi kanalından alır.',
+      'Şablona göre spam koruması, zararlı bağlantı denetimi ve seviye sistemi gibi özellikler de açılır; daha önce elle ayarladıkların değişmez.',
       'Yeniden çalıştırılırsa yalnızca eksikler tamamlanır.',
       'Botta Kanalları Yönet ve Rolleri Yönet izinleri olmalı; kurulumdan sonra bot rolünü yeni rollerin üstüne taşı.',
     ],

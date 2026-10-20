@@ -89,7 +89,7 @@ diliyle gösterilir.
 | `/koruma` | Otomatik spam koruması, ağır küfür filtresi, zararlı bağlantı ve dolandırıcılık görseli denetimi | Sunucuyu Yönet |
 | `/cekilis` | Düğmeyle katılınan çekiliş başlatır, erken bitirir, yeniden çeker ya da iptal eder | Sunucuyu Yönet |
 | `/rolmenu` | Üyelerin düğmeyle rol alıp bırakabildiği bir menü mesajı kurar (en fazla 10 rol) | Rolleri Yönet |
-| `/sunucukur` | Topluluk sunucusu kurar: roller, kanallar, izinler, üyelik onayı, destek sistemi | Yönetici |
+| `/sunucukur` | Hazır şablonla sunucu kurar (topluluk, oyun, yayıncı, basit, eğitim, yazılım, ürün desteği): roller, kanallar, izinler ve bot ayarları | Yönetici |
 | `/kilit` | Acil durumda bütün kanalları kilitler (`kapat`) ve geri açar (`ac`) | Yönetici |
 | `/yayin` | Canlı yayın bildirimlerini ayarlar (Twitch, Kick, YouTube) | Sunucuyu Yönet |
 | `/haber` | Haber sitelerinin yeni haberlerini duyurur (RSS) | Sunucuyu Yönet |
@@ -136,20 +136,39 @@ Ortak noktalar:
 
 ### Sunucu kurulumu (`/sunucukur`)
 
-Yalnızca Yönetici yetkisi olanlar çalıştırabilir. Eksiksiz bir topluluk sunucusu kurar: 15 rol, 14 kategori, 55 kanal.
-Önce ne oluşturulacağını gösterir ve onay ister. Mevcut kanal ve roller silinmez ya da değiştirilmez; aynı adda
-olanlar atlanır, komut yeniden çalıştırılırsa yalnızca eksikler tamamlanır.
+Yalnızca Yönetici yetkisi olanlar çalıştırabilir. Sunucuyu kullanım amacına uyan bir şablonla kurar. Şablon
+seçilmezse (`/sunucukur`) hepsi açıklamalarıyla listelenir; `/sunucukur sablon:` ile doğrudan seçilebilir. Önce ne
+oluşturulacağını gösterir ve onay ister. Mevcut kanal ve roller silinmez ya da değiştirilmez; aynı adda olanlar atlanır,
+komut yeniden çalıştırılırsa yalnızca eksikler tamamlanır.
+
+| Şablon | Kimin için | Rol / kategori / kanal | Üyelik onayı | Kendiliğinden açılanlar |
+|---|---|---|---|---|
+| 🌐 Topluluk | Her konuya kanalı olan geniş topluluk; etkinlikler, özel alan, destek talepleri | 17 / 14 / 55 | Var | Spam, bağlantı denetimi, seviye |
+| 🎮 Oyun topluluğu | Oyuncu topluluğu ya da klan: oyun türü rolleri, takım arama, fırsatlar, oyun haberleri, turnuvalar | 16 / 8 / 36 | Var | Spam, bağlantı denetimi, seviye |
+| 🎥 Yayıncı | Kick, Twitch ya da YouTube yayıncısı: yayın duyurusu, yayın takvimi, klipler, abone alanı | 9 / 6 / 21 | Yok | Spam, bağlantı, küfür, seviye |
+| 🏠 Basit | Arkadaş grubu ya da küçük sunucu: birkaç sohbet ve ses kanalı, günlük | 2 / 4 / 10 | Yok | Spam |
+| 🎓 Eğitim | Sınıf, kurs, çalışma grubu: duyurular, ödevler, kaynaklar, soru-cevap, çalışma odaları | 3 / 5 / 19 | Yok | Spam, bağlantı, küfür |
+| 👨‍💻 Yazılım ve teknoloji | Yazılımcı topluluğu: alan rolleri, kod yardımı, projeler, iş ilanları, teknoloji haberleri | 14 / 6 / 27 | Var | Spam, bağlantı denetimi, seviye |
+| 🛠️ Ürün ve destek | Ürün ya da hizmet sunucusu: güncellemeler, SSS, hata bildirimi, özel destek odaları | 4 / 6 / 15 | Yok | Spam, bağlantı, küfür |
+
+- **Bot kendiliğinden ayarlanır:** günlük, hoş geldin, oyun fırsatları, yayın ve haber kanalları botun ayarlarına
+  bağlanır. Bildirimlerde etiketlenecek roller (🎁 Oyun Fırsatları, 📰 Oyun Haberleri, 🔴 Yayın Bildirimi...) oluşturulur
+  ve ilgili bildirime bağlanır; şablona göre koruma ve seviye sistemi açılır. **Daha önce elle seçilmiş bir ayara
+  dokunulmaz.** Mesaj metnini okumayı gerektiren korumalar (küfür, bağlantı) botta Message Content Intent kapalıysa açılmaz.
+- **Bildirim rolleri:** üyeler `rol-seçimi` kanalındaki menüden ilgi alanlarıyla birlikte bildirim rollerini de seçer;
+  yalnızca ilgilendikleri konularda etiketlenirler. Haber kaynaklarına sonradan `/haber ekle adres: rol:` ile konu rolü verilebilir.
 
 - **İzinler kategori düzeyinde tanımlanır** ve kanallar kategorisiyle eşitlenmiş (senkron) oluşur. Yalnızca farklı
   davranması gereken kanallar (kurallar, duyurular, bot akışları...) kendi iznini taşır.
 - **Üyelik onayı:** Yeni gelenler `Yeni Gelen` rolüyle başlar ve yalnızca başlangıç ile destek kanallarını görür.
   `üyelik-onay` kanalındaki düğmeye basınca `Üye` olur, topluluk kanalları açılır.
-- **İlgi rolleri:** `rol-seçimi` kanalındaki menüden seçilir.
+- **İlgi ve bildirim rolleri:** `rol-seçimi` kanalındaki menüden seçilir. Onaysız şablonlarda herkes seçebilir.
 - **Destek talepleri:** `destek-merkezi` kanalındaki düğme, yalnızca talep sahibinin ve destek ekibinin gördüğü bir oda açar.
   Kapatılan oda hemen silinmez; sahibi okuyabilir ama yazamaz. Kapalı odalar 30 gün sonra silinir; bir üyenin en fazla
   3 kapalı odası saklanır. Bir üye 10 dakikada bir talep açabilir; sunucuya yeni katılan ilk 10 dakika açamaz.
   Aynı anda en fazla 25 oda açık olabilir; sınıra gelince destek kayıt kanalına uyarı düşer.
-- Günlük, hoş geldin, oyun fırsatları ve yayın kanalları botun ayarlarına kendiliğinden bağlanır.
+
+Topluluk şablonunda roller ve erişim (diğer şablonlarda bunların bir kısmı vardır):
 
 | Rol | Erişim |
 |---|---|
@@ -462,8 +481,8 @@ kanala yazılır.
 
 ## Sunucuna ekledikten sonra
 
-Boş bir sunucuyu baştan kurmak istiyorsan `/sunucukur` ile başla; günlük, hoş geldin, yayın ve oyun kanallarını
-kendisi bağlar. Hazır bir sunucuda:
+Boş bir sunucuyu baştan kurmak istiyorsan `/sunucukur` ile başla ve amacına uyan şablonu seç (oyun, yayıncı, basit...);
+günlük, hoş geldin ve bildirim kanallarını, bildirim rollerini ve temel korumayı kendisi ayarlar. Hazır bir sunucuda:
 
 1. Sunucu Ayarları → Roller: **Voyager rolünü**, yöneteceği rollerin üstüne sürükle. Bot kendi rolünden yüksek
    kişilere işlem yapamaz ve yüksek rolleri veremez.
@@ -691,7 +710,9 @@ src/
   cekilis.js          Çekiliş kayıtları, zamanlayıcıları ve kazanan seçimi
   seviye.js           Seviye sistemi: XP, seviye atlama, ödül rolleri
   gorsel.js           Dolandırıcılık görseli denetimi
-  topluluk.js         /sunucukur şablonu, üyelik onayı, ilgi rolleri, destek talepleri
+  sablonlar.js        /sunucukur şablonları: roller, kategoriler, kanallar, izinler, varsayılan ayarlar
+  topluluk.js         /sunucukur kurulumu, üyelik onayı, ilgi ve bildirim rolleri, destek talepleri
+  bildirim-ayar.js    /oyun, /yayin, /haber, /instagram ayar alt komutlarının ortak kanal ve rol denetimi
   kilit.js            Acil durum kilidi
   haber.js            Haber bildirimleri; haber-ayristir.js ayrı iş parçacığında çalışır
   instagram.js        Instagram gönderi bildirimleri
