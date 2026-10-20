@@ -89,14 +89,19 @@
     overflow: hidden;
     isolation: isolate;
   }
+  /* Film renkli ve parlak; yazılar okunsun diye ortayı biraz daha karart. Alttaki geçiş filmi
+     sayfanın siyah zeminine bağlar. Filmin üstünde duran sabit bir katman: filme filter ya da
+     mask-image vermek tam ekran videoda her karede ekran kartına iş çıkarır, film takılır. */
   .hero::before {
     content: "";
     position: absolute;
     inset: 0;
     z-index: -1;
-    background: radial-gradient(60% 50% at 50% 46%, rgba(120, 110, 170, 0.2) 0%, rgba(0, 0, 0, 0) 70%);
+    background:
+      radial-gradient(52% 40% at 50% 50%, rgba(0, 0, 0, 0.45) 0%, rgba(0, 0, 0, 0) 100%),
+      linear-gradient(180deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0) 22%, rgba(0, 0, 0, 0) 75%, #000 100%);
   }
-  /* Arka planda oynayan film (NASA). Oynamaya başlayınca belirir; o zamana kadar zemin siyahtır. */
+  /* Arka planda oynayan film (NASA). Film inene kadar ilk karesi (poster) görünür. */
   .film {
     position: absolute;
     inset: 0;
@@ -104,18 +109,6 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
-    opacity: 0;
-    filter: brightness(0.82) contrast(1.05);
-    transition: opacity 1.4s ease;
-    -webkit-mask-image: linear-gradient(180deg, #000 70%, transparent 100%);
-    mask-image: linear-gradient(180deg, #000 70%, transparent 100%);
-  }
-  .film-oynuyor .film { opacity: 1; }
-  /* Film renkli ve parlak; yazılar okunsun diye ortayı biraz daha karart */
-  .hero.film-oynuyor::before {
-    background:
-      radial-gradient(52% 40% at 50% 50%, rgba(0, 0, 0, 0.66) 0%, rgba(0, 0, 0, 0) 100%),
-      linear-gradient(180deg, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0) 22%);
   }
 
   h1 {
@@ -380,7 +373,12 @@
 
 <main id="ust">
   <div class="hero">
-    <video id="film" class="film" muted loop playsinline preload="none" aria-hidden="true" tabindex="-1" data-src="https://svs.gsfc.nasa.gov/vis/a020000/a020300/a020363/H_0322_HeliopauseCycle_v01.mp4"></video>
+    <!-- Film: önce Big Bang bir kez oynar, sonra 7.5. saniyeden itibaren döngü döner (vps/film-hazirla.sh).
+         ?v= değişince tarayıcılar ve Cloudflare eski dosyayı önbellekten vermez. -->
+    <video id="film" class="film" muted playsinline preload="none" aria-hidden="true" tabindex="-1" poster="/film.jpg?v=5" data-src="/film.mp4?v=5" data-dongu="7.5"></video>
+    <!-- Filmi başlatan betik hemen filmden sonra ve async: defer olsaydı sayfanın sonunu ve yazı tipi
+         stilinin inmesini bekler, film birkaç saniye geç başlardı -->
+    <script src="/film.js" async></script>
 
     <div class="hero-content">
       <h1>Voyager</h1>
@@ -677,10 +675,9 @@
 <footer>
   <div class="container">
     <span>Voyager · <a href="https://helyosfer.me" rel="noopener">Helyosfer</a></span>
-    <span>Arka plan animasyonu: <a href="https://svs.gsfc.nasa.gov/20363" rel="noopener">NASA's Goddard Space Flight Center Conceptual Image Lab</a></span>
+    <span>Arka plan animasyonu: <a href="https://svs.gsfc.nasa.gov/12656" rel="noopener">NASA's Goddard Space Flight Center/CI Lab</a></span>
     <span><a href="https://github.com/Helyosfer/voyager-bot" rel="noopener">GitHub</a></span>
   </div>
 </footer>
-<script src="/film.js" defer></script>
 </body>
 </html>

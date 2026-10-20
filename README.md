@@ -553,8 +553,9 @@ Bot `127.0.0.1:8788` üzerinde küçük bir HTTP sunucusu açar. Bu sunucu iki i
 
 - **Tanıtım sayfası** (`src/site/`): başlık, özellikler, komut listesi ve "Sunucuna ekle" düğmesi.
   [voyager.helyosfer.me](https://voyager.helyosfer.me) bu sayfadır. Arka planda NASA'nın
-  [helyosfer animasyonu](https://svs.gsfc.nasa.gov/20363) oynar (kaynak: NASA's Goddard Space Flight Center
-  Conceptual Image Lab); dosya NASA'nın sunucusundan yüklenir.
+  [Big Bang animasyonu](https://svs.gsfc.nasa.gov/12656) oynar (kaynak: NASA's Goddard Space Flight
+  Center/CI Lab): patlama bir kez, ardından galaksilerin uçuştuğu kısa bir döngü. Film (`/film.mp4`) ve ilk karesi (`/film.jpg`) botun sunucusundan değil, web
+  sunucusundan verilir (aşağıdaki Caddy örneği); dosyalar yoksa zemin siyah kalır.
 - **Twitch ve Kick webhook'ları** (`/twitch`, `/kick`): yayın başladığında platformlar buraya haber verir.
   Gelen her istek imzasıyla doğrulanır.
 
@@ -562,9 +563,29 @@ Sunucu yalnızca kendi makinesinden erişilir; internete web sunucunla açarsın
 
 ```
 voyager.ornek.com {
-	reverse_proxy 127.0.0.1:8788
+	@film path /film.mp4 /film.jpg
+	handle @film {
+		root * /var/www/voyager
+		header Cache-Control "public, max-age=604800"
+		file_server
+	}
+	handle {
+		reverse_proxy 127.0.0.1:8788
+	}
 }
 ```
+
+Film dosyaları hazır olarak `vps/film/` klasöründe durur; durum ve sunucu düzeni `vps/film/README.md`'de.
+Yeniden üretmek için `vps/film-hazirla.sh` (sonuç ~10 MB, 1080p, sessiz). Betik patlamayı yumuşatır,
+döngüyü keser ve sayfanın sardığı saniyeye anahtar kare koyar; ayrıntılar betiğin başında:
+
+```bash
+bash vps/film-hazirla.sh            # kaynak: NASA'nın 4K dosyası, yoksa indirir
+sudo mkdir -p /var/www/voyager && sudo cp film.mp4 film.jpg /var/www/voyager/
+```
+
+Film değişince `src/site/index.html`'deki `?v=` sayısını artır; yoksa tarayıcılar ve Cloudflare bir hafta
+boyunca eski dosyayı verebilir.
 
 `.env` içinde `YAYIN_ADRESI=https://voyager.ornek.com` olur; Kick uygulamasının webhook adresi
 `https://voyager.ornek.com/kick` olarak girilir.
@@ -695,6 +716,8 @@ Bir güvenlik sorunu bulursan herkese açık bir kayıt açmak yerine [helyosfer
 kur.sh                VPS kurulum betiği
 vps/
   erisim-kur.sh       Sunucuda güncelleme kullanıcısını kurar
+  film-hazirla.sh     Sitenin arka plan filmini NASA videosundan hazırlar
+  film/               Sitenin arka plan filmi, kaynağı ve durum notu
   gonder.sh           Kodu sunucuya gönderir ve botu yeniden başlatır
 src/
   index.js            Botun başlangıç noktası
