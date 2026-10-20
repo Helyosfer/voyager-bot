@@ -28,12 +28,12 @@ dosyayla birebir aynı (iki sürümde de patlamanın en parlak anı ~3. saniyede
 - **Cloudflare:** alan adı proxy'li. Film adresleri `index.html`'de `?v=N` ile verilir; film değişince N
   artırılmazsa tarayıcılar ve Cloudflare eski dosyayı bir hafta boyunca verebilir.
 
-## Durum (17 Ekim 2026)
+## Durum (20 Ekim 2026)
 
-- **Canlıda:** `?v=3` filmi. Ziyaretçi filmin takılarak oynadığını ("dona dona") söyledi.
-- **Bu dalda hazır, canlıda değil:** `?v=5`. (`?v=4` hiç yayına alınmadı; değişikliklerini v=5 içerir.)
-  1. **Kolay çözülen kodlama (v=4'ten).** Canlıdaki film `-preset veryslow` ile 1080p'de 16 referans kare
-     ve H.264 level 5.1 kullanıyor. Birçok ekran kartı bunu donanımda çözemez; tarayıcı işlemcide çözmeye
+- **Canlıda ve `main`'de:** `?v=5`. Önceki `?v=3` filmi takılarak oynuyordu ("dona dona"); v=5 bunu çözmek için
+  hazırlandı. (`?v=4` hiç yayına alınmadı; değişikliklerini v=5 içerir.) v=5'in getirdikleri:
+  1. **Kolay çözülen kodlama (v=4'ten).** v=3 filmi `-preset veryslow` ile 1080p'de 16 referans kare
+     ve H.264 level 5.1 kullanıyordu. Birçok ekran kartı bunu donanımda çözemez; tarayıcı işlemcide çözmeye
      düşer ve kare atlar. Yeni film level 4.0, en fazla 3 referans ve 3 B karesi kullanıyor.
   2. **Döngü durmadan sarıyor (v=4'ten).** `film.js`, `requestVideoFrameCallback` ile son 0.1 sn'ye
      gelince filmi durmadan 7.5. saniyeye sarar; `ended` yedek olarak duruyor.
@@ -50,17 +50,20 @@ dosyayla birebir aynı (iki sürümde de patlamanın en parlak anı ~3. saniyede
   Ölçüm (yerelde, Chromium, 1080p): 612 karede 0 atlanan kare; iki sarmada `ended` yok; kareler arası en
   büyük boşluk 35 ms (normali 33 ms), sarma anında 5 ms. Parlak film (10 MB) baştan oynatılınca da
   483 karede 0 atlanan kare.
-- **Dal `main`'e birleştirilmedi** (`claude/gifted-hamilton-3krezm`). `main`'den yayına alınırsa site
-  eski NASA helyosfer filmine (doğrudan NASA'nın sunucusundan, yavaş) döner.
+- Film önce ayrı bir dalda (`claude/gifted-hamilton-3krezm`) hazırlandı ve 19 Ekim'de oradan yayına alındı; dal
+  `main`'e birleşmediği için sonraki `main` güncellemeleri sayfayı eski NASA helyosfer filmine döndürdü. Film
+  20 Ekim'de `main`'e alındı. Sayfa ile film dosyası birlikte değişir: `index.html`'deki `?v=` ile
+  `/var/www/voyager/` içindeki dosya uyuşmalı.
 
-## v=5'i yayına almak (sunucuda, root)
+## Filmi sunucuya koymak (sunucuda, root)
 
-Önce film, sonra kod; ikisi aynı anda yayına girmeli (kod `?v=5` ister, aynı dosya adını kullanır).
+Film dosyası sunucuda yoksa ya da değiştiyse: önce film, sonra kod (kod `?v=5` ister, aynı dosya adını kullanır).
+Kod güncellemesi her zamanki gibidir; aşağıdaki komutlar ikisini birlikte yapar.
 Caddy ayarı değişmez.
 
 ```bash
 rm -rf /tmp/voyager-yeni
-git clone --depth 1 -b claude/gifted-hamilton-3krezm https://github.com/Helyosfer/voyager-bot /tmp/voyager-yeni
+git clone --depth 1 https://github.com/Helyosfer/voyager-bot /tmp/voyager-yeni
 
 # Film
 echo "1c7679f31abc6bab2ce7c1437e340975a954884d0b189a9d22ecd640a08fbd5d  /tmp/voyager-yeni/vps/film/film.mp4" | sha256sum -c \
