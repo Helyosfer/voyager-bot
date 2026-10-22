@@ -284,6 +284,7 @@ module.exports = {
       'Bildirim kanalları (günlük, hoş geldin, oyun fırsatları, yayınlar, haberler) bota bağlanır; bildirimlerde etiketlenecek roller (ör. 🎁 Oyun Fırsatları, 🔴 Yayın Bildirimi) oluşturulur ve üyeler bunları rol seçimi kanalından alır.',
       'Şablona göre spam koruması, zararlı bağlantı denetimi ve seviye sistemi gibi özellikler de açılır; daha önce elle ayarladıkların değişmez.',
       'Yeniden çalıştırılırsa yalnızca eksikler tamamlanır.',
+      'Beğenmediysen şablon menüsündeki **Kurulu şablonu kaldır** seçeneğiyle geri alırsın: yalnızca kurulumun oluşturduğu kanal ve rolleri siler, bot ayarlarını eski haline getirir; önce listeyi gösterir ve onay ister.',
       'Botta Kanalları Yönet ve Rolleri Yönet izinleri olmalı; kurulumdan sonra bot rolünü yeni rollerin üstüne taşı.',
     ],
   },

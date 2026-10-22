@@ -15,7 +15,7 @@ const {
   SnowflakeUtil,
   escapeMarkdown,
 } = require('discord.js');
-const { ayarlariGetir, ayarKaydet } = require('./depo');
+const { ayarlariGetir, ayarKaydet, ayarSil } = require('./depo');
 const { beklemeSayaci, neZaman } = require('./yardimci');
 const { icerikOkunabilir } = require('./koruma');
 const { SABLONLAR, POLITIKALAR, ERISIMLER, DESTEK, GOR, YAZ, BOT, rolleri } = require('./sablonlar');
@@ -68,8 +68,21 @@ async function kur(guild, plan, yapan, ilerleme = async () => {}) {
   const sablon = SABLONLAR[plan.sablon];
   const sebep = `Voyager /sunucukur (${yapan})`;
   const ben = guild.members.me;
+  // Kayıt tutulmaya başlamadan önce kurulmuş bir şablon varsa, onu da kaldırmanın tanıyabilmesi için not edilir
+  const eskiKurulum = eskiKurulumlar(ayarlariGetir(guild.id));
   const sonuc = { olusturulan: 0, baglanan: [], acilan: [], uyarilar: [], hata: null };
   const roller = {};
+  // Şablonu sonradan kaldırabilmek için: bu kurulumda oluşturulanlar ve değiştirilen ayarlar
+  const iz = { roller: [], kategoriler: [], kanallar: [] };
+  const ayarGecmisi = new Map();
+  const ayarla = (anahtar, deger) => {
+    if (!ayarGecmisi.has(anahtar)) {
+      const once = ayarlariGetir(guild.id)[anahtar];
+      ayarGecmisi.set(anahtar, once === undefined ? { anahtar } : { anahtar, once });
+    }
+    ayarGecmisi.get(anahtar).sonra = deger;
+    ayarKaydet(guild.id, anahtar, deger);
+  };
   // Bot yalnızca kendisinde olan izinleri verebilir ya da yasaklayabilir
   const suz = (izinler) => izinler.filter((izin) => ben.permissions.has(izin));
 
@@ -98,7 +111,10 @@ async function kur(guild, plan, yapan, ilerleme = async () => {}) {
           permissions: suz(rol.izinler ?? []),
           reason: sebep,
         }));
-      if (!rol.mevcut) sonuc.olusturulan++;
+      if (!rol.mevcut) {
+        sonuc.olusturulan++;
+        iz.roller.push(roller[rol.k].id);
+      }
     }
 
     // Yeni rolleri hiyerarşiye diz: listenin başındaki en üstte. Yalnızca bu kurulumda
@@ -121,7 +137,10 @@ async function kur(guild, plan, yapan, ilerleme = async () => {}) {
           permissionOverwrites: izinListesi(POLITIKALAR[kategori.politika]),
           reason: sebep,
         }));
-      if (!kategori.mevcut) sonuc.olusturulan++;
+      if (!kategori.mevcut) {
+        sonuc.olusturulan++;
+        iz.kategoriler.push(ust.id);
+      }
       if (kategori.anahtar) kategoriler[kategori.anahtar] = ust.id;
 
       for (const kanal of kategori.kanallar) {
@@ -137,10 +156,13 @@ async function kur(guild, plan, yapan, ilerleme = async () => {}) {
             permissionOverwrites: kanal.erisim ? izinListesi(ERISIMLER[kanal.erisim]) : undefined,
             reason: sebep,
           }));
-        if (!kanal.mevcut) sonuc.olusturulan++;
+        if (!kanal.mevcut) {
+          sonuc.olusturulan++;
+          iz.kanallar.push(olusan.id);
+        }
         if (kanal.anahtar) kanallar[kanal.anahtar] = { id: olusan.id, yeni: !kanal.mevcut, kanal: olusan };
         if (kanal.ayar) {
-          ayarKaydet(guild.id, kanal.ayar, olusan.id);
+          ayarla(kanal.ayar, olusan.id);
           sonuc.baglanan.push(`${olusan} → ${AYAR_ADLARI[kanal.ayar]}`);
         }
       }
@@ -158,7 +180,7 @@ async function kur(guild, plan, yapan, ilerleme = async () => {}) {
     // Yeni gelenler "Yeni Gelen" rolüyle başlar; onay düğmesi "Üye"ye çevirir
     if (sablon.onay && roller.yeni) {
       if (roller.yeni.position < ben.roles.highest.position) {
-        ayarKaydet(guild.id, 'otoRol', roller.yeni.id);
+        ayarla('otoRol', roller.yeni.id);
         sonuc.baglanan.push(`Yeni gelenlere ${roller.yeni} rolü verilecek`);
       } else {
         sonuc.uyarilar.push('"Yeni Gelen" rolü benim rolümün üstünde olduğu için otomatik veremiyorum. Voyager rolünü yukarı taşı.');
@@ -167,13 +189,13 @@ async function kur(guild, plan, yapan, ilerleme = async () => {}) {
 
     // Varsayılan ayarlar ve bildirimlerde etiketlenecek roller (önceden seçilmiş olanlara dokunulmaz)
     for (const { anahtar, deger, ad } of plan.ayarlar) {
-      ayarKaydet(guild.id, anahtar, deger);
+      ayarla(anahtar, deger);
       sonuc.acilan.push(ad);
     }
     const mevcutAyar = ayarlariGetir(guild.id);
     for (const [anahtar, rolAnahtari] of Object.entries(sablon.rolAyarlari ?? {})) {
       if (mevcutAyar[anahtar] || !roller[rolAnahtari]) continue;
-      ayarKaydet(guild.id, anahtar, roller[rolAnahtari].id);
+      ayarla(anahtar, roller[rolAnahtari].id);
       sonuc.baglanan.push(`${AYAR_ADLARI[anahtar]} → ${roller[rolAnahtari]} etiketlenecek`);
     }
 
@@ -183,6 +205,171 @@ async function kur(guild, plan, yapan, ilerleme = async () => {}) {
     }
   } catch (hata) {
     sonuc.hata = hata.message;
+  }
+  // Yarıda kalan kurulumda da oluşanlar kaydedilir; kaldırma bunlara dayanır
+  kurulumuKaydet(guild, iz, ayarGecmisi, eskiKurulum);
+  return sonuc;
+}
+
+// ---------------------------------------------------------------------------
+// Kurulan şablonu kaldırma. Kurulum neyi oluşturduğunu ve hangi ayarları değiştirdiğini
+// "sablonKaydi" olarak saklar; kaldırma bunun tersini uygular. Sunucuda zaten var olan ve
+// kurulumun dokunmadığı kanal, rol ve ayarlar kayda girmez, bu yüzden kaldırmada da dokunulmaz.
+// ---------------------------------------------------------------------------
+const KAYIT = 'sablonKaydi';
+const bos = () => ({ roller: [], kategoriler: [], kanallar: [], ayarlar: [], eskiSablonlar: [] });
+
+// Kayıt tutulmaya başlamadan önce yapılmış kurulumların şablonları. Neyin oluşturulduğu o
+// zamanlar kaydedilmediği için bunlar şablondaki adlarla tanınır.
+function eskiKurulumlar(ayar) {
+  if (ayar[KAYIT]) return ayar[KAYIT].eskiSablonlar ?? [];
+  return ayar.topluluk ? [SABLONLAR[ayar.topluluk.sablon] ? ayar.topluluk.sablon : 'topluluk'] : [];
+}
+
+function kurulumuKaydet(guild, iz, ayarGecmisi, eskiKurulum) {
+  const onceki = ayarlariGetir(guild.id)[KAYIT] ?? { ...bos(), eskiSablonlar: eskiKurulum };
+  const birlestir = (a, b) => [...new Set([...a, ...b])];
+  const ayarlar = [...(onceki.ayarlar ?? [])];
+  for (const g of ayarGecmisi.values()) {
+    const var_ = ayarlar.find((a) => a.anahtar === g.anahtar);
+    if (var_) var_.sonra = g.sonra; // İlk önceki değer korunur: asıl geri dönülecek olan odur
+    else ayarlar.push(g);
+  }
+  const kayit = {
+    roller: birlestir(onceki.roller, iz.roller),
+    kategoriler: birlestir(onceki.kategoriler, iz.kategoriler),
+    kanallar: birlestir(onceki.kanallar, iz.kanallar),
+    ayarlar,
+    eskiSablonlar: onceki.eskiSablonlar ?? [],
+  };
+  // Hiçbir şey oluşmadıysa ve eski kurulum da yoksa kayıt tutulmaz
+  if (kayit.roller.length || kayit.kategoriler.length || kayit.kanallar.length || ayarlar.length || kayit.eskiSablonlar.length) ayarKaydet(guild.id, KAYIT, kayit);
+}
+
+const ayarAdi = (anahtar) =>
+  AYAR_ADLARI[anahtar] ??
+  Object.values(SABLONLAR).flatMap((s) => s.ayarlar ?? []).find((a) => a.anahtar === anahtar)?.ad ??
+  (anahtar === 'otoRol' ? 'oto rol' : anahtar);
+const ayniDeger = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+// Kurulum bu ayarları kanal ya da rol kimliğine bağlar; silinen şeye bağlı kalmasınlar
+const bagliAyarlar = () => [...Object.keys(AYAR_ADLARI), 'otoRol'];
+
+// Sunucuda şu an kaldırılabilecekleri çıkarır. Kurulum yoksa null.
+function kaldirmaPlani(guild) {
+  const ayar = ayarlariGetir(guild.id);
+  const kayit = ayar[KAYIT];
+  const eski = eskiKurulumlar(ayar);
+  if (!kayit && !eski.length) return null;
+
+  const roller = new Set(kayit?.roller);
+  const kategoriler = new Set(kayit?.kategoriler);
+  const kanallar = new Set(kayit?.kanallar);
+  const talepKategorileri = new Set([ayar.topluluk?.kategoriler?.talepler].filter(Boolean));
+  for (const sablonAdi of eski) {
+    if (!SABLONLAR[sablonAdi]) continue;
+    const plan = planla(guild, sablonAdi);
+    for (const r of plan.roller) if (r.mevcut) roller.add(r.mevcut.id);
+    for (const k of plan.kategoriler) {
+      if (k.mevcut) kategoriler.add(k.mevcut.id);
+      if (k.mevcut && k.anahtar === 'talepler') talepKategorileri.add(k.mevcut.id);
+      for (const c of k.kanallar) if (c.mevcut) kanallar.add(c.mevcut.id);
+    }
+  }
+
+  const ben = guild.members.me;
+  const rolListesi = [...roller].map((id) => guild.roles.cache.get(id)).filter((r) => r && !r.managed && r.id !== guild.id);
+  const kanalListesi = [...kanallar].map((id) => guild.channels.cache.get(id)).filter((k) => k && k.type !== ChannelType.GuildCategory);
+  // Destek odaları kurulumda değil, üyeler talep açınca oluşur; kaldırılan destek kategorisiyle gider
+  const odalar = [...guild.channels.cache.values()].filter(
+    (k) => talepKategorileri.has(k.parentId) && kategoriler.has(k.parentId) && !kanallar.has(k.id) && k.topic?.startsWith('sahip='),
+  );
+  const silinecekKanallar = new Set([...kanalListesi, ...odalar].map((k) => k.id));
+
+  // Kategori yalnızca içinde başka bir şey kalmadıysa silinir: sunucunun kendi eklediği kanallar korunur
+  const kategoriPlani = [...kategoriler]
+    .map((id) => guild.channels.cache.get(id))
+    .filter((k) => k && k.type === ChannelType.GuildCategory)
+    .map((kategori) => {
+      const kalan = [...guild.channels.cache.values()].filter((k) => k.parentId === kategori.id && !silinecekKanallar.has(k.id));
+      return { kategori, kalan };
+    });
+
+  const geriAlinacak = (kayit?.ayarlar ?? []).filter((g) => ayniDeger(ayar[g.anahtar], g.sonra));
+  return {
+    roller: rolListesi,
+    kanallar: kanalListesi,
+    odalar,
+    kategoriler: kategoriPlani,
+    ayarlar: geriAlinacak,
+    eski: eski.length > 0,
+    // Botun rolünün üstündeki roller silinemez
+    yetmeyenRoller: rolListesi.filter((r) => r.position >= ben.roles.highest.position),
+    toplam: rolListesi.length + kanalListesi.length + odalar.length + kategoriPlani.filter((k) => !k.kalan.length).length,
+  };
+}
+
+// Bu sunucuda kaldırılabilecek bir kurulum (ya da eski kurulumun izi) var mı?
+const kuruluMu = (sunucuId) => {
+  const ayar = ayarlariGetir(sunucuId);
+  return Boolean(ayar[KAYIT] || ayar.topluluk);
+};
+
+// Planı uygular. ilerleme(metin) varsa her on silmede bir çağrılır.
+async function kaldir(guild, plan, yapan, ilerleme = async () => {}) {
+  const sebep = `Voyager /sunucukur kaldır (${yapan})`;
+  const sonuc = { roller: 0, kanallar: 0, kategoriler: 0, kalanKategoriler: [], basarisiz: [], geriAlinan: [], uyarilar: [] };
+  const silinenler = new Set();
+  const kalanlar = { roller: [], kategoriler: [], kanallar: [] };
+  let sayac = 0;
+
+  const sil = async (oge, tur) => {
+    try {
+      await oge.delete(sebep);
+    } catch (hata) {
+      // Başkası zaten silmiş: amaç gerçekleşmiş
+      if (hata.code !== 10003 && hata.code !== 10011) {
+        sonuc.basarisiz.push(`${oge.name}: ${hata.message}`);
+        kalanlar[tur].push(oge.id);
+        return;
+      }
+    }
+    silinenler.add(oge.id);
+    sonuc[tur]++;
+    if (++sayac % 10 === 0) await ilerleme(`⏳ Kaldırılıyor… (${sayac}/${plan.toplam} öğe)`).catch(() => {});
+  };
+
+  for (const kanal of [...plan.kanallar, ...plan.odalar]) await sil(kanal, 'kanallar');
+  for (const { kategori, kalan } of plan.kategoriler) {
+    if (kalan.length) sonuc.kalanKategoriler.push({ ad: kategori.name, adet: kalan.length });
+    else await sil(kategori, 'kategoriler');
+  }
+  for (const rol of plan.roller) await sil(rol, 'roller');
+
+  // Ayarlar: kurulumun değiştirdiği ve hâlâ kurulumun bıraktığı değerde olanlar eski haline döner;
+  // kurulumdan sonra elle değiştirilmiş olanlara dokunulmaz
+  const ayar = ayarlariGetir(guild.id);
+  for (const g of ayar[KAYIT]?.ayarlar ?? []) {
+    if (!ayniDeger(ayar[g.anahtar], g.sonra)) continue;
+    if ('once' in g) ayarKaydet(guild.id, g.anahtar, g.once);
+    else ayarSil(guild.id, g.anahtar);
+    sonuc.geriAlinan.push(ayarAdi(g.anahtar));
+  }
+  // Kayıt öncesi kurulumlarda hangi ayarı açtığı bilinmez; yalnızca silinen şeye bağlı olanlar temizlenir
+  for (const anahtar of bagliAyarlar()) {
+    if (silinenler.has(ayarlariGetir(guild.id)[anahtar])) {
+      ayarSil(guild.id, anahtar);
+      if (!sonuc.geriAlinan.includes(ayarAdi(anahtar))) sonuc.geriAlinan.push(ayarAdi(anahtar));
+    }
+  }
+  if (plan.eski && !(ayar[KAYIT]?.ayarlar?.length)) sonuc.uyarilar.push('Eski bir kurulumda açılan koruma ayarlarını (spam, bağlantı, seviye...) bot ayırt edemez; olduğu gibi bırakıldı. Gerekirse `/koruma goster` ile bak.');
+
+  if (sonuc.basarisiz.length) {
+    // Silinemeyenler kayıtta kalır: komut yeniden çalıştırılırsa kaldığı yerden devam eder
+    const kayit = ayarlariGetir(guild.id)[KAYIT] ?? bos();
+    ayarKaydet(guild.id, KAYIT, { ...kayit, roller: kalanlar.roller, kategoriler: kalanlar.kategoriler, kanallar: kalanlar.kanallar, ayarlar: [] });
+  } else {
+    ayarSil(guild.id, KAYIT);
+    ayarSil(guild.id, 'topluluk');
   }
   return sonuc;
 }
@@ -512,4 +699,4 @@ async function etkilesim(interaction) {
   return islem(interaction, t);
 }
 
-module.exports = { SABLONLAR, planla, kur, etkilesim, kisaAd, ilgiRolleri };
+module.exports = { SABLONLAR, planla, kur, kuruluMu, ayarAdi, kaldirmaPlani, kaldir, etkilesim, kisaAd, ilgiRolleri };

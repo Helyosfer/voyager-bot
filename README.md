@@ -155,6 +155,19 @@ komut yeniden çalıştırılırsa yalnızca eksikler tamamlanır.
   bağlanır. Bildirimlerde etiketlenecek roller (🎁 Oyun Fırsatları, 📰 Oyun Haberleri, 🔴 Yayın Bildirimi...) oluşturulur
   ve ilgili bildirime bağlanır; şablona göre koruma ve seviye sistemi açılır. **Daha önce elle seçilmiş bir ayara
   dokunulmaz.** Mesaj metnini okumayı gerektiren korumalar (küfür, bağlantı) botta Message Content Intent kapalıysa açılmaz.
+- **Şablonu kaldırma:** beğenmediysen `/sunucukur` menüsündeki **Kurulu şablonu kaldır** seçeneğiyle geri alabilirsin
+  (seçenek yalnızca kurulum yapılmış sunucuda görünür). Önce neyin silineceğini gösterir ve onay ister:
+  - Kurulum, **oluşturduğu** rol ve kanalları kaydeder; yalnızca bunlar silinir. Kurulumdan önce sunucuda olan (şablonla
+    aynı adda olanlar dahil) ve sonradan senin eklediğin kanal ve roller kayıtta olmadığı için dokunulmaz. Şablon
+    kategorisine kendi kanalını koyduysan o kategori kalır.
+  - Kurulumun değiştirdiği bot ayarları (günlük, hoş geldin ve bildirim kanalları, etiket rolleri, oto rol, açılan
+    korumalar ve seviye sistemi) kurulumdan önceki haline döner. Kurulumdan sonra kendin değiştirdiğin ayara dokunulmaz.
+  - Destek talebi odaları, içlerindeki konuşmalarla birlikte destek kategorisiyle silinir; önizleme bunların sayısını gösterir.
+  - Silinen rolleri taşıyan üyeler o rolleri kaybeder. Bu işlem geri alınamaz.
+  - Bir öğe silinemezse (ör. rol botun rolünün üstündeyse) kayıtta kalır; sorunu giderip komutu yeniden çalıştırınca
+    kalanlar silinir.
+  - Kayıt tutulmaya başlamadan önce yapılmış kurulumlarda neyin oluşturulduğu bilinmez; öğeler şablondaki adlarıyla
+    bulunur ve önizlemede bu konuda uyarılır. Aynı adda kendi oluşturduğun bir şey varsa listeyi kontrol et.
 - **Bildirim rolleri:** üyeler `rol-seçimi` kanalındaki menüden ilgi alanlarıyla birlikte bildirim rollerini de seçer;
   yalnızca ilgilendikleri konularda etiketlenirler. Haber kaynaklarına sonradan `/haber ekle adres: rol:` ile konu rolü verilebilir.
 

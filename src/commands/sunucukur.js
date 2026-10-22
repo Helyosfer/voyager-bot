@@ -26,11 +26,12 @@ const ONERILEN = [
   [PermissionFlagsBits.AttachFiles, 'Dosya Ekle'],
 ];
 const SECIM_SURESI = 180_000;
+const KALDIR = 'kaldir'; // Şablon menüsündeki "kurulu şablonu kaldır" seçeneği
 
 const kurulan = new Set(); // Kurulumu süren sunucular
 
 // Şablonların karşılaştırması: hangisi ne kurar
-function sablonListesi() {
+function sablonListesi(kurulu = false) {
   const embed = new EmbedBuilder()
     .setTitle('🛠️ Sunucu kurulumu · Şablon seç')
     .setColor(0x5865f2)
@@ -42,16 +43,89 @@ function sablonListesi() {
       .join(', ');
     embed.addFields({ name: sablon.ad, value: `${sablon.aciklama}\n-# ${sablon.roller.length} rol · ${sablon.kategoriler.length} kategori · ${kanal} kanal · ${ozellikler}` });
   }
+  if (kurulu) {
+    embed.addFields({ name: '🗑️ Kurulu şablonu kaldır', value: 'Beğenmediysen kurulumla oluşan kanal ve rolleri siler, değişen bot ayarlarını eski haline getirir. Sunucunun kendi kanal ve rollerine dokunmaz; önce ne silineceğini gösterir.' });
+  }
   return embed;
 }
 
-const sablonMenusu = () =>
+// kurulu: sunucuda kaldırılabilecek bir kurulum varsa menüye "kaldır" seçeneği de girer
+const sablonMenusu = (kurulu = false) =>
   new ActionRowBuilder().addComponents(
     new StringSelectMenuBuilder()
       .setCustomId('sunucukur-sablon')
       .setPlaceholder('Bir şablon seç')
-      .addOptions(Object.entries(SABLONLAR).map(([value, s]) => ({ label: s.ad.replace(/^\S+\s/, ''), emoji: s.ad.split(' ')[0], value, description: s.aciklama.slice(0, 100) }))),
+      .addOptions(
+        ...Object.entries(SABLONLAR).map(([value, s]) => ({ label: s.ad.replace(/^\S+\s/, ''), emoji: s.ad.split(' ')[0], value, description: s.aciklama.slice(0, 100) })),
+        ...(kurulu ? [{ label: 'Kurulu şablonu kaldır', emoji: '🗑️', value: KALDIR, description: 'Kurulumla oluşan kanal ve rolleri siler; mevcut olanlara dokunmaz' }] : []),
+      ),
   );
+
+// Silinecekler: kurulumun oluşturduğu rol ve kanallar; kalacaklar: sunucunun kendi eklediği kanallar
+function kaldirOnizleme(plan) {
+  const ad = (oge) => oge.name;
+  const liste = (ogeler) => ogeler.map(ad).join('\n').slice(0, 1024);
+  const embed = new EmbedBuilder()
+    .setTitle('🗑️ Kurulu şablonu kaldır')
+    .setColor(0xed4245)
+    .setDescription(
+      [
+        'Aşağıdakiler **kalıcı olarak silinir**. Kurulumdan önce sunucuda olan ya da sonradan senin eklediğin kanal, rol ve mesajlara dokunulmaz.',
+        '',
+        `**Roller (${plan.roller.length})**`,
+        plan.roller.length ? plan.roller.map(ad).join(' · ').slice(0, 1500) : '*Silinecek rol yok*',
+      ].join('\n'),
+    );
+  const gorulen = new Set();
+  for (const { kategori, kalan } of plan.kategoriler) {
+    const kanallar = plan.kanallar.filter((k) => k.parentId === kategori.id);
+    kanallar.forEach((k) => gorulen.add(k.id));
+    embed.addFields({
+      name: `${kalan.length ? '📁' : '🗑️'} ${kategori.name}`.slice(0, 256),
+      value: [liste(kanallar) || '*Kanal yok*', kalan.length ? `*Senin eklediğin ${kalan.length} kanal olduğu için kategori kalır*` : null].filter(Boolean).join('\n').slice(0, 1024),
+      inline: true,
+    });
+  }
+  const daginiklar = plan.kanallar.filter((k) => !gorulen.has(k.id));
+  if (daginiklar.length) embed.addFields({ name: 'Diğer kanallar', value: liste(daginiklar), inline: true });
+  embed.addFields({
+    name: 'Bilmen gerekenler',
+    value: [
+      `• Toplam **${plan.toplam} öğe** silinir. Bu işlem geri alınamaz.`,
+      plan.odalar.length ? `• **${plan.odalar.length} destek odası** içindeki konuşmalarla birlikte silinir.` : null,
+      plan.roller.length ? '• Silinen rolleri taşıyan üyeler o rolleri kaybeder.' : null,
+      plan.ayarlar.length ? `• Kurulumun değiştirdiği ayarlar eski haline döner: ${plan.ayarlar.map((a) => topluluk.ayarAdi(a.anahtar)).join(', ')}. Sonradan kendin değiştirdiklerine dokunulmaz.` : null,
+      plan.yetmeyenRoller.length ? `• ⚠️ Şu roller benim rolümün üstünde olduğu için silinemez: ${plan.yetmeyenRoller.map(ad).join(', ')}. Voyager rolünü yukarı taşıyıp yeniden dene.` : null,
+      plan.eski
+        ? '• ⚠️ Bu kurulum, neyin oluşturulduğunun kaydı tutulmadan önce yapıldı; öğeler şablondaki adlarıyla bulundu. Aynı adda **kendi oluşturduğun** bir kanal ya da rol varsa o da listede olabilir; listeyi kontrol et.'
+        : null,
+    ]
+      .filter(Boolean)
+      .join('\n')
+      .slice(0, 1024),
+  });
+  return embed;
+}
+
+function kaldirSonucu(sonuc) {
+  const sorunlu = sonuc.basarisiz.length > 0;
+  const embed = new EmbedBuilder()
+    .setTitle(sorunlu ? '⚠️ Kaldırma yarıda kaldı' : '✅ Şablon kaldırıldı')
+    .setColor(sorunlu ? 0xfee75c : 0x57f287)
+    .setDescription(
+      [
+        `${sonuc.kanallar} kanal, ${sonuc.kategoriler} kategori ve ${sonuc.roller} rol silindi.`,
+        ...sonuc.kalanKategoriler.map((k) => `📁 **${k.ad}** kategorisinde senin eklediğin ${k.adet} kanal olduğu için kategori kaldı.`),
+        sonuc.geriAlinan.length ? `Eski haline dönen ayarlar: ${sonuc.geriAlinan.join(', ')}.` : null,
+        sorunlu ? `\n**Silinemeyenler:**\n${sonuc.basarisiz.map((b) => `• ${b}`).join('\n').slice(0, 900)}\nKomutu yeniden çalıştırırsan kalanlar silinir.` : null,
+        ...sonuc.uyarilar.map((u) => `⚠️ ${u}`),
+      ]
+        .filter(Boolean)
+        .join('\n'),
+    );
+  if (!sorunlu) embed.setFooter({ text: 'İstersen /sunucukur ile başka bir şablon kurabilirsin.' });
+  return embed;
+}
 
 function onizleme(plan, eksikOnerilen) {
   const sablon = SABLONLAR[plan.sablon];
@@ -128,6 +202,44 @@ function sonucKarti(sonuc, sablon) {
   return embed;
 }
 
+// Kaldırma: önce ne silineceği gösterilir, onaydan sonra silinir. Onay beklenirken sunucu değişmiş
+// olabilir; silmeden önce plan güncel haliyle yeniden çıkarılır.
+async function kaldirAkisi(interaction, cevap, sahibinSecimi) {
+  const { guild } = interaction;
+  const goster = (icerik) => (cevap ? cevap.update(icerik) : interaction.reply({ ...icerik, flags: MessageFlags.Ephemeral }));
+  const plan = topluluk.kaldirmaPlani(guild);
+  if (!plan) return goster({ content: 'Bu sunucuda Voyager şablonuyla kurulmuş bir şey bulunamadı.', embeds: [], components: [] });
+  if (!plan.toplam && !plan.ayarlar.length) {
+    // Kurulumdan geriye bir şey kalmamış (elle silinmiş); yalnızca kayıt temizlenir
+    await topluluk.kaldir(guild, plan, interaction.user.tag);
+    return goster({ content: '✅ Kurulumdan kalan bir kanal ya da rol bulunamadı; kurulum kaydı temizlendi.', embeds: [], components: [] });
+  }
+
+  const dugmeler = new ActionRowBuilder().addComponents(
+    new ButtonBuilder().setCustomId('sunucukur-kaldir-onay').setLabel(`Sil (${plan.toplam} öğe)`).setStyle(ButtonStyle.Danger),
+    new ButtonBuilder().setCustomId('sunucukur-vazgec').setLabel('Vazgeç').setStyle(ButtonStyle.Secondary),
+  );
+  await goster({ embeds: [kaldirOnizleme(plan)], components: [dugmeler] });
+  const secim = await sahibinSecimi(await interaction.fetchReply());
+  if (!secim || secim.customId !== 'sunucukur-kaldir-onay') {
+    const metin = secim ? 'Vazgeçildi; hiçbir şey silinmedi.' : 'Süre doldu; hiçbir şey silinmedi.';
+    return secim ? secim.update({ content: metin, embeds: [], components: [] }) : interaction.editReply({ content: metin, embeds: [], components: [] });
+  }
+
+  // Aynı anda kurulum ve kaldırma birbirinin işini bozar
+  if (kurulan.has(guild.id)) {
+    return secim.update({ content: '⏳ Bu sunucuda şu an başka bir kurulum ya da kaldırma sürüyor. Bitmesini bekle.', embeds: [], components: [] });
+  }
+  kurulan.add(guild.id);
+  await secim.update({ content: '⏳ Kaldırılıyor…', embeds: [], components: [] });
+  const sonuc = await topluluk
+    .kaldir(guild, topluluk.kaldirmaPlani(guild) ?? plan, interaction.user.tag, (metin) => secim.editReply({ content: metin }))
+    .finally(() => kurulan.delete(guild.id));
+  const kart = kaldirSonucu(sonuc);
+  // Komutun yazıldığı kanal da silinmiş olabilir; cevap gönderilemezse özel mesajla iletilir
+  await secim.editReply({ content: '', embeds: [kart] }).catch(() => interaction.user.send({ embeds: [kart] }).catch(() => {}));
+}
+
 module.exports = {
   // Yönetici yetkisini bot da denetler; sunucu ayarlarından başka rollere açılamaz
   kesinYetki: true,
@@ -161,11 +273,13 @@ module.exports = {
     const sahibinSecimi = (mesaj) =>
       mesaj.awaitMessageComponent({ filter: (i) => i.user.id === interaction.user.id, time: SECIM_SURESI }).catch(() => null);
     if (!sablonAdi) {
-      await interaction.reply({ embeds: [sablonListesi()], components: [sablonMenusu()], flags: MessageFlags.Ephemeral });
+      const kurulu = topluluk.kuruluMu(guild.id);
+      await interaction.reply({ embeds: [sablonListesi(kurulu)], components: [sablonMenusu(kurulu)], flags: MessageFlags.Ephemeral });
       cevap = await sahibinSecimi(await interaction.fetchReply());
       if (!cevap) return interaction.editReply({ content: 'Süre doldu; hiçbir şey değiştirilmedi.', embeds: [], components: [] });
       sablonAdi = cevap.values[0];
     }
+    if (sablonAdi === KALDIR) return kaldirAkisi(interaction, cevap, sahibinSecimi);
 
     const plan = topluluk.planla(guild, sablonAdi);
     const goster = (icerik) => (cevap ? cevap.update(icerik) : interaction.reply({ ...icerik, flags: MessageFlags.Ephemeral }));
@@ -201,5 +315,8 @@ module.exports = {
   // Test için
   onizleme,
   sablonListesi,
+  sablonMenusu,
   sonucKarti,
+  kaldirOnizleme,
+  kaldirSonucu,
 };

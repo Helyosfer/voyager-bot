@@ -1,5 +1,6 @@
 // /sunucukur şablonlarının testleri: her şablon tutarlı ve Discord sınırlarına uygun, kurulum
-// rolleri ve kanalları oluşturur, bot ayarlarını bağlar, varsayılanları yalnızca boş olanlara uygular.
+// rolleri ve kanalları oluşturur, bot ayarlarını bağlar, varsayılanları yalnızca boş olanlara uygular;
+// kaldırma yalnızca kurulumun oluşturduklarını siler ve değişen ayarları eski haline getirir.
 // Çalıştırmak için: npm test
 //
 // Bot başlatılmaz, Discord'a bağlanılmaz: kurulum sahte bir sunucuya yapılır. Veri geçici bir klasöre yazılır.
@@ -107,7 +108,7 @@ function kurulumSunucusu(id, { intents = [GatewayIntentBits.MessageContent] } = 
       everyone: { id },
       cache: roller,
       create: async (o) => {
-        const rol = { id: yeniId(), name: o.name, mentionable: o.mentionable, hoist: o.hoist, permissions: o.permissions, position: roller.size, toString: () => `<@&${rol.id}>` };
+        const rol = { id: yeniId(), name: o.name, mentionable: o.mentionable, hoist: o.hoist, permissions: o.permissions, position: roller.size, toString: () => `<@&${rol.id}>`, delete: async () => roller.delete(rol.id) };
         roller.set(rol.id, rol);
         return rol;
       },
@@ -116,7 +117,7 @@ function kurulumSunucusu(id, { intents = [GatewayIntentBits.MessageContent] } = 
     channels: {
       cache: kanallar,
       create: async (o) => {
-        const kanal = { ...o, id: yeniId(), parentId: o.parent ?? null, gonderilen: [], send: async (m) => kanal.gonderilen.push(m), toString: () => `<#${kanal.id}>` };
+        const kanal = { ...o, id: yeniId(), parentId: o.parent ?? null, gonderilen: [], send: async (m) => kanal.gonderilen.push(m), toString: () => `<#${kanal.id}>`, delete: async () => kanallar.delete(kanal.id) };
         kanallar.set(kanal.id, kanal);
         return kanal;
       },
@@ -260,4 +261,246 @@ test('/sunucukur: şablon verilmezse açıklamalı liste ve menü gösterilir; k
   assert.match(liste.fields.find((f) => f.name.includes('Yayıncı')).value, /onaysız/);
   assert.match(liste.fields.find((f) => f.name.includes('Topluluk')).value, /üyelik onayı, destek talepleri/);
   assert.equal(ChannelType.GuildCategory, 4);
+});
+
+// --- Kurulu şablonu kaldırma ---
+// Sunucuyu kurulumdan önceki haliyle karşılaştırmak için: ad listeleri
+const adlar = (guild) => ({
+  roller: [...guild.roles.cache.values()].map((r) => r.name).sort(),
+  kanallar: [...guild.channels.cache.values()].map((k) => `${k.type}:${k.name}`).sort(),
+});
+
+// Sunucunun kurulumdan önce zaten sahip olduğu şeyler: şablonla aynı adda bir rol ve bir kanal da var
+async function kullanilmisSunucu(id) {
+  const guild = kurulumSunucusu(id);
+  await guild.roles.create({ name: '🎮 Oyuncu' }); // topluluk şablonundaki bir rolle aynı ad
+  await guild.roles.create({ name: 'Kendi Rolüm' });
+  await guild.channels.create({ name: '💬・genel-sohbet', type: ChannelType.GuildText }); // şablondakiyle aynı ad, kategorisiz
+  await guild.channels.create({ name: 'benim-kanalim', type: ChannelType.GuildText });
+  depo.ayarKaydet(id, 'logKanali', 'eski-log-kanali'); // kurulum bunu kendi kanalına çevirir
+  return guild;
+}
+
+test('kaldırma: kurulumun oluşturduklarını siler, önceden var olanlara ve senin eklediklerine dokunmaz, ayarları eski haline getirir', async () => {
+  const guild = await kullanilmisSunucu('kaldir-1');
+  const oncesi = adlar(guild);
+  const ayarOncesi = depo.ayarlariGetir(guild.id);
+  assert.equal(topluluk.kuruluMu(guild.id), false);
+  assert.equal(topluluk.kaldirmaPlani(guild), null);
+
+  const sonuc = await topluluk.kur(guild, topluluk.planla(guild, 'topluluk'), 'y#0');
+  assert.equal(sonuc.hata, null);
+  assert.equal(topluluk.kuruluMu(guild.id), true);
+
+  // Kurulumdan sonra: üye bir destek odası açmış, yönetici kendi kanalını şablon kategorisine koymuş, bir ayarı değiştirmiş
+  const t = depo.ayarlariGetir(guild.id).topluluk;
+  const oda = await guild.channels.create({ name: 'talep-giris-1234', type: ChannelType.GuildText, parent: t.kategoriler.talepler });
+  oda.topic = 'sahip=111; konu=giris';
+  const topluluk_kategorisi = kanalBul(guild, '💬・TOPLULUK');
+  await guild.channels.create({ name: 'benim-ek-kanalim', type: ChannelType.GuildText, parent: topluluk_kategorisi.id });
+  depo.ayarKaydet(guild.id, 'korumaSpam', false);
+
+  const plan = topluluk.kaldirmaPlani(guild);
+  assert.equal(plan.eski, false);
+  assert.equal(plan.odalar.length, 1, 'destek odası kaldırılan kategoriyle gider');
+  assert.ok(!plan.roller.some((r) => r.name === 'Kendi Rolüm'));
+  assert.ok(!plan.roller.some((r) => r.name === '🎮 Oyuncu' && r.id.startsWith('kaldir-1-1')), 'önceden var olan rol listede değil');
+  const korunan = plan.kategoriler.find((k) => k.kategori.id === topluluk_kategorisi.id);
+  assert.equal(korunan.kalan.length, 1, 'senin eklediğin kanal kategoriyi ayakta tutar');
+
+  const silme = await topluluk.kaldir(guild, plan, 'y#0');
+  assert.deepEqual(silme.basarisiz, []);
+  assert.deepEqual(silme.kalanKategoriler, [{ ad: '💬・TOPLULUK', adet: 1 }]);
+
+  const sonra = adlar(guild);
+  // Kalanlar: kurulumdan önceki her şey + senin eklediğin kanal + onu taşıyan kategori
+  const beklenenKanallar = [...oncesi.kanallar, `${ChannelType.GuildText}:benim-ek-kanalim`, `${ChannelType.GuildCategory}:💬・TOPLULUK`].sort();
+  assert.deepEqual(sonra.kanallar, beklenenKanallar);
+  assert.deepEqual(sonra.roller, oncesi.roller, 'roller kurulumdan önceki haline döndü');
+
+  // Ayarlar: kurulumun değiştirdikleri eski haline döndü; sonradan elle değiştirilen kaldı; kayıt silindi
+  const ayar = depo.ayarlariGetir(guild.id);
+  assert.equal(ayar.logKanali, ayarOncesi.logKanali, 'üzerine yazılan ayar eski değerine döner');
+  for (const anahtar of ['hosgeldinKanali', 'oyunKanali', 'yayinKanali', 'haberKanali', 'oyunRol', 'yayinRol', 'otoRol', 'korumaBaglanti', 'seviyeAcik']) {
+    assert.equal(ayar[anahtar], undefined, anahtar);
+  }
+  assert.equal(ayar.korumaSpam, false, 'sonradan elle değiştirilen ayara dokunulmaz');
+  assert.equal(ayar.topluluk, undefined);
+  assert.equal(ayar.sablonKaydi, undefined);
+  assert.equal(topluluk.kuruluMu(guild.id), false);
+});
+
+test('kaldırma: hiçbir şeyin önceden var olmadığı sunucu kurulumdan önceki haline döner; kaldırdıktan sonra yeniden kurulabilir', async () => {
+  for (const ad of Object.keys(SABLONLAR)) {
+    const guild = kurulumSunucusu(`kaldir-hepsi-${ad}`);
+    const oncesi = adlar(guild);
+    await topluluk.kur(guild, topluluk.planla(guild, ad), 'y#0');
+    const silme = await topluluk.kaldir(guild, topluluk.kaldirmaPlani(guild), 'y#0');
+    assert.deepEqual(silme.basarisiz, [], ad);
+    assert.deepEqual(adlar(guild), oncesi, `${ad}: sunucu eski haline döndü`);
+    assert.deepEqual(depo.ayarlariGetir(guild.id), {}, `${ad}: ayarlar eski haline döndü`);
+    // Yeniden kurulabilir
+    assert.equal((await topluluk.kur(guild, topluluk.planla(guild, ad), 'y#0')).hata, null, ad);
+  }
+});
+
+test('kaldırma: art arda iki şablon kurulduysa ikisi de kaldırılır', async () => {
+  const guild = kurulumSunucusu('kaldir-iki');
+  const oncesi = adlar(guild);
+  await topluluk.kur(guild, topluluk.planla(guild, 'basit'), 'y#0');
+  await topluluk.kur(guild, topluluk.planla(guild, 'oyun'), 'y#0');
+  const silme = await topluluk.kaldir(guild, topluluk.kaldirmaPlani(guild), 'y#0');
+  assert.deepEqual(silme.basarisiz, []);
+  assert.deepEqual(adlar(guild), oncesi);
+  assert.deepEqual(depo.ayarlariGetir(guild.id), {});
+});
+
+test('kaldırma: yarıda kalan kurulumun oluşturdukları da kaldırılır', async () => {
+  const guild = kurulumSunucusu('kaldir-yari');
+  const oncesi = adlar(guild);
+  const asil = guild.channels.create;
+  let sayac = 0;
+  guild.channels.create = async (o) => {
+    if (++sayac === 6) throw new Error('Discord hatası');
+    return asil(o);
+  };
+  const sonuc = await topluluk.kur(guild, topluluk.planla(guild, 'basit'), 'y#0');
+  assert.equal(sonuc.hata, 'Discord hatası');
+  assert.equal(depo.ayarlariGetir(guild.id).topluluk, undefined, 'tamamlanmayan kurulumun akış kaydı yok');
+  assert.ok(topluluk.kuruluMu(guild.id));
+  guild.channels.create = asil;
+  const silme = await topluluk.kaldir(guild, topluluk.kaldirmaPlani(guild), 'y#0');
+  assert.deepEqual(silme.basarisiz, []);
+  assert.deepEqual(adlar(guild), oncesi);
+});
+
+test('kaldırma: silinemeyen öğe kayıtta kalır, komut yeniden çalışınca tamamlanır', async () => {
+  const guild = kurulumSunucusu('kaldir-hata');
+  const oncesi = adlar(guild);
+  await topluluk.kur(guild, topluluk.planla(guild, 'basit'), 'y#0');
+  const inatci = rolBul(guild, '🛡️ Moderatör') ?? [...guild.roles.cache.values()].find((r) => r.id !== guild.id);
+  const asilSil = inatci.delete;
+  inatci.delete = async () => {
+    throw Object.assign(new Error('Missing Permissions'), { code: 50013 });
+  };
+  const silme = await topluluk.kaldir(guild, topluluk.kaldirmaPlani(guild), 'y#0');
+  assert.equal(silme.basarisiz.length, 1);
+  assert.match(silme.basarisiz[0], /Missing Permissions/);
+  assert.ok(topluluk.kuruluMu(guild.id), 'kayıt silinmedi');
+  assert.equal(topluluk.kaldirmaPlani(guild).roller.length, 1, 'yalnızca silinemeyen kaldı');
+  inatci.delete = asilSil;
+  const ikinci = await topluluk.kaldir(guild, topluluk.kaldirmaPlani(guild), 'y#0');
+  assert.deepEqual(ikinci.basarisiz, []);
+  assert.deepEqual(adlar(guild), oncesi);
+  assert.equal(topluluk.kuruluMu(guild.id), false);
+});
+
+test('kaldırma: kayıt tutulmadan önce yapılmış kurulum şablondaki adlarla tanınır ve uyarılır', async () => {
+  const guild = kurulumSunucusu('kaldir-eski');
+  const oncesi = adlar(guild);
+  await topluluk.kur(guild, topluluk.planla(guild, 'oyun'), 'y#0');
+  // Eski sürümün durumu: akış kaydı var, neyin oluşturulduğu kaydı yok
+  const ayar = depo.ayarlariGetir(guild.id);
+  const hepsi = depo.oku('ayarlar', {});
+  delete hepsi[guild.id].sablonKaydi;
+  depo.yaz('ayarlar', hepsi);
+  assert.ok(ayar.topluluk);
+
+  const plan = topluluk.kaldirmaPlani(guild);
+  assert.equal(plan.eski, true);
+  const silme = await topluluk.kaldir(guild, plan, 'y#0');
+  assert.deepEqual(silme.basarisiz, []);
+  assert.deepEqual(adlar(guild), oncesi);
+  const son = depo.ayarlariGetir(guild.id);
+  assert.equal(son.logKanali, undefined, 'silinen kanala bağlı ayar temizlenir');
+  assert.equal(son.oyunRol, undefined);
+  assert.equal(son.topluluk, undefined);
+  assert.equal(son.korumaSpam, true, 'hangisini açtığı bilinmeyen koruma ayarları olduğu gibi kalır');
+  assert.match(silme.uyarilar.join(' '), /Eski bir kurulumda/);
+});
+
+test('kaldırma: botun rolünün üstündeki rol silinemez diye önizlemede uyarılır', async () => {
+  const guild = kurulumSunucusu('kaldir-yetmez');
+  await topluluk.kur(guild, topluluk.planla(guild, 'basit'), 'y#0');
+  guild.members.me.roles.highest.position = 1;
+  const plan = topluluk.kaldirmaPlani(guild);
+  assert.ok(plan.yetmeyenRoller.length > 0);
+  assert.match(sunucukur.kaldirOnizleme(plan).toJSON().fields.at(-1).value, /benim rolümün üstünde/);
+});
+
+test('kaldırma: önizleme ve sonuç kartı Discord sınırlarına sığar; menüde seçenek yalnızca kurulum varsa görünür', async () => {
+  for (const ad of Object.keys(SABLONLAR)) {
+    const guild = kurulumSunucusu(`kaldir-kart-${ad}`);
+    await topluluk.kur(guild, topluluk.planla(guild, ad), 'y#0');
+    const t = depo.ayarlariGetir(guild.id).topluluk;
+    if (t.kategoriler.talepler) for (let i = 0; i < 25; i++) {
+      const oda = await guild.channels.create({ name: `talep-${i}`, type: ChannelType.GuildText, parent: t.kategoriler.talepler });
+      oda.topic = `sahip=${i}; konu=x`;
+    }
+    const plan = topluluk.kaldirmaPlani(guild);
+    sigar(sunucukur.kaldirOnizleme(plan).toJSON(), `${ad} kaldırma önizlemesi`);
+    const sonuc = { roller: 20, kanallar: 60, kategoriler: 8, kalanKategoriler: [{ ad: 'X', adet: 2 }], basarisiz: Array(30).fill('🛡️ Moderatör: Missing Permissions'), geriAlinan: ['Spam koruması', 'Seviye sistemi'], uyarilar: ['uyarı'] };
+    sigar(sunucukur.kaldirSonucu(sonuc).toJSON(), `${ad} kaldırma sonucu`);
+  }
+  const secenekler = (kurulu) => sunucukur.sablonMenusu(kurulu).toJSON().components[0].options.map((o) => o.value);
+  assert.deepEqual(secenekler(false), Object.keys(SABLONLAR));
+  assert.deepEqual(secenekler(true), [...Object.keys(SABLONLAR), 'kaldir']);
+  assert.equal(sunucukur.sablonListesi(true).toJSON().fields.length, Object.keys(SABLONLAR).length + 1);
+  assert.equal(sunucukur.sablonListesi().toJSON().fields.length, Object.keys(SABLONLAR).length);
+});
+
+// Komutun tamamı: menüden "kaldır", onay düğmesi
+function komutEtkilesimi(guild, secimler) {
+  const gonderilen = [];
+  const sira = [...secimler];
+  const bilesen = (s) => ({
+    ...s,
+    update: async (m) => gonderilen.push(m),
+    editReply: async (m) => gonderilen.push(m),
+  });
+  const mesaj = { awaitMessageComponent: async () => (sira.length ? bilesen(sira.shift()) : Promise.reject(new Error('süre doldu'))) };
+  return {
+    gonderilen,
+    guild,
+    guildId: guild.id,
+    user: { id: 'yonetici', tag: 'yonetici#0', send: async (m) => gonderilen.push({ ozel: m }) },
+    options: { getString: () => null },
+    reply: async (m) => gonderilen.push(m),
+    fetchReply: async () => mesaj,
+    editReply: async (m) => gonderilen.push(m),
+  };
+}
+
+test('/sunucukur: menüden kaldır, önizleme ve onayla; vazgeçince hiçbir şey silinmez', async () => {
+  const guild = kurulumSunucusu('komut-kaldir');
+  const oncesi = adlar(guild);
+  await topluluk.kur(guild, topluluk.planla(guild, 'oyun'), 'y#0');
+  const kurulu = adlar(guild);
+
+  // Vazgeç
+  const vazgec = komutEtkilesimi(guild, [{ values: ['kaldir'] }, { customId: 'sunucukur-vazgec' }]);
+  await sunucukur.execute(vazgec);
+  assert.deepEqual(adlar(guild), kurulu);
+  assert.match(vazgec.gonderilen.at(-1).content, /hiçbir şey silinmedi/);
+  assert.ok(vazgec.gonderilen[0].components[0].toJSON().components[0].options.some((o) => o.value === 'kaldir'), 'kurulu sunucuda menüde kaldırma seçeneği var');
+
+  // Süre dolsun
+  const sure = komutEtkilesimi(guild, [{ values: ['kaldir'] }]);
+  await sunucukur.execute(sure);
+  assert.deepEqual(adlar(guild), kurulu);
+
+  // Onayla
+  const onay = komutEtkilesimi(guild, [{ values: ['kaldir'] }, { customId: 'sunucukur-kaldir-onay' }]);
+  await sunucukur.execute(onay);
+  assert.deepEqual(adlar(guild), oncesi);
+  const kart = onay.gonderilen.at(-1).embeds[0].toJSON();
+  assert.match(kart.title, /Şablon kaldırıldı/);
+  assert.equal(topluluk.kuruluMu(guild.id), false);
+});
+
+test('/sunucukur: kurulum yokken menüde kaldırma seçeneği çıkmaz', async () => {
+  const guild = kurulumSunucusu('komut-bos');
+  const e = komutEtkilesimi(guild, []);
+  await sunucukur.execute(e);
+  assert.ok(!e.gonderilen[0].components[0].toJSON().components[0].options.some((o) => o.value === 'kaldir'));
 });

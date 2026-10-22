@@ -51,6 +51,14 @@ Her satırda beklenen sonuç yazıyor. Farklı bir şey görürsen terminaldeki 
 - [ ] Boş bir deneme sunucusunda `/sunucukur sablon:🎥 Yayıncı`: üyelik onayı yok, herkes kanalları görüyor;
       `rol-seçimi` menüsünden **Yayın Bildirimi** rolü alınabiliyor; `/yayin ayar` kanalı ve rolü bağlı gösteriyor.
 - [ ] Kurulumdan önce `/koruma filtre tur:Spam durum:Kapalı` yapılmış sunucuda kurulum spam korumasını açmıyor.
+- [ ] Kurulum yapılmamış sunucuda `/sunucukur` menüsünde **Kurulu şablonu kaldır** yok; kurulumdan sonra var.
+- [ ] Kurulumdan önce sunucuda şablonla aynı adda bir kanal ve rol, bir de kendi kanalın olsun. Kurulumdan sonra
+      şablon kategorilerinden birine kendi kanalını taşı. **Kaldır** önizlemesi bunları listelemiyor; onaydan sonra
+      kurulumun kanal ve rolleri siliniyor, kendi kanalın ve eski kanal/rol yerinde kalıyor, kendi kanalını taşıdığın
+      kategori de kalıyor ("kategori kaldı" notu).
+- [ ] Kaldırdıktan sonra `/ayarla goster` ve `/koruma goster` kurulumdan önceki haliyle aynı; `/sunucukur` yeniden kurabiliyor.
+- [ ] Bir destek talebi açıkken kaldırınca önizleme destek odası sayısını gösteriyor, oda da siliniyor.
+- [ ] **Vazgeç** ya da süre dolması hiçbir şey silmiyor.
 
 ## Destek talepleri
 

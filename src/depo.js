@@ -72,4 +72,12 @@ function ayarKaydet(sunucuId, anahtar, deger) {
   yaz('ayarlar', hepsi);
 }
 
-module.exports = { oku, yaz, ayarlariGetir, ayarKaydet };
+// Bir ayarı hiç kaydedilmemiş haline döndürür (ayarKaydet(..., null) "seçildi, boş" anlamına gelir)
+function ayarSil(sunucuId, anahtar) {
+  const hepsi = oku('ayarlar', {});
+  if (!hepsi[sunucuId] || !(anahtar in hepsi[sunucuId])) return;
+  delete hepsi[sunucuId][anahtar];
+  yaz('ayarlar', hepsi);
+}
+
+module.exports = { oku, yaz, ayarlariGetir, ayarKaydet, ayarSil };
