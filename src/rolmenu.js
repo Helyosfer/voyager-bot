@@ -1,5 +1,6 @@
-// Rol menüsü: /rolmenu ile kanala düğmeli bir mesaj konur; üyeler düğmeye basarak rolü alır ya
-// da bırakır. Ayrıca bir kayıt tutulmaz: hangi rollerin menüde olduğu mesajın düğmelerinden okunur.
+// Rol menüsü: /ayarlar → Kurulum'daki formla kanala düğmeli bir mesaj konur; üyeler düğmeye
+// basarak rolü alır ya da bırakır. Ayrıca bir kayıt tutulmaz:
+// hangi rollerin menüde olduğu mesajın düğmelerinden okunur.
 // Düğme kimliği: "rm:<mod>:<rolId>" · mod "c" (çoklu seçim) ya da "t" (tek seçim: diğerleri bırakılır)
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, MessageFlags } = require('discord.js');
 const { yonetimRolu, beklemeSayaci } = require('./yardimci');

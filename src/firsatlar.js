@@ -1,5 +1,5 @@
 // Bedava oyunları ve mağaza indirimlerini düzenli aralıklarla kontrol edip
-// sunucuların seçtiği kanala gönderir. Ayarlar /oyun komutuyla yapılır.
+// sunucuların seçtiği kanala gönderir. Ayarlar /ayarlar → Oyun fırsatları bölümünden yapılır.
 //
 // Önemli fırsatlar (popüler ya da yeni çıkmış ve ilgi gören oyunlar) bulunduğu anda, resimli
 // kartla ve yapay zekâ incelemesiyle gönderilir. Diğerleri birikir ve OZET_ARALIGI'nda bir
@@ -32,14 +32,8 @@ const POPULERLIK_OMRU = 7 * 24 * 60 * 60_000;
 // Bir fırsat bu kadar süre sonra "görüldü" listesinden silinir
 const UNUTMA_SURESI = 90 * 24 * 60 * 60_000;
 
-// /oyun ayar "bedava-magaza" seçenekleri -> GamerPower'ın platform adları
-const MAGAZALAR = {
-  buyuk: { ad: 'Steam, Epic ve GOG', platformlar: ['Steam', 'Epic Games Store', 'GOG'] },
-  steam: { ad: 'Steam', platformlar: ['Steam'] },
-  epic: { ad: 'Epic Games', platformlar: ['Epic Games Store'] },
-  gog: { ad: 'GOG', platformlar: ['GOG'] },
-  hepsi: { ad: 'Tüm PC mağazaları', platformlar: ['PC'] },
-};
+// Bedava oyunlarda bakılan mağazalar (GamerPower'ın platform adları)
+const BEDAVA_PLATFORMLARI = ['Steam', 'Epic Games Store', 'GOG'];
 
 // İndirim takip edilen mağazalar. Hepsi mağazanın kendi servisinden, BOLGE fiyatıyla alınır.
 const INDIRIM_MAGAZALARI = {
@@ -48,24 +42,15 @@ const INDIRIM_MAGAZALARI = {
   gog: { ad: 'GOG', renk: 0x86328a, getir: gogIndirimleri },
 };
 
-// /oyun ayar "indirim-magaza" seçenekleri
-const INDIRIM_SECENEKLERI = {
-  buyuk: { ad: 'Steam, Epic ve GOG', magazalar: ['steam', 'epic', 'gog'] },
-  steam: { ad: 'Steam', magazalar: ['steam'] },
-  epic: { ad: 'Epic Games', magazalar: ['epic'] },
-  gog: { ad: 'GOG', magazalar: ['gog'] },
-};
-
-// Kayıtlı ayarları varsayılanlarla tamamlar
+// Kayıtlı ayarları varsayılanlarla tamamlar. Mağaza ve en az indirim oranı seçilmez: hep Steam,
+// Epic ve GOG; en az %50 (eski sürümlerin kaydettiği mağaza ve oran ayarları yok sayılır).
 function ayarCoz(ayar) {
   return {
     kanal: ayar.oyunKanali ?? null,
     rol: ayar.oyunRol ?? null,
     bedava: ayar.oyunBedava !== false,
-    magaza: MAGAZALAR[ayar.oyunMagaza] ? ayar.oyunMagaza : 'buyuk',
     indirim: ayar.oyunIndirim !== false,
-    indirimMagaza: INDIRIM_SECENEKLERI[ayar.oyunIndirimMagaza] ? ayar.oyunIndirimMagaza : 'buyuk',
-    yuzde: ayar.oyunMinYuzde ?? VARSAYILAN_YUZDE,
+    yuzde: VARSAYILAN_YUZDE,
     everyone: ayar.oyunEveryone === true,
   };
 }
@@ -214,15 +199,13 @@ const indirimTuru = (magaza) => `indirim-${magaza}`;
 // Sunucunun ayarlarına uyan fırsatlar, türe göre: { bedava, 'indirim-steam', ... }
 // Kapalı ya da kaynağına ulaşılamayan tür null olur.
 function sec(ayar, veri) {
-  const { platformlar } = MAGAZALAR[ayar.magaza];
   const sonuc = {
-    bedava: ayar.bedava && veri.bedava ? veri.bedava.filter((o) => o.platformlar.some((p) => platformlar.includes(p))) : null,
+    bedava: ayar.bedava && veri.bedava ? veri.bedava.filter((o) => o.platformlar.some((p) => BEDAVA_PLATFORMLARI.includes(p))) : null,
   };
   for (const magaza of Object.keys(INDIRIM_MAGAZALARI)) {
-    const istenen = ayar.indirim && INDIRIM_SECENEKLERI[ayar.indirimMagaza].magazalar.includes(magaza);
     const liste = veri.indirim[magaza];
     // Tamamen bedava olanlar bedava oyun bildirimine ait
-    sonuc[indirimTuru(magaza)] = istenen && liste ? liste.filter((o) => o.yuzde >= ayar.yuzde && o.yuzde < 100) : null;
+    sonuc[indirimTuru(magaza)] = ayar.indirim && liste ? liste.filter((o) => o.yuzde >= ayar.yuzde && o.yuzde < 100) : null;
   }
   return sonuc;
 }
@@ -517,7 +500,7 @@ async function sunucuyuIsle(guild, veri) {
     if (!firsatlar) continue;
     if (!gorulen[tur]) {
       // İlk kontrol: o an yayında olanları sessizce "görüldü" say, kanalı doldurma.
-      // Mevcut fırsatlar /oyun simdi ile istenebilir.
+      // Mevcut fırsatlar kartın "Şimdi gönder" düğmesiyle istenebilir.
       ilk[tur] = firsatlar;
     } else {
       yeni[tur] = firsatlar.filter((o) => !gorulen[tur][o.anahtar]);
@@ -551,7 +534,7 @@ async function kontrolEt(client) {
   }
 }
 
-// /oyun simdi: ayarlara uyan güncel fırsatların hepsini, daha önce gönderilmiş olsa da gönderir.
+// Oyun fırsatları kartındaki "Şimdi gönder": ayarlara uyan güncel fırsatların hepsini, daha önce gönderilmiş olsa da gönderir.
 async function simdiGonder(guild) {
   const ayar = ayarCoz(ayarlariGetir(guild.id));
   const veri = await hepsiniGetir();
@@ -584,7 +567,7 @@ function baslat(client) {
 }
 
 module.exports = {
-  baslat, kontrolEt, simdiGonder, ayarCoz, MAGAZALAR, INDIRIM_SECENEKLERI, OZET_ARALIGI, EVERYONE_ARALIGI,
+  baslat, kontrolEt, simdiGonder, ayarCoz, OZET_ARALIGI, EVERYONE_ARALIGI,
   // Test için
   httpAdresi, sunucuyuIsle,
 };

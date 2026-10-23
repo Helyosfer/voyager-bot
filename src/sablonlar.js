@@ -1,4 +1,4 @@
-// /sunucukur şablonları: her kullanım senaryosu için roller, kategoriler, kanallar, izinler ve
+// Hazır sunucu şablonları (/ayarlar → Kurulum): her kullanım senaryosu için roller, kategoriler, kanallar, izinler ve
 // kurulumla birlikte açılan varsayılan ayarlar. Kurulumu ve akışları topluluk.js yürütür.
 //
 // İzin mantığı: erişim kategori düzeyinde tanımlanır ve kanallar kategorisiyle eşitlenmiş
@@ -58,7 +58,7 @@ const EKIP = ['yonetici', 'moderator', 'destek', 'etkinlik'];
 const GOR = [P.ViewChannel, P.ReadMessageHistory];
 const YAZ = [P.SendMessages];
 const SES = [P.Connect, P.Speak, P.Stream];
-// Bağlan: bot ses kanalına girmez, ama Discord o kanalın izinlerini düzenleyebilmesi (ör. /kilit) için ister
+// Bağlan: bot ses kanalına girmez, ama Discord o kanalın izinlerini düzenleyebilmesi (ör. acil kilit) için ister
 const BOT = [P.ViewChannel, P.ReadMessageHistory, P.SendMessages, P.EmbedLinks, P.AttachFiles, P.Connect];
 
 const kural = (roller, izin = [], yasak = []) => roller.map((rol) => ({ rol, izin, yasak }));
@@ -280,7 +280,7 @@ const SABLONLAR = {
       },
     ],
     sonraki: [
-      '`/yayin ekle` ile yayıncı ekle; `/haber ekle adres: rol:` ile konuya göre etiketlenen haber kaynakları ekle.',
+      '`/ayarlar` → Yayın bildirimleri bölümünden yayıncı ekle; Haber bildirimleri bölümünden konuya göre etiketlenen haber kaynakları ekle.',
       'Kuralları ve rehberi sunucuna göre düzenle.',
     ],
   },
@@ -319,7 +319,7 @@ const SABLONLAR = {
         ad: '📰・OYUN DÜNYASI', politika: 'uyeler', rehber: 'bedava oyunlar, indirimler, oyun haberleri ve yayınlar (Voyager paylaşır)',
         kanallar: [
           { ad: '🏷️・oyun-fırsatları', konu: 'İndirimler ve bedava oyunlar. Voyager kendiliğinden paylaşır.', erisim: 'botAkisi', ayar: 'oyunKanali' },
-          { ad: '📰・oyun-haberleri', konu: 'Oyun haberleri. Kaynakları yöneticiler /haber ekle ile ekler.', erisim: 'botAkisi', ayar: 'haberKanali' },
+          { ad: '📰・oyun-haberleri', konu: 'Oyun haberleri. Kaynakları yöneticiler /ayarlar ile ekler.', erisim: 'botAkisi', ayar: 'haberKanali' },
           { ad: '📡・yayınlar', konu: 'Takip edilen yayıncılar yayına geçince burada duyurulur.', erisim: 'botAkisi', ayar: 'yayinKanali' },
         ],
       },
@@ -353,8 +353,8 @@ const SABLONLAR = {
       MODERASYON,
     ],
     sonraki: [
-      '`/haber ekle adres:<oyun sitesi>` ile oyun haberi kaynakları ekle; haberlerde **📰 Oyun Haberleri** rolü etiketlenir.',
-      'İstersen `/oyun ayar everyone:Açık` ile popüler oyunlardaki önemli fırsatlarda @everyone attır.',
+      '`/ayarlar` → Haber bildirimleri → **Ekle** ile oyun haberi siteleri ekle; haberlerde **📰 Oyun Haberleri** rolü etiketlenir.',
+      'İstersen `/ayarlar` → Oyun fırsatları bölümündeki **@everyone** düğmesiyle popüler oyunlardaki önemli fırsatlarda @everyone attır.',
       'Klanın oyunlarına göre kanal ve ses odalarını yeniden adlandır.',
     ],
   },
@@ -406,7 +406,7 @@ const SABLONLAR = {
       MODERASYON,
     ],
     sonraki: [
-      '`/yayin ekle platform:Kick yayinci:<kanal adı>` (ya da Twitch, YouTube) ile kendi kanalını ekle; yayına geçince **🔴 Yayın Bildirimi** rolü etiketlenir.',
+      '`/ayarlar` → Yayın bildirimleri → **Ekle** ile kendi Kick, Twitch ya da YouTube kanalını ekle; yayına geçince **🔴 Yayın Bildirimi** rolü etiketlenir.',
       'Abonelerine **💎 Abone** rolünü ver (ya da abonelik entegrasyonunu bu role bağla).',
       'Moderatörlerine **🛡️ Moderatör** rolünü ver.',
     ],
@@ -444,7 +444,7 @@ const SABLONLAR = {
       },
       MOD_LOG,
     ],
-    sonraki: ['İhtiyaç duydukça `/oyun ayar`, `/yayin ekle` ya da `/haber ekle` ile bildirimleri aç; komutu yazdığın kanal bildirim kanalı olur.'],
+    sonraki: ['İhtiyaç duydukça `/ayarlar` ile oyun fırsatı, yayın ya da haber bildirimlerini aç.'],
   },
 
   egitim: {
@@ -489,7 +489,7 @@ const SABLONLAR = {
     sonraki: [
       'Eğitmenlere **🎓 Eğitmen**, asistanlara **🧑‍🏫 Asistan** rolünü ver.',
       'Duyurularda **📚 Ders Bildirimleri** rolünü etiketle; öğrenciler rolü rol seçimi kanalından alır.',
-      'Hatırlatmalar için öğrenciler `/hatirlat` kullanabilir.',
+      'Hatırlatmalar için öğrenciler bir mesaja sağ tıklayıp *Uygulamalar → Hatırlat* seçebilir.',
     ],
   },
 
@@ -506,7 +506,7 @@ const SABLONLAR = {
         ad: '💬・SOHBET', politika: 'uyeler', rehber: 'genel sohbet, tanıtım ve bot komutları',
         kanallar: [
           { ad: '💬・genel-sohbet', konu: 'Günlük sohbet.', yavas: 2 },
-          { ad: '📰・teknoloji-haberleri', konu: 'Teknoloji haberleri. Kaynakları yöneticiler /haber ekle ile ekler.', erisim: 'botAkisi', ayar: 'haberKanali' },
+          { ad: '📰・teknoloji-haberleri', konu: 'Teknoloji haberleri. Kaynakları yöneticiler /ayarlar ile ekler.', erisim: 'botAkisi', ayar: 'haberKanali' },
           { ad: '🤖・bot-komut', konu: 'Bot komutlarını burada kullan. /yardim ile başla.', yavas: 2 },
         ],
       },
@@ -541,7 +541,7 @@ const SABLONLAR = {
       },
       MODERASYON,
     ],
-    sonraki: ['`/haber ekle adres:<teknoloji sitesi>` ile haber kaynakları ekle; haberlerde **📰 Teknoloji Haberleri** rolü etiketlenir.'],
+    sonraki: ['`/ayarlar` → Haber bildirimleri → **Ekle** ile teknoloji siteleri ekle; haberlerde **📰 Teknoloji Haberleri** rolü etiketlenir.'],
   },
 
   destek: {

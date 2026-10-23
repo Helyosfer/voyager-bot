@@ -4,6 +4,9 @@ require('dotenv').config({ quiet: true });
 const fs = require('node:fs');
 const path = require('node:path');
 const { REST, Routes } = require('discord.js');
+const moderasyon = require('./moderasyon');
+const hatirlatici = require('./hatirlatici');
+const ozet = require('./ozet');
 
 const { DISCORD_TOKEN, CLIENT_ID, GUILD_IDS } = process.env;
 if (!DISCORD_TOKEN || !CLIENT_ID) {
@@ -12,11 +15,15 @@ if (!DISCORD_TOKEN || !CLIENT_ID) {
 }
 
 const komutKlasoru = path.join(__dirname, 'commands');
-const hepsi = fs
-  .readdirSync(komutKlasoru)
-  .filter((d) => d.endsWith('.js'))
-  .map((d) => require(path.join(komutKlasoru, d)))
-  // Gereken bağlantısı kurulmamış komutlar (ör. /instagram) yüklenmez
+const sagTiklar = [moderasyon.sagTikKomutu, hatirlatici.sagTikKomutu, ozet.sagTikKomutu];
+const hepsi = [
+  ...fs
+    .readdirSync(komutKlasoru)
+    .filter((d) => d.endsWith('.js'))
+    .map((d) => require(path.join(komutKlasoru, d))),
+  ...sagTiklar,
+]
+  // Gereken bağlantısı kurulmamış komutlar (etkin() false döndürenler) yüklenmez
   .filter((k) => k.etkin?.() !== false);
 // Bot sahibine özel komutlar (ör. /sunucular) yalnızca GUILD_IDS sunucularına yüklenir
 // Komutlar yalnızca botun eklendiği sunucularda kullanılabilir (integration_types 0 = sunucuya
@@ -47,7 +54,7 @@ const rest = new REST().setToken(DISCORD_TOKEN);
       console.log(`${sahibeOzel.length} sahip komutu yüklendi -> sunucu ${sunucuId}`);
     } catch (hata) {
       console.error(`Sunucu ${sunucuId} için sahip komutları yüklenemedi:`, hata.message);
-      process.exitCode = 1;
+      if (hata.code !== 50001) process.exitCode = 1;
     }
   }
 })();

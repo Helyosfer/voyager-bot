@@ -1,11 +1,11 @@
 // Seviye sistemi: üyeler mesaj yazdıkça XP kazanır, seviye atlayınca duyurulur ve sunucunun
-// belirlediği ödül rolleri verilir. Sunucu başına /seviye ayar ile açılır; varsayılan olarak kapalıdır.
+// belirlediği ödül rolleri verilir. Sunucu başına /ayarlar → Seviye bölümünden açılır; varsayılan olarak kapalıdır.
 // Kayıt: seviyeler.json → { [sunucuId]: { [kullaniciId]: xp } }
 // Ayarlar: seviyeAcik, seviyeKanali (boşsa mesajın yazıldığı kanal), seviyeOdulleri → [{ seviye, rolId }]
 //
 // Mesajın içeriği okunmaz, yalnızca yazıldığı bilinir; Message Content Intent gerekmez.
 const crypto = require('node:crypto');
-const { Events } = require('discord.js');
+const { EmbedBuilder, Events } = require('discord.js');
 const { oku, yaz, ayarlariGetir } = require('./depo');
 const { yonetimRolu, yazabilirMi, beklemeSayaci, hataMetni } = require('./yardimci');
 const koruma = require('./koruma');
@@ -14,7 +14,14 @@ const BEKLEME = 60_000; // Kişi bu sürede en fazla bir kez XP kazanır; art ar
 const XP_EN_AZ = 15;
 const XP_EN_COK = 25;
 const ODUL_SINIRI = 10;
+const SIRALAMA_SINIRI = 10;
 const KAYIT_ARALIGI = 60_000;
+const RENK = 0x57f287;
+
+const cubuk = (oran) => {
+  const dolu = Math.round(oran * 10);
+  return `${'▰'.repeat(dolu)}${'▱'.repeat(10 - dolu)}`;
+};
 
 const bekleme = beklemeSayaci(BEKLEME);
 
@@ -122,4 +129,42 @@ function baslat(client) {
   }
 }
 
-module.exports = { ODUL_SINIRI, ayarCoz, gereken, seviyeBul, xp, siralama, sifirla, odulVer, mesajGeldi, kaydet, baslat };
+// /yardim kartındaki "Seviye ve sıralama" sayfası: üyenin kendi durumu ve sunucunun ilk 10'u
+function seviyeSayfasi(interaction) {
+  const sunucuId = interaction.guildId;
+  const ayar = ayarCoz(ayarlariGetir(sunucuId));
+  if (!ayar.acik) {
+    return new EmbedBuilder()
+      .setTitle('📈 Seviye ve sıralama')
+      .setColor(RENK)
+      .setDescription('Seviye sistemi bu sunucuda kapalı. Yöneticiler `/ayarlar` → Seviye bölümünden açabilir.');
+  }
+  const kullaniciId = interaction.user?.id ?? 'uye';
+  const toplam = xp(sunucuId, kullaniciId);
+  const { seviye: sv, ilerleme, sonraki } = seviyeBul(toplam);
+  const tumSiralama = siralama(sunucuId);
+  const sira = tumSiralama.findIndex(([id]) => id === kullaniciId) + 1;
+  const siradaki = ayar.oduller.find((o) => o.seviye > sv);
+  const madalya = ['🥇', '🥈', '🥉'];
+  const ilkOn = tumSiralama.slice(0, SIRALAMA_SINIRI);
+
+  const embed = new EmbedBuilder()
+    .setTitle(`📈 Seviye ve sıralama${interaction.guild?.name ? ` · ${interaction.guild.name}` : ''}`)
+    .setColor(RENK)
+    .addFields(
+      { name: 'Seviyen', value: String(sv), inline: true },
+      { name: 'Sıran', value: sira ? `#${sira}` : '-', inline: true },
+      { name: 'Toplam XP', value: toplam.toLocaleString('tr'), inline: true },
+      { name: 'Sonraki seviye', value: `${cubuk(ilerleme / sonraki)} ${ilerleme}/${sonraki} XP` },
+      {
+        name: `🏆 İlk ${SIRALAMA_SINIRI}`,
+        value: ilkOn.length
+          ? ilkOn.map(([id, puan], i) => `${madalya[i] ?? `**${i + 1}.**`} <@${id}> · Seviye ${seviyeBul(puan).seviye} (${puan.toLocaleString('tr')} XP)`).join('\n')
+          : 'Henüz kimse XP kazanmadı.',
+      },
+    );
+  if (siradaki) embed.setFooter({ text: `${siradaki.seviye}. seviyede bir rol ödülü var.` });
+  return embed;
+}
+
+module.exports = { ODUL_SINIRI, SIRALAMA_SINIRI, ayarCoz, gereken, seviyeBul, xp, siralama, sifirla, odulVer, mesajGeldi, kaydet, baslat, seviyeSayfasi };

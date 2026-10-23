@@ -1,4 +1,4 @@
-// Acil durum kilidi (/kilit kapat, /kilit ac): saldırı anında sunucudaki bütün kanalları
+// Acil durum kilidi (/ayarlar → Acil kilit): saldırı anında sunucudaki bütün kanalları
 // tek komutla kullanılamaz hale getirir, sonra eski haline döndürür.
 //
 // Nasıl çalışır: önce bütün kanalların izin listeleri saklanır. Sonra her kanalda,
@@ -71,7 +71,7 @@ async function kilitle(guild, yapan) {
   const kanallar = [...guild.channels.cache.values()].filter(kilitlenebilir);
 
   // Hiçbir şeye dokunmadan önce her kanalın izinlerini sakla ve diske yaz:
-  // işlem yarıda kesilse bile /kilit ac geri alabilsin.
+  // işlem yarıda kesilse bile kilit açma geri alabilsin.
   const yedek = Object.fromEntries(
     kanallar.map((kanal) => [
       kanal.id,
@@ -254,7 +254,7 @@ function baslat(client) {
 }
 
 // Bir sunucuda aynı anda tek bir kilitleme ya da açma işlemi yürür; süren bir işlem varsa
-// null döner. İki /kilit kapat üst üste binerse ikincisi yedeği, birincinin kilitlemeye başladığı
+// null döner. İki kilitleme üst üste binerse ikincisi yedeği, birincinin kilitlemeye başladığı
 // izinlerle yeniden alır ve kilitten önceki izinler bir daha geri getirilemez.
 const islemde = new Set();
 const tekSefer = (islem) => async (guild, yapan) => {

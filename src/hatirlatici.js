@@ -1,8 +1,23 @@
-const { PermissionFlagsBits, DiscordAPIError } = require('discord.js');
+// Hatırlatıcılar: bir mesaja sağ tıklayıp "Hatırlat" seçilince süre ve not formu açılır; süre dolunca
+// bot o kanalda kullanıcıyı etiketleyerek hatırlatır. Kayıt: hatirlaticilar.json
+const {
+  ApplicationCommandType,
+  ContextMenuCommandBuilder,
+  DiscordAPIError,
+  InteractionContextType,
+  LabelBuilder,
+  MessageFlags,
+  ModalBuilder,
+  PermissionFlagsBits,
+  TextInputBuilder,
+  TextInputStyle,
+} = require('discord.js');
 const { oku, yaz } = require('./depo');
+const { formMetni, sayi } = require('./ayarlar/arac');
 
 // Bir kişinin aynı anda bekleyen en fazla hatırlatıcı sayısı
 const KISI_BASI_SINIR = 5;
+const EN_UZUN_DAKIKA = 10080; // 7 gün
 
 // Gönderim geçici bir hatayla (ağ kopması, Discord arızası) başarısız olursa
 // bu aralıkla, en fazla bu kadar kez denenir.
@@ -64,4 +79,55 @@ function hepsiniYukle(client) {
   for (const kayit of oku('hatirlaticilar', [])) kur(client, kayit);
 }
 
-module.exports = { ekle, hepsiniYukle, KISI_BASI_SINIR };
+// Sağ tıklanan mesajdan hatırlatıcı formu açar; varsayılan metin mesajın içeriği ya da bağlantısıdır
+function hatirlatFormu(kanalId, mesaj) {
+  const varsayilan = (mesaj?.cleanContent ?? mesaj?.content ?? '').replace(/\s+/g, ' ').trim().slice(0, 400) || mesaj?.url || '';
+  const notKutusu = new TextInputBuilder().setCustomId('mesaj').setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(500).setPlaceholder('Ne hatırlatayım?');
+  if (varsayilan) notKutusu.setValue(varsayilan);
+  return new ModalBuilder()
+    .setCustomId(`ht:form:${kanalId}`)
+    .setTitle('Hatırlatıcı kur')
+    .addLabelComponents(
+      new LabelBuilder()
+        .setLabel('Kaç dakika sonra?')
+        .setDescription('1 ile 10080 (7 gün) arası. 1 saat = 60, 1 gün = 1440.')
+        .setTextInputComponent(new TextInputBuilder().setCustomId('dakika').setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(5).setPlaceholder('ör. 30')),
+      new LabelBuilder().setLabel('Ne hatırlatayım?').setTextInputComponent(notKutusu),
+    );
+}
+
+// "ht:" önekli form gönderimi
+async function etkilesim(interaction) {
+  if (!interaction.isModalSubmit()) return;
+  const [, islem, kanalId] = interaction.customId.split(':');
+  if (islem !== 'form') return;
+  const cevapla = (content) => interaction.reply({ content, flags: MessageFlags.Ephemeral });
+
+  const dakika = sayi(formMetni(interaction, 'dakika'), 1, EN_UZUN_DAKIKA);
+  if (dakika === null) return cevapla(`❌ Süre 1 ile ${EN_UZUN_DAKIKA} dakika (7 gün) arasında bir sayı olmalı.`);
+  const mesaj = formMetni(interaction, 'mesaj');
+  if (!mesaj) return cevapla('❌ Hatırlatılacak metni yaz.');
+
+  const zaman = Date.now() + dakika * 60_000;
+  const eklendi = ekle(interaction.client, {
+    id: interaction.id,
+    kullaniciId: interaction.user.id,
+    kanalId: kanalId || interaction.channelId,
+    zaman,
+    mesaj,
+  });
+  if (!eklendi) {
+    return cevapla(`❌ Aynı anda en fazla ${KISI_BASI_SINIR} hatırlatıcın olabilir. Biri bitince yenisini kurabilirsin.`);
+  }
+  // <t:...:R> Discord'da "5 dakika içinde" gibi canlı bir sayaç gösterir. Sayaç okuyanın uygulama diliyle
+  // yazıldığı için cümlenin ortasına değil sonuna konur.
+  return cevapla(`⏰ Tamam, hatırlatacağım: <t:${Math.floor(zaman / 1000)}:R>`);
+}
+
+// Mesaja sağ tık menüsü ("Uygulamalar → Hatırlat")
+const sagTikKomutu = {
+  data: new ContextMenuCommandBuilder().setName('Hatırlat').setType(ApplicationCommandType.Message).setContexts(InteractionContextType.Guild),
+  execute: (interaction) => interaction.showModal(hatirlatFormu(interaction.channelId, interaction.targetMessage)),
+};
+
+module.exports = { ekle, hepsiniYukle, hatirlatFormu, etkilesim, sagTikKomutu, KISI_BASI_SINIR, EN_UZUN_DAKIKA };

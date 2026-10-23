@@ -198,17 +198,36 @@ test('yönetim yetkisi taşıyan rol oto rol yapılamaz ve yeni gelene verilmez'
   assert.deepEqual(verilen, ['normal']);
 });
 
-test('kesinYetki: /kilit ve /sunucukur yetkiyi bot tarafında da ister', () => {
-  const { komutYetkisiVar } = yardimci;
-  const komutlar = ['kilit', 'sunucukur'].map((ad) => src(`commands/${ad}`));
-  for (const komut of komutlar) {
-    assert.equal(komut.kesinYetki, true, komut.data.name);
-    assert.equal(komutYetkisiVar({ memberPermissions: izinli(P.ManageGuild, P.ManageChannels) }, komut), false);
-    assert.equal(komutYetkisiVar({ memberPermissions: izinli(P.Administrator) }, komut), true);
-    assert.equal(komutYetkisiVar({ memberPermissions: null }, komut), false);
-  }
+test('/ayarlar: acil kilit ve hazır sunucu şablonu Yönetici yetkisini bot tarafında da ister', async () => {
+  const ayarlar = src('ayarlar');
+  const bas = async (customId, izinler, values = []) => {
+    const cevaplar = [];
+    const guild = { id: 'yetki-sunucusu', members: { me: { permissions: izinli(P.ManageChannels, P.ManageRoles) } } };
+    await ayarlar.etkilesim({
+      customId,
+      guild,
+      guildId: guild.id,
+      values,
+      memberPermissions: izinler,
+      isButton: () => !values.length,
+      isModalSubmit: () => false,
+      isFromMessage: () => true,
+      reply: async (m) => cevaplar.push(m),
+      update: async (m) => cevaplar.push(m),
+      deferUpdate: async () => {},
+      editReply: async (m) => cevaplar.push(m),
+    });
+    return cevaplar.at(-1);
+  };
+  // Sunucu ayarlarından /ayarlar başka bir role açılmış olabilir: bot da denetler
+  assert.match((await bas('ay:kilit:kapat', izinli(P.ManageGuild, P.ManageChannels))).content, /Yönetici/);
+  assert.match((await bas('ay:kilit:kapat', null)).content, /Sunucuyu Yönet/);
+  assert.match((await bas('ay:kurulum:sablon', izinli(P.ManageGuild, P.ManageChannels))).content, /Yönetici/);
+  assert.match((await bas('ay:nav', izinli(P.ManageGuild), ['kilit'])).content, /açamazsın/);
+  // Yönetici kullanabilir
+  assert.equal((await bas('ay:kurulum:sablon', izinli(P.Administrator))).embeds[0].data.title, '🛠️ Sunucu kurulumu · Şablon seç');
   // Yetki bildirmeyen komut herkese açıktır
-  assert.equal(komutYetkisiVar({ memberPermissions: izinli() }, src('commands/yardim')), true);
+  assert.equal(yardimci.komutYetkisiVar({ memberPermissions: izinli() }, src('commands/yardim')), true);
 });
 
 test('etiketlenecek rolü seçen o rolü etiketleyebiliyor olmalı', () => {
@@ -220,7 +239,7 @@ test('etiketlenecek rolü seçen o rolü etiketleyebiliyor olmalı', () => {
 });
 
 // --- Acil durum kilidi ---
-test('üst üste binen /kilit kapat ve /kilit ac: yalnızca biri çalışır, yedek ezilmez', async () => {
+test('üst üste binen kilitleme ve kilit açma: yalnızca biri çalışır, yedek ezilmez', async () => {
   const kilit = src('kilit');
   const guild = {
     id: 'kilit-sunucusu',
@@ -242,7 +261,7 @@ test('üst üste binen /kilit kapat ve /kilit ac: yalnızca biri çalışır, ye
   assert.equal(kilit.kilitli(guild.id), false);
 });
 
-test('/kilit kapat: "İzinleri Yönet" satırı verilemese de kanal botun elindeki izinlerle kilitlenir', async () => {
+test('acil kilit: "İzinleri Yönet" satırı verilemese de kanal botun elindeki izinlerle kilitlenir', async () => {
   const kilit = src('kilit');
   const yetkiYok = Object.assign(new Error('Missing Permissions'), { code: 50013 });
   const yazilan = [];

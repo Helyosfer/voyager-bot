@@ -11,15 +11,15 @@ const instagram = require('./instagram');
 // uğraşmaz. Yönetici (Administrator) bilerek istenmez: bot yalnızca kullandığı izinleri alır.
 // İzinler: Kanalları Gör, Mesaj Gönder, Bağlantı Yerleştir, Dosya Ekle, Tepki Ekle, Mesaj Geçmişini Oku,
 // Mesajları Yönet, Üyeleri At, Üyeleri Yasakla, Zaman Aşımı Uygula, Rolleri Yönet, Denetim Kaydını
-// Görüntüle; /sunucukur için Kanalları Yönet; /oyun everyone ve etiketlenemeyen rolleri etiketlemek için
-// @everyone, @here ve Tüm Rollerden Bahset. /kilit bir izni ancak botta da varsa kilitleyebildiği için
+// Görüntüle; hazır sunucu şablonu için Kanalları Yönet; oyun fırsatlarında @everyone ve etiketlenemeyen rolleri
+// etiketlemek için @everyone, @here ve Tüm Rollerden Bahset. Acil kilit bir izni ancak botta da varsa kilitleyebildiği için
 // ayrıca: konu izinleri, Bağlan, Konuş, Video, Üyeleri Taşı.
 const IZINLER = '1477757365974';
 const DAVET =
   'https://discord.com/oauth2/authorize' +
   `?client_id=${process.env.CLIENT_ID ?? ''}&scope=bot+applications.commands&permissions=${IZINLER}`;
 // Sayfadaki <!--instagram--> ... <!--/instagram--> arası, bağlantısı kurulmamışsa çıkarılır:
-// /instagram o durumda yüklenmez, sayfa da olmayan bir komutu tanıtmasın.
+// Instagram bölümü o durumda /ayarlar'da görünmez, sayfa da olmayan bir özelliği tanıtmasın.
 const INSTAGRAM_KISMI = /[ \t]*<!--instagram-->[\s\S]*?<!--\/instagram-->\r?\n?/g;
 const SAYFA = fs
   .readFileSync(path.join(__dirname, 'site', 'index.html'), 'utf8')

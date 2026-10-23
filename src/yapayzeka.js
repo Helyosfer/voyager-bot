@@ -43,7 +43,7 @@ const ayar = {
   // Oyun incelemeleri: GEMINI_INCELEME_MODEL verilmişse o (virgülle ayrılmış birden fazla model: asıl, yedek),
   // yoksa /sor ile aynı modeller
   incelemeModelleri: modelListesi(INCELEME_MODEL).length ? modelListesi(INCELEME_MODEL) : modelListesi(MODEL, YEDEK),
-  // Dolandırıcılık görseli denetimi (/koruma filtre tur:görsel): GEMINI_GORSEL_MODEL, yoksa inceleme modelleri
+  // Dolandırıcılık görseli denetimi (/ayarlar → Koruma → Görsel): GEMINI_GORSEL_MODEL, yoksa inceleme modelleri
   gorselModelleri: modelListesi(GORSEL_MODEL).length ? modelListesi(GORSEL_MODEL) : null,
   // /sor modelinin dakikalık istek sınırı (AI Studio > Rate limit > RPM). Payı kalsın diye %90'ı kullanılır.
   dakikalik: Math.max(1, Math.floor(sayiAyari(process.env.GEMINI_DAKIKALIK, 15) * 0.9)),

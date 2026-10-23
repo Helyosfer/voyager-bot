@@ -1,4 +1,4 @@
-// Zararlı bağlantı denetimi (/koruma filtre tur:bağlantı): mesajdaki bağlantıların alan adlarına bakar.
+// Zararlı bağlantı denetimi (/ayarlar → Koruma → Bağlantı): mesajdaki bağlantıların alan adlarına bakar.
 // Hiçbir bağlantı açılmaz ve dışarı gönderilmez; karar yalnızca adresin kendisinden verilir.
 //
 // Yakalananlar:
@@ -11,7 +11,7 @@
 //
 // Meşru sitelere takılmamak için kurallar bilerek dardır: markanın adını taşıyan ama hediye
 // kelimesi içermeyen siteler (discordbotlist.com, discord.js.org) yakalanmaz. Yanlış alarmda
-// sunucu alanı /koruma alan ile izin listesine ekler.
+// sunucu alanı /ayarlar → Koruma → Alanlar ile izin listesine ekler.
 const { domainToUnicode } = require('node:url');
 
 // Resmî alanlar ve alt alan adları güvenlidir
@@ -169,7 +169,7 @@ function denetle(metin, { kisaltici = false, engel = [], izin = [] } = {}) {
   return null;
 }
 
-// /koruma alan için: "https://Kotu.site/x" ya da "kotu.site" → "kotu.site". Geçersizse null.
+// Alan listeleri için: "https://Kotu.site/x" ya da "kotu.site" → "kotu.site". Geçersizse null.
 function alanBicimi(girdi) {
   try {
     const alan = new URL(/^[a-z]+:\/\//i.test(girdi.trim()) ? girdi.trim() : `http://${girdi.trim()}`).hostname.toLowerCase().replace(/\.$/, '');

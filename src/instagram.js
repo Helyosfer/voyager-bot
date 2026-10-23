@@ -1,5 +1,5 @@
 // Instagram gönderi bildirimleri: takip edilen hesaplar yeni gönderi paylaşınca
-// seçilen kanala haber verir. Ayarlar /instagram komutuyla yapılır.
+// seçilen kanala haber verir. Ayarlar /ayarlar → Instagram bildirimleri bölümünden yapılır.
 //
 // Instagram'ın başka hesapları okumaya izin veren tek resmi yolu "Business Discovery"dir:
 // kendi profesyonel hesabın üzerinden, başka profesyonel (işletme / içerik üreticisi)
@@ -129,7 +129,8 @@ async function ekle(sunucuId, girdi) {
   const kullaniciAdi = adAyikla(girdi).toLowerCase();
   if (!/^[a-z0-9._]{1,30}$/.test(kullaniciAdi)) return { hata: 'Geçerli bir Instagram kullanıcı adı ya da profil adresi yaz.' };
 
-  const zatenVar = { hata: `**@${kullaniciAdi}** zaten listede.` };
+  // zaten: komut, listedeki hesabın rolünü güncelleyebilsin
+  const zatenVar = { hata: `**@${kullaniciAdi}** zaten listede.`, zaten: kullaniciAdi };
   const dolu = { hata: `Bir sunucu en fazla ${SUNUCU_BASI_SINIR} Instagram hesabı takip edebilir.` };
   const onceki = liste(sunucuId);
   if (onceki.some((h) => h.giris === kullaniciAdi)) return zatenVar;

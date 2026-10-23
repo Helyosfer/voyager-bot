@@ -31,21 +31,21 @@
     film.loop = true;
   }
 
-  const baslat = (adres) => {
-    // autoplay ile tarayıcı, film ekran dışındayken kendisi duraklatır ve geri gelince sürdürür
-    film.autoplay = true;
-    film.src = adres;
-    film.play().catch(() => {}); // Otomatik oynatma engellenirse ilk kare durağan kalır
-  };
-
-  // Film önce tamamen indirilir, sonra bellekten oynar. Akarak oynayan film bağlantı filmin bit
-  // hızına yetişmezse (patlamadan sonraki saniyeler en ağır kısım) yarıda bekler, donmuş görünür;
-  // her turdaki geri sarma da yeniden ağa gidebilir. Bellekteki filmde ikisi de olmaz.
-  fetch(film.dataset.src)
-    .then((yanit) => {
-      if (!yanit.ok) throw new Error(yanit.status);
-      return yanit.blob();
-    })
-    .then((dosya) => baslat(URL.createObjectURL(dosya)))
-    .catch(() => baslat(film.dataset.src)); // İndirme olmazsa eskisi gibi akarak oynar
+  // Videonun ilk ~0.65 saniyesi neredeyse tamamen hareketsiz karanlıktır; doğrudan patlamanın
+  // genişlemeye başladığı andan başlat. Film +faststart ile üretildiği için tamamının inmesini
+  // beklemeden ilk tamponla hemen oynar.
+  const baslangic = Number(film.dataset.baslangic) || 0;
+  film.preload = 'auto';
+  film.autoplay = true;
+  film.src = film.dataset.src;
+  if (baslangic > 0) {
+    film.addEventListener(
+      'loadedmetadata',
+      () => {
+        if (film.currentTime < baslangic) film.currentTime = baslangic;
+      },
+      { once: true },
+    );
+  }
+  film.play().catch(() => {}); // Otomatik oynatma engellenirse ilk kare durağan kalır
 })();

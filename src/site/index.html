@@ -4,12 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Voyager — Yapay zekâ destekli Discord botu</title>
-<meta name="description" content="Voyager, yapay zekâ destekli bir Discord botu. Sorularını cevaplar, oyun fırsatlarını inceler ve dolandırıcılık görsellerini yakalar. Sunucunu kurar, korur; yayın, oyun fırsatı ve haber bildirimleri gönderir.">
+<meta name="description" content="Voyager, yapay zekâ destekli bir Discord botu. Sorularını cevaplar, konuşmaları özetler, oyun fırsatlarını inceler ve dolandırıcılık görsellerini yakalar. Sunucunu hazır şablonlarla kurar, korur; yayın, oyun fırsatı ve haber bildirimleri gönderir.">
 <meta property="og:title" content="Voyager — Yapay zekâ destekli Discord botu">
-<meta property="og:description" content="Sorularını cevaplar, oyun fırsatlarını inceler, dolandırıcılık görsellerini yakalar. Sunucunu kurar, korur ve haberdar eder.">
+<meta property="og:description" content="Sorularını cevaplar, konuşmaları özetler, oyun fırsatlarını inceler, dolandırıcılık görsellerini yakalar. Sunucunu kurar, korur ve haberdar eder.">
 <meta property="og:type" content="website">
 <meta name="theme-color" content="#000000">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23000'/%3E%3Cellipse cx='32' cy='32' rx='23' ry='9' fill='none' stroke='%238e8e93' stroke-width='2' transform='rotate(-28 32 32)'/%3E%3Ccircle cx='32' cy='32' r='7' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="preload" href="/film.jpg?v=5" as="image" fetchpriority="high">
+<link rel="preload" href="/film.js" as="script">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
@@ -125,7 +127,7 @@
   }
   .role {
     margin: 14px auto 34px;
-    max-width: 36rem;
+    max-width: 38rem;
     font-size: clamp(1.1rem, 2.6vw, 1.5rem);
     line-height: 1.35;
     letter-spacing: -0.015em;
@@ -155,7 +157,7 @@
     letter-spacing: -0.04em;
   }
   h2 .dim { color: #48484d; }
-  .lead { max-width: 34rem; margin: 22px 0 0; font-size: 1.12rem; color: var(--muted); }
+  .lead { max-width: 36rem; margin: 22px 0 0; font-size: 1.12rem; color: var(--muted); }
   code { font: 0.92em var(--mono); color: var(--text); }
 
   .cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 18px; margin-top: 56px; }
@@ -173,7 +175,7 @@
   .card h3 { margin: 0 0 10px; font-size: 1.6rem; font-weight: 600; letter-spacing: -0.025em; line-height: 1.15; }
   .card p { margin: 0; color: var(--muted); font-size: 1rem; line-height: 1.55; }
 
-  /* /sunucukur vitrini: ne kurduğu, büyük sayılarla */
+  /* Hazır sunucu şablonu vitrini: ne kurduğu, büyük sayılarla */
   .vitrin { margin-top: 56px; }
   .vitrin + .cards { margin-top: 18px; }
   .sayilar { display: flex; flex-wrap: wrap; gap: 14px clamp(28px, 7vw, 84px); margin: 0 0 26px; padding: 0; list-style: none; }
@@ -189,7 +191,8 @@
     color: transparent;
     padding-bottom: 0.06em;
   }
-  .vitrin p { max-width: 40rem; }
+  .vitrin p { max-width: 46rem; }
+  .vitrin p b { color: #d2d2d7; font-weight: 500; }
   /* İkincil bağlantılar */
   .yan-link { color: var(--text); border-bottom: 1px solid rgba(255, 255, 255, 0.3); transition: border-color 0.2s; }
   .yan-link:hover { border-color: #fff; }
@@ -289,7 +292,7 @@
   }
   .kanit span { padding: 4px 10px; border-radius: 6px; background: rgba(0, 0, 0, 0.6); }
 
-  .not { max-width: 46rem; margin: 30px 0 0; font-size: 0.88rem; line-height: 1.6; color: var(--muted); }
+  .not { max-width: 48rem; margin: 30px 0 0; font-size: 0.88rem; line-height: 1.6; color: var(--muted); }
   .not b { color: #c7c7cc; font-weight: 500; }
 
   /* Komut listesi */
@@ -298,7 +301,7 @@
   .grup ul { margin: 0; padding: 0; list-style: none; }
   .grup li {
     display: grid;
-    grid-template-columns: 7.6rem 1fr;
+    grid-template-columns: 11.5rem 1fr;
     gap: 14px;
     align-items: baseline;
     padding: 12px 0;
@@ -347,6 +350,7 @@
   }
   @media (max-width: 420px) {
     .alanlar { grid-template-columns: 1fr; }
+    .grup li { grid-template-columns: 1fr; gap: 4px; }
   }
   @media (prefers-reduced-motion: reduce) {
     html { scroll-behavior: auto; }
@@ -375,14 +379,14 @@
   <div class="hero">
     <!-- Film: önce Big Bang bir kez oynar, sonra 7.5. saniyeden itibaren döngü döner (vps/film-hazirla.sh).
          ?v= değişince tarayıcılar ve Cloudflare eski dosyayı önbellekten vermez. -->
-    <video id="film" class="film" muted playsinline preload="none" aria-hidden="true" tabindex="-1" poster="/film.jpg?v=5" data-src="/film.mp4?v=5" data-dongu="7.5"></video>
+    <video id="film" class="film" muted playsinline preload="none" aria-hidden="true" tabindex="-1" poster="/film.jpg?v=5" data-src="/film.mp4?v=5" data-baslangic="0.65" data-dongu="7.5"></video>
     <!-- Filmi başlatan betik hemen filmden sonra ve async: defer olsaydı sayfanın sonunu ve yazı tipi
          stilinin inmesini bekler, film birkaç saniye geç başlardı -->
     <script src="/film.js" async></script>
 
     <div class="hero-content">
       <h1>Voyager</h1>
-      <p class="role">Yapay zekâ destekli Discord botu. Sorularını cevaplar, dolandırıcılık görsellerini yakalar; sunucunu kurar, korur ve haberdar eder.</p>
+      <p class="role">Yapay zekâ destekli Discord botu. Sorularını cevaplar, konuşmaları özetler, dolandırıcılık görsellerini yakalar; sunucunu kurar, korur ve haberdar eder.</p>
       <div class="hero-actions">
         <a class="btn btn-primary" href="{{DAVET}}" rel="noopener">Sunucuna ekle</a>
         <a class="btn btn-ghost" href="#yz">Neler yapar</a>
@@ -395,17 +399,17 @@
     <div class="container">
       <p class="kicker reveal"><span class="num">01</span>Yapay zekâ</p>
       <h2 class="reveal">Sorularını cevaplar.<br><span class="dim">Dolandırıcılığı görselden tanır.</span></h2>
-      <p class="lead reveal">Voyager, Google'ın Gemini yapay zekâsıyla çalışır. Sorularını cevaplar, kaçırmak istemeyeceğin oyunları senin için inceler ve metin filtrelerinin fark edemediği dolandırıcılık görsellerini yakalar.</p>
+      <p class="lead reveal">Voyager, Google'ın Gemini yapay zekâsıyla çalışır. Sorularını cevaplar, kaçırdığın konuşmaları özetler, oyun fırsatlarını senin için inceler ve metin filtrelerinin fark edemediği dolandırıcılık görsellerini yakalar.</p>
 
       <div class="ozellikler">
         <article class="card ozellik reveal">
           <div>
-            <p class="tag">/sor</p>
+            <p class="tag">/sor · Yanıtla ile devam</p>
             <h3>Aklına takılanı sor</h3>
-            <p>Merak ettiğin şeyi yaz, kısa ve Türkçe bir cevap al. Cevabı kanaldaki herkes görür; istersen <code>gizli</code> seçeneğiyle yalnızca sen görürsün.</p>
+            <p>Merak ettiğin şeyi yaz, kısa ve Türkçe bir cevap al. Cevabı kanaldaki herkes görür; istersen <code>gizli</code> seçeneğiyle yalnızca sen görürsün. Açık cevaplara Discord'da <b>Yanıtla</b> diyerek konuşmayı kaldığı yerden sürdürebilirsin.</p>
             <ul class="maddeler">
-              <li><b>Adil paylaşım.</b> Günlük soru hakları, soru soran sunucu ve kişi sayısına göre kendiliğinden paylaştırılır. Kaç hakkın kaldığını her cevabın altında görürsün.</li>
-              <li><b>Sınırları belli.</b> Yapay zekâ yalnızca cevap yazar: kimseyi etiketleyemez, sunucunda hiçbir işlem yapamaz.</li>
+              <li><b>Önceki mesajları hatırlar.</b> Bir cevabı yanıtladığında bot zincirdeki önceki soru ve cevapları bağlam olarak okur; konuyu baştan anlatman gerekmez.</li>
+              <li><b>Adil paylaşım ve net sınırlar.</b> Günlük soru hakları sunucu ve kişi sayısına göre kendiliğinden paylaştırılır. Yapay zekâ yalnızca cevap yazar: kimseyi etiketleyemez, sunucunda hiçbir işlem yapamaz.</li>
             </ul>
           </div>
           <div class="ornek" aria-hidden="true">
@@ -425,7 +429,32 @@
 
         <article class="card ozellik reveal">
           <div>
-            <p class="tag">/oyun · fırsat incelemeleri</p>
+            <p class="tag">sağ tık → Buradan özetle · /ayarlar · günlük</p>
+            <h3>Kaçırdığın konuşmayı özetlet</h3>
+            <p>Uzun bir sohbetin ortasında mı geldin? Özetin başlamasını istediğin mesaja sağ tıkla, <b>Uygulamalar → Buradan özetle</b> seç; o mesajdan itibaren konuşulanları kısa maddelerle hemen gör.</p>
+            <ul class="maddeler">
+              <li><b>Konular, kararlar, açık sorular.</b> Botların mesajlarını atlar; konuşulan konuları, varılan kararları ve cevapsız kalan soruları yalnızca sana görünen bir mesajla özetler.</li>
+              <li><b>Sunucu kontrolünde.</b> Başkalarının mesajları işlendiği için özellik varsayılan olarak kapalıdır; yöneticiler <code>/ayarlar</code> → Günlük bölümünden açar. Yalnızca kanal geçmişini okuyabilen üyeler özet alabilir.</li>
+            </ul>
+          </div>
+          <div class="ornek" aria-hidden="true">
+            <span class="etiket">ÖRNEK</span>
+            <p class="cagri">mesaja sağ tık → Uygulamalar → <code>Buradan özetle</code></p>
+            <div class="mesaj">
+              <div class="avatar"></div>
+              <div>
+                <p class="ad">Voyager<small>UYGULAMA</small></p>
+                <p>📝 <b>#genel-sohbet · son 28 mesajın özeti</b></p>
+                <p>• Cumartesi 21.00'de topluluk turnuvası yapılmasına karar verildi; kayıtlar akşam açılacak.<br>• Yeni gelenler için rehber kanalındaki kurallar güncellendi.<br>• Açık kalan soru: Takımlar kaç kişilik olacak?</p>
+                <span class="alt-yazi">Yapay zekâ özetidir, yanlış olabilir · bugün kalan hakkın (/sor ile ortak): 8</span>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="card ozellik reveal">
+          <div>
+            <p class="tag">/ayarlar · oyun fırsatları · incelemeler</p>
             <h3>İndirimi gör, oyunu tanı</h3>
             <p>Popüler ve yeni çıkan oyunlarda fırsat kartına kısa bir inceleme eklenir. İncelemede spoiler vermeyen bir konu özeti, kısa bir yorum, oyunun kimlere hitap ettiği ve 10 üzerinden bir puan bulunur.</p>
             <ul class="maddeler">
@@ -456,11 +485,11 @@
 
         <article class="card ozellik reveal">
           <div>
-            <p class="tag">/koruma filtre · görsel</p>
+            <p class="tag">/ayarlar · koruma · görsel</p>
             <h3>Görseldeki yazıyı okur</h3>
             <p>Ele geçirilmiş hesaplar sık sık "MrBeast 2.500 $ dağıtıyor, siteye gir, kodu yaz" türünden sahte çekiliş, kripto kumar sitesi ve bedava Nitro görselleri paylaşır. Yazı görselin içinde olduğu için metin filtreleri bunu göremez. Voyager ise görseli okuyarak tuzağı yakalar.</p>
             <ul class="maddeler">
-              <li><b>Hızlı müdahale.</b> Mesajı siler, göndereni susturur ve olayı kanıtıyla birlikte günlüğe kaydeder. Aynı görsel tekrar atılırsa o mesaj beklemeden silinir.</li>
+              <li><b>Hızlı müdahale.</b> Mesajı siler, göndereni susturur ve olayı kanıtıyla birlikte günlüğe kaydeder. Aynı görsel tekrar atılırsa parmak izinden tanınır ve beklemeden silinir.</li>
               <li><b>Riskli mesajlara odaklanır.</b> Varsayılan olarak yeni üyelerin mesajlarını, bağlantı içeren mesajları, birden fazla görsel taşıyan mesajları ve birkaç kanala birden atılan görselleri denetler. İstersen bütün görselleri denetletebilirsin.</li>
             </ul>
           </div>
@@ -485,36 +514,37 @@
         </article>
       </div>
 
-      <p class="not reveal"><b>Yapay zekâ yanılabilir.</b> Voyager bunu her cevabın ve incelemenin altında belirtir. Görsel denetimi yanlış alarm verirse susturmayı elle kaldırabilirsin. <code>/sor</code> ile sorulan sorular ve denetlenen görseller, işlenmek üzere Google'ın Gemini hizmetine gönderilir. Görsel denetimini her sunucu kendisi açar; kapalıyken hiçbir görsel denetime gönderilmez.</p>
+      <p class="not reveal"><b>Yapay zekâ yanılabilir.</b> Voyager bunu her cevabın, özetin ve incelemenin altında belirtir. Görsel denetimi yanlış alarm verirse susturmayı elle kaldırabilirsin. <code>/sor</code> ile sorulan sorular, <b>Buradan özetle</b> ile özetlenen mesajlar ve denetlenen görseller işlenmek üzere Google'ın Gemini hizmetine gönderilir. Kanal özetlerini ve görsel denetimini her sunucu kendisi açar; kapalıyken hiçbir mesaj ya da görsel denetime gönderilmez.</p>
     </div>
   </section>
 
   <section id="kur">
     <div class="container">
       <p class="kicker reveal"><span class="num">02</span>Kur</p>
-      <h2 class="reveal">Bir komut yaz.<br><span class="dim">Sunucun hazır.</span></h2>
+      <h2 class="reveal">Bir şablon seç.<br><span class="dim">Sunucun hazır.</span></h2>
       <p class="lead reveal">Saatlerce kanal açıp izin ayarlamayı unut. Voyager neyi kuracağını gösterir, sen onaylarsın, gerisini o halleder. Var olan kanallarına ve rollerine dokunmaz.</p>
 
       <article class="card vitrin reveal">
-        <p class="tag">/sunucukur</p>
+        <p class="tag">/ayarlar · kurulum · hazır sunucu şablonu</p>
         <ul class="sayilar">
-          <li><b>15</b>rol</li>
+          <li><b>7</b>hazır şablon</li>
+          <li><b>17</b>rol</li>
           <li><b>14</b>kategori</li>
           <li><b>55</b>kanal</li>
         </ul>
-        <p>Sohbetten desteğe, oyundan etkinliğe kadar her şey izinleriyle birlikte hazır gelir. Günlük, hoş geldin, yayın ve oyun fırsatı kanalları kurulumla birlikte bağlanır; ayrıca ayar yapman gerekmez.</p>
+        <p><b>Topluluk</b>, <b>Oyun topluluğu</b>, <b>Yayıncı</b>, <b>Yazılım ve teknoloji</b>, <b>Ürün ve destek</b>, <b>Eğitim</b> ya da <b>Basit</b>: sunucunun amacına uyan şablonu seç. Küçük bir arkadaş sunucusundan 17 rol, 14 kategori ve 55 kanallı geniş topluluğa kadar her şey izinleriyle kurulur; günlük, karşılama, bildirim kanalları, bildirim rolleri, temel koruma ve seviye sistemi şablona göre kendiliğinden ayarlanır.</p>
       </article>
 
       <div class="cards">
         <article class="card reveal">
           <p class="tag">üyelik-onay</p>
           <h3>Üyelik onayı</h3>
-          <p>Yeni gelen üye önce yalnızca başlangıç kanallarını görür. Kuralları okuyup onay düğmesine bastığında sunucunun geri kalanı açılır.</p>
+          <p>Yeni gelen üye önce yalnızca başlangıç ve açık destek kanallarını görür. Kuralları okuyup onay düğmesine bastığında <code>Üye</code> rolünü alır ve sunucunun geri kalanı açılır.</p>
         </article>
         <article class="card reveal">
-          <p class="tag">rol-seçimi</p>
-          <h3>İlgi rolleri</h3>
-          <p>Üyeler ilgi alanlarına göre rollerini menüden kendileri seçer; sen tek tek rol dağıtmakla uğraşmazsın.</p>
+          <p class="tag">rol-seçimi · /ayarlar · kurulum · rol menüsü</p>
+          <h3>Rol menüsü ve bildirim rolleri</h3>
+          <p>Üyeler ilgi alanlarını ve hangi bildirimlerde etiketleneceklerini menüden kendileri seçer. İstersen kendi sunucuna özel tek ya da çok seçimli düğmeli rol menüleri de kurabilirsin.</p>
         </article>
         <article class="card reveal">
           <p class="tag">destek-merkezi</p>
@@ -522,9 +552,19 @@
           <p>Her talep için özel bir oda açılır. Odayı yalnızca talep sahibi ve destek ekibi görür; kapanan talepler 30 güne kadar kayıt olarak saklanır.</p>
         </article>
         <article class="card reveal">
-          <p class="tag">/ayarla hosgeldin</p>
+          <p class="tag">/ayarlar · karşılama</p>
           <h3>Karşılama</h3>
-          <p>Sunucun zaten kuruluysa sorun değil: hoş geldin mesajını ve otomatik rolü iki komutla açabilirsin.</p>
+          <p>Sunucun zaten kuruluysa sorun değil: hoş geldin mesajını ve yeni gelenlere verilecek otomatik rolü iki tıkla açabilirsin.</p>
+        </article>
+        <article class="card reveal">
+          <p class="tag">/ayarlar · seviye · /yardim</p>
+          <h3>Seviye sistemi</h3>
+          <p>Üyeler mesaj yazdıkça XP kazanır, seviye atladıkça belirlediğin ödül rollerini alır. Herkes <code>/yardim</code> içinden kendi seviyesini ve sunucudaki ilk 10 sıralamasını görür.</p>
+        </article>
+        <article class="card reveal">
+          <p class="tag">/cekilis · sağ tık → Hatırlat</p>
+          <h3>Çekilişler ve hatırlatıcı</h3>
+          <p><code>/cekilis</code> formuyla düğmeli ve rol şartlı çekilişler başlat; bitirme, iptal ve yeniden çekmeyi mesajın üstünden yönet. Herhangi bir mesaja sağ tıklayıp <b>Hatırlat</b> diyerek kendine zamanlı hatırlatıcı kur.</p>
         </article>
       </div>
     </div>
@@ -538,24 +578,24 @@
 
       <div class="cards">
         <article class="card reveal">
-          <p class="tag">/ban · /kick · /sustur · /uyari · /temizle</p>
-          <h3>Moderasyon</h3>
-          <p>Yasaklama, atma, susturma, uyarı ve toplu mesaj silme. Her biri tek komutla, saniyeler içinde. Uyarılar birikince ceza kendiliğinden uygulanır.</p>
+          <p class="tag">sağ tık → Moderasyon · /mod · /ayarlar · uyarı kuralları</p>
+          <h3>Moderasyon ve uyarılar</h3>
+          <p>Üyeye sağ tıklayınca moderasyon kartı açılır: uyarı geçmişi, uyarma, süreli susturma, atma, yasaklama ve uyarı silme tek yerde. Uyarı sayısı belirlediğin eşiğe gelince ceza kendiliğinden uygulanır.</p>
         </article>
         <article class="card reveal">
-          <p class="tag">/koruma filtre · kelime · alan</p>
+          <p class="tag">/ayarlar · koruma</p>
           <h3>Otomatik koruma</h3>
-          <p>Çalınmış bir hesap bütün kanallara spam atmaya başlarsa mesajları siler ve hesabı susturur; hem de sen bildirimi görmeden. Ağır küfürleri ve Discord ya da Steam taklidi sahte bağlantıları siler, dolandırıcılık görsellerini <a class="yan-link satir-ici" href="#yz">yapay zekâyla</a> yakalar.</p>
+          <p>Çalınmış bir hesap bütün kanallara spam atmaya başlarsa mesajları siler ve hesabı susturur; hem de sen bildirimi görmeden. Ağır küfürleri, özel yasaklı kelimeleri ve Discord, Steam, Epic Games, Roblox ya da Twitch taklidi sahte bağlantıları siler; dolandırıcılık görsellerini <a class="yan-link satir-ici" href="#yz">yapay zekâyla</a> yakalar.</p>
         </article>
         <article class="card reveal">
-          <p class="tag">/kilit kapat · ac</p>
+          <p class="tag">/ayarlar · acil kilit</p>
           <h3>Acil durum kilidi</h3>
-          <p>Saldırı mı var? Tek komutla bütün sunucuyu kilitle. Ortalık durulunca yine tek komutla her kanal eski izinlerine döner.</p>
+          <p>Saldırı mı var? Tek düğmeyle bütün sunucuyu kilitle; ses kanalları boşaltılır, kilit sırasında eklenen botlar kendiliğinden atılır. Ortalık durulunca yine tek düğmeyle her kanal eski izinlerine döner.</p>
         </article>
         <article class="card reveal">
-          <p class="tag">/ayarla gunluk</p>
+          <p class="tag">/ayarlar · günlük</p>
           <h3>Sunucu günlüğü</h3>
-          <p>Sunucunda olan hiçbir şey gözünden kaçmaz: kim girdi, kim çıktı, hangi mesaj silindi, kim neyi değiştirdi; hepsi kayıt altında.</p>
+          <p>Sunucunda olan hiçbir şey gözünden kaçmaz: üye giriş çıkışları, rol ve takma ad değişiklikleri, silinen ve düzenlenen mesajlar, ses kanalları ve yönetim işlemleri kayıt altında.</p>
         </article>
       </div>
     </div>
@@ -565,29 +605,29 @@
     <div class="container">
       <p class="kicker reveal"><span class="num">04</span>Haber al</p>
       <h2 class="reveal">Hiçbir şeyi<br><span class="dim">kaçırma.</span></h2>
-      <p class="lead reveal">Yayınlar, indirimler ve haberler ayağına gelsin. Her biri için ayrı bir kanal seçebilir, istersen bir rolü de etiketletebilirsin.</p>
+      <p class="lead reveal">Yayınlar, indirimler ve haberler ayağına gelsin. Her bildirim türü için ayrı kanal seçebilir; yayıncıya, haber konusuna ya da hesaba özel etiket rolleriyle yalnızca ilgilenen üyeleri haberdar edebilirsin.</p>
 
       <div class="cards">
         <article class="card reveal">
-          <p class="tag">/yayin · Twitch · Kick · YouTube</p>
+          <p class="tag">/ayarlar · Twitch · Kick · YouTube</p>
           <h3>Yayın bildirimleri</h3>
-          <p>Takip ettiğin yayıncı yayına başladığında sunucun haberdar olur: Twitch ve Kick'te anında, YouTube'da birkaç dakika içinde.</p>
+          <p>Takip ettiğin yayıncı yayına başladığında sunucun haberdar olur: Twitch ve Kick'te anında, YouTube'da birkaç dakika içinde. Her yayıncıya ayrı etiket rolü verebilir, deneme bildirimiyle kurulumu test edebilirsin.</p>
         </article>
         <article class="card reveal">
-          <p class="tag">/oyun · Steam · Epic · GOG</p>
+          <p class="tag">/ayarlar · Steam · Epic · GOG</p>
           <h3>Oyun fırsatları</h3>
-          <p>Bedava oyunları da büyük indirimleri de kaçırmazsın. Voyager Steam, Epic ve GOG'u senin yerine takip eder ve fiyatları Türkiye fiyatlarıyla gösterir. Popüler oyunların kartlarında yapay zekâ incelemesi ve puanı da bulunur.</p>
+          <p>Bedava oyunları da %50 üstü indirimleri de kaçırmazsın. Voyager; Steam, Epic ve GOG'u senin yerine takip eder ve fiyatları Türkiye fiyatlarıyla gösterir. Popüler oyunlar yapay zekâ incelemesiyle anında, diğerleri üç saatte bir toplu listede gelir.</p>
         </article>
         <article class="card reveal">
-          <p class="tag">/haber · RSS</p>
+          <p class="tag">/ayarlar · RSS</p>
           <h3>Haberler</h3>
-          <p>İstediğin haber sitesini ekle; yeni haberler çıktıkça kanalına gelsin. Sitenin adresini yazman yeterli.</p>
+          <p>İstediğin haber sitesinin adresini yazman yeterli; beslemeyi kendisi bulur. Her kaynağa konusuna göre ayrı rol (örneğin <code>@Oyun Haberleri</code>, <code>@Teknoloji Haberleri</code>) bağlayabilirsin.</p>
         </article>
         <!--instagram-->
         <article class="card reveal">
-          <p class="tag">/instagram</p>
+          <p class="tag">/ayarlar · Instagram</p>
           <h3>Instagram</h3>
-          <p>Takip ettiğin hesaplar yeni bir gönderi paylaştığında sunucun haberdar olur. Herkese açık profesyonel hesaplarda çalışır.</p>
+          <p>Takip ettiğin hesaplar yeni bir gönderi paylaştığında sunucun haberdar olur; her hesaba ayrı etiket rolü seçilebilir. Herkese açık profesyonel hesaplarda çalışır.</p>
         </article>
         <!--/instagram-->
       </div>
@@ -598,60 +638,35 @@
     <div class="container">
       <p class="kicker reveal"><span class="num">05</span>Komutlar</p>
       <h2 class="reveal">Öğrenmesi<br><span class="dim">beş dakika.</span></h2>
-      <p class="lead reveal">Discord'da <code>/</code> yazdığında bütün komutlar karşına çıkar. Yetki gerektiren komutları yalnızca o yetkiye sahip olanlar görür. Tam liste için <code>/yardim</code> yaz.</p>
+      <p class="lead reveal">Voyager <b>5 slash komutu</b> ve <b>3 sağ tık menüsü</b> ile çalışır. Yetki gerektiren komutları yalnızca o yetkiye sahip olanlar görür. Adım adım rehberler ve tam liste için <code>/yardim</code> yaz.</p>
 
       <div class="gruplar">
         <div class="grup reveal">
           <h3>Herkes</h3>
           <ul>
-            <li><code>/yardim</code><span>Komutları ve ne işe yaradıklarını listeler</span></li>
-            <li><code>/sor</code><span>Yapay zekâya soru sorar</span></li>
-            <li><code>/ozetle</code><span>Kanaldaki son mesajları yapay zekâyla özetler</span></li>
-            <li><code>/hatirlat</code><span>Verdiğin süre dolunca seni etiketler</span></li>
+            <li><code>/yardim</code><span>Başlangıç adımları, "Nasıl yapılır?" rehberleri, seviyen, sıralama ve komut sayfaları</span></li>
+            <li><code>/sor</code><span>Yapay zekâya soru sorar; cevaba Yanıtla diyerek konuşma sürdürülür</span></li>
+            <li><code>Sağ tık → Buradan özetle</code><span>Tıklanan mesajdan itibaren kanaldaki konuşmaları yapay zekâyla özetler</span></li>
+            <li><code>Sağ tık → Hatırlat</code><span>Mesaj metni hazır dolu hatırlatıcı açar; süre dolunca seni etiketler</span></li>
           </ul>
         </div>
         <div class="grup reveal">
           <h3>Moderasyon</h3>
           <ul>
-            <li><code>/ban</code><span>Kullanıcıyı sunucudan yasaklar</span></li>
-            <li><code>/unban</code><span>Yasağı kaldırır</span></li>
-            <li><code>/kick</code><span>Üyeyi sunucudan atar (tekrar katılabilir)</span></li>
-            <li><code>/sustur</code><span>Üyeyi belirlediğin süre kadar susturur</span></li>
-            <li><code>/temizle</code><span>Kanaldaki son mesajları topluca siler</span></li>
-            <li><code>/uyari</code><span>Uyarı verir; uyarı sayısına göre otomatik ceza uygular</span></li>
-          </ul>
-        </div>
-        <div class="grup reveal">
-          <h3>Kurulum</h3>
-          <ul>
-            <li><code>/sunucukur</code><span>Topluluk sunucusunu kurar</span></li>
-            <li><code>/ayarla</code><span>Günlük kanalını, hoş geldin kanalını ve otomatik rolü ayarlar</span></li>
+            <li><code>Sağ tık → Moderasyon</code><span>Üye kartı: uyarı geçmişi, uyar, sustur, at, yasakla, uyarıları sil</span></li>
+            <li><code>/mod</code><span>Moderasyon kartı, toplu mesaj temizleme, kimlikle yasaklama ve yasak kaldırma</span></li>
           </ul>
         </div>
         <div class="grup reveal">
           <h3>Topluluk</h3>
           <ul>
-            <li><code>/seviye</code><span>Mesaj yazdıkça seviye atlatır, sıralamayı ve ödül rollerini gösterir</span></li>
-            <li><code>/cekilis</code><span>Düğmeyle katılınan çekiliş başlatır, kazananı kendisi seçer</span></li>
-            <li><code>/rolmenu</code><span>Üyelerin düğmeyle rol alıp bıraktığı menü kurar</span></li>
+            <li><code>/cekilis</code><span>Düğmeyle katılınan çekiliş başlatır; bitir, yeniden çek ve iptal mesajın altında</span></li>
           </ul>
         </div>
         <div class="grup reveal">
-          <h3>Koruma</h3>
+          <h3>Ayarlar</h3>
           <ul>
-            <li><code>/koruma</code><span>Spam, küfür ve dolandırıcılık görsellerine karşı korur</span></li>
-            <li><code>/kilit</code><span>Saldırı anında bütün kanalları kilitler, sonra eski izinleri geri getirir</span></li>
-          </ul>
-        </div>
-        <div class="grup reveal">
-          <h3>Bildirimler</h3>
-          <ul>
-            <li><code>/yayin</code><span>Twitch, Kick ve YouTube yayınlarını duyurur</span></li>
-            <li><code>/oyun</code><span>Bedava oyunları ve indirimleri duyurur</span></li>
-            <li><code>/haber</code><span>Haber sitelerindeki yeni haberleri duyurur; her konu kendi rolünü etiketleyebilir</span></li>
-            <!--instagram-->
-            <li><code>/instagram</code><span>Instagram hesaplarının yeni gönderilerini duyurur</span></li>
-            <!--/instagram-->
+            <li><code>/ayarlar</code><span>Bütün ayarlar tek kartta: bildirimler (yayın, oyun fırsatları, haberler<!--instagram-->, Instagram<!--/instagram-->), koruma, günlük, karşılama, seviye, uyarı kuralları, acil kilit, hazır sunucu şablonu ve rol menüsü</span></li>
           </ul>
         </div>
       </div>
@@ -664,7 +679,7 @@
       <h2 class="reveal">Bir dakikada hazır.</h2>
       <ol class="adimlar reveal">
         <li><b>1</b><span>Sunucuna ekle</span></li>
-        <li><b>2</b><span>/sunucukur</span> ya da <span>/ayarla</span> ile kur</li>
+        <li><b>2</b><span>/ayarlar</span> ile kur</li>
         <li><b>3</b>Gerisi için <span>/yardim</span></li>
       </ol>
       <a class="btn btn-primary btn-large reveal" href="{{DAVET}}" rel="noopener">Sunucuna ekle</a>

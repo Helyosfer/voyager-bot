@@ -1,5 +1,5 @@
 // Haber bildirimleri: haber sitelerinin RSS/Atom beslemelerini düzenli aralıklarla
-// okur, yeni haberleri seçilen kanala gönderir. Ayarlar /haber komutuyla yapılır.
+// okur, yeni haberleri seçilen kanala gönderir. Ayarlar /ayarlar → Haber bildirimleri bölümünden yapılır.
 const dns = require('node:dns').promises;
 const http = require('node:http');
 const https = require('node:https');
@@ -243,7 +243,8 @@ async function ekle(sunucuId, girdi) {
   const kayitlar = (hepsi[sunucuId] ??= []);
   if (kayitlar.length >= SUNUCU_BASI_SINIR) return dolu;
   if (sahibinToplami(client, hepsi, sunucuId) >= SAHIP_BASI_SINIR) return sahipDolu;
-  if (kayitlar.some((b) => b.adres === bulunan.adres)) return { hata: `**${bulunan.besleme.ad}** zaten listede.` };
+  // zaten: komut, listedeki kaynağın rolünü güncelleyebilsin
+  if (kayitlar.some((b) => b.adres === bulunan.adres)) return { hata: `**${bulunan.besleme.ad}** zaten listede.`, zaten: bulunan.adres };
   const takipte = takipEdilenler();
   if (!takipte.includes(bulunan.adres) && takipte.length >= TOPLAM_SINIR) return { hata: 'Botun haber kapasitesi doldu; şu an yeni kaynak eklenemiyor.' };
 

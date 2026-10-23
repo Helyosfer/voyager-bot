@@ -1,11 +1,27 @@
-// Çekilişler: /cekilis ile kanala düğmeli bir mesaj konur, üyeler düğmeyle katılır, süre dolunca
-// kazananlar rastgele seçilip duyurulur. Bot yeniden başlarsa bekleyen çekilişler kaldığı yerden sürer.
+// Çekilişler: /cekilis formuyla kanala düğmeli bir mesaj konur, üyeler düğmeyle katılır, süre dolunca
+// kazananlar rastgele seçilip duyurulur. Yetkililer mesajın altındaki Bitir, Yeniden çek ve İptal
+// düğmeleriyle çekilişi yönetir. Bot yeniden başlarsa bekleyen çekilişler kaldığı yerden sürer.
 // Kayıt: cekilisler.json → [{ id (mesaj kimliği), sunucuId, kanalId, odul, kazananSayisi, bitis,
 //   baslatanId, gerekenRol, katilanlar: [], bitti, kazananlar: [] }]
 const crypto = require('node:crypto');
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, MessageFlags } = require('discord.js');
+const {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  ChannelSelectMenuBuilder,
+  ChannelType,
+  EmbedBuilder,
+  LabelBuilder,
+  MessageFlags,
+  ModalBuilder,
+  PermissionFlagsBits,
+  RoleSelectMenuBuilder,
+  TextInputBuilder,
+  TextInputStyle,
+} = require('discord.js');
 const { oku, yaz } = require('./depo');
-const { beklemeSayaci, hataMetni } = require('./yardimci');
+const { beklemeSayaci, hataMetni, yazabilirMi, logGonder, sureMetni } = require('./yardimci');
+const { formMetni, formSecimi, sayi } = require('./ayarlar/arac');
 
 const SUNUCU_BASI_SINIR = 10; // Aynı anda süren çekiliş
 const KATILIMCI_SINIRI = 5000;
@@ -51,8 +67,45 @@ function kart(c) {
         .join('\n'),
     )
     .setFooter({ text: c.bitti ? 'Çekiliş sona erdi.' : 'Katılmak için düğmeye bas; yeniden basarsan çekilirsin.' });
-  const dugme = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId(DUGME).setLabel('Katıl').setEmoji('🎉').setStyle(ButtonStyle.Primary));
-  return { embeds: [embed], components: c.bitti ? [] : [dugme], allowedMentions: { parse: [] } };
+
+  const satir = c.bitti
+    ? new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId('ck:yeniden').setLabel('Yeniden çek').setEmoji('🔄').setStyle(ButtonStyle.Secondary),
+      )
+    : new ActionRowBuilder().addComponents(
+        new ButtonBuilder().setCustomId(DUGME).setLabel('Katıl').setEmoji('🎉').setStyle(ButtonStyle.Primary),
+        new ButtonBuilder().setCustomId('ck:bitir').setLabel('Bitir').setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder().setCustomId('ck:iptal').setLabel('İptal').setStyle(ButtonStyle.Danger),
+      );
+  return { embeds: [embed], components: [satir], allowedMentions: { parse: [] } };
+}
+
+// /cekilis komutu yazılınca açılan oluşturma formu
+function baslatFormu() {
+  return new ModalBuilder()
+    .setCustomId('ck:baslat-form')
+    .setTitle('Yeni çekiliş başlat')
+    .addLabelComponents(
+      new LabelBuilder()
+        .setLabel('Ödül')
+        .setTextInputComponent(new TextInputBuilder().setCustomId('odul').setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(200).setPlaceholder('ör. Discord Nitro')),
+      new LabelBuilder()
+        .setLabel('Süre (dakika)')
+        .setDescription(`1 ile ${EN_UZUN} (14 gün) arası. 1 saat = 60, 1 gün = 1440.`)
+        .setTextInputComponent(new TextInputBuilder().setCustomId('dakika').setStyle(TextInputStyle.Short).setRequired(true).setMaxLength(5).setPlaceholder('ör. 1440')),
+      new LabelBuilder()
+        .setLabel('Kazanan sayısı')
+        .setDescription('1 ile 20 arası; boş bırakırsan 1.')
+        .setTextInputComponent(new TextInputBuilder().setCustomId('kazanan').setStyle(TextInputStyle.Short).setRequired(false).setMaxLength(2).setPlaceholder('1')),
+      new LabelBuilder()
+        .setLabel('Katılma şartı rolü (isteğe bağlı)')
+        .setRoleSelectMenuComponent(new RoleSelectMenuBuilder().setCustomId('rol').setMaxValues(1).setRequired(false)),
+      new LabelBuilder()
+        .setLabel('Kanal (boşsa bu kanal)')
+        .setChannelSelectMenuComponent(
+          new ChannelSelectMenuBuilder().setCustomId('kanal').setChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement).setMaxValues(1).setRequired(false),
+        ),
+    );
 }
 
 // Adaylar arasından, hâlâ sunucuda olan en fazla `adet` kişiyi rastgele seçer
@@ -84,7 +137,7 @@ async function duyur(kanal, c, kazananlar, yeniden = false) {
 async function bitir(client, id) {
   clearTimeout(zamanlayicilar.get(id));
   zamanlayicilar.delete(id);
-  // Süre dolması ile /cekilis bitir aynı anda gelirse yalnızca biri sonuçlansın: önce işaretlenir
+  // Süre dolması ile Bitir düğmesi aynı anda gelirse yalnızca biri sonuçlansın: önce işaretlenir
   let ilk = false;
   const kayit = guncelle(id, (c) => {
     ilk = !c.bitti;
@@ -105,7 +158,7 @@ async function bitir(client, id) {
 }
 
 // Biten çekilişte daha önce kazanmamış katılımcılar arasından yeniden seçer
-async function yenidenCek(client, id, adet) {
+async function yenidenCek(client, id, adet = 1) {
   const kayit = bul(id);
   if (!kayit?.bitti) return null;
   const guild = client.guilds.cache.get(kayit.sunucuId);
@@ -155,34 +208,134 @@ function hepsiniYukle(client) {
   for (const c of kalan) if (!c.bitti) kur(client, c);
 }
 
-// index.js, customId'si "ck:" ile başlayan etkileşimleri buraya yönlendirir.
-async function etkilesim(interaction) {
-  if (!interaction.isButton() || interaction.customId !== DUGME) return;
+// Başlatma formunun gönderimi
+async function formdanBaslat(interaction) {
   const cevapla = (content) => interaction.reply({ content, flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } });
-  const anahtar = `${interaction.guildId}:${interaction.user.id}`;
-  if (tiklama.bekle(anahtar)) return cevapla('⏳ Biraz yavaş; bir saniye sonra yeniden dene.');
-  tiklama.isaretle(anahtar);
+  if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) {
+    return cevapla('❌ Çekiliş başlatmak için Sunucuyu Yönet yetkin olmalı.');
+  }
+  const odul = formMetni(interaction, 'odul');
+  if (!odul) return cevapla('❌ Çekiliş ödülünü yaz.');
+  const dakika = sayi(formMetni(interaction, 'dakika'), 1, EN_UZUN);
+  if (dakika === null) return cevapla(`❌ Süre 1 ile ${EN_UZUN} dakika (14 gün) arasında bir sayı olmalı.`);
+  const yazilanKazanan = formMetni(interaction, 'kazanan');
+  const kazananSayisi = yazilanKazanan === null ? 1 : sayi(yazilanKazanan, 1, 20);
+  if (kazananSayisi === null) return cevapla('❌ Kazanan sayısı 1 ile 20 arasında bir sayı olmalı.');
 
-  const kayit = bul(interaction.message.id);
-  if (!kayit || kayit.bitti) return cevapla('❌ Bu çekiliş bitti.');
-  if (kayit.gerekenRol && !interaction.member.roles.cache.has(kayit.gerekenRol)) {
-    return cevapla(`❌ Bu çekilişe katılmak için <@&${kayit.gerekenRol}> rolün olmalı.`);
+  const gerekenRol = formSecimi(interaction, 'rol', 'rol');
+  const kanal = formSecimi(interaction, 'kanal', 'kanal') ?? interaction.channel;
+
+  if (suren(interaction.guildId).length >= SUNUCU_BASI_SINIR) {
+    return cevapla(`❌ Aynı anda en fazla ${SUNUCU_BASI_SINIR} çekiliş sürebilir. Biri bitince yenisini başlatabilirsin.`);
+  }
+  if (gerekenRol?.id === interaction.guildId) return cevapla('❌ Herkes zaten @everyone rolünde; şart koymak istemiyorsan rol seçme.');
+  if (!kanal?.isTextBased() || !yazabilirMi(kanal, [PermissionFlagsBits.EmbedLinks, PermissionFlagsBits.ReadMessageHistory])) {
+    return cevapla(`❌ ${kanal ?? 'Bu kanal'} kanalına yazamıyorum. Bana Kanalı Gör, Mesaj Gönder, Bağlantı Yerleştir ve Mesaj Geçmişini Oku izinlerini ver.`);
   }
 
-  let durum;
-  guncelle(kayit.id, (c) => {
-    if (c.katilanlar.includes(interaction.user.id)) {
-      c.katilanlar = c.katilanlar.filter((k) => k !== interaction.user.id);
-      durum = 'cikti';
-    } else if (c.katilanlar.length >= KATILIMCI_SINIRI) {
-      durum = 'dolu';
-    } else {
-      c.katilanlar.push(interaction.user.id);
-      durum = 'katildi';
-    }
+  const kayit = {
+    sunucuId: interaction.guildId,
+    kanalId: kanal.id,
+    odul,
+    kazananSayisi,
+    bitis: Date.now() + dakika * 60_000,
+    baslatanId: interaction.user.id,
+    gerekenRol: gerekenRol?.id ?? null,
+    katilanlar: [],
+    bitti: false,
+    kazananlar: [],
+  };
+  const mesaj = await kanal.send(kart(kayit));
+  ekle(interaction.client, { id: mesaj.id, ...kayit });
+
+  await cevapla(`✅ Çekiliş başladı: ${mesaj.url}\nErken bitirmek, iptal etmek ya da bittikten sonra yeniden çekmek için çekiliş mesajının altındaki düğmeleri kullan.`);
+  await logGonder(interaction.guild, {
+    baslik: 'Çekiliş başladı',
+    renk: RENK,
+    yetkili: interaction.user,
+    ek: [
+      { name: 'Ödül', value: kayit.odul },
+      { name: 'Süre', value: sureMetni(dakika), inline: true },
+      { name: 'Kazanan', value: String(kayit.kazananSayisi), inline: true },
+      { name: 'Kanal', value: `${kanal} · [mesaja git](${mesaj.url})` },
+    ],
   });
-  if (durum === 'dolu') return cevapla(`❌ Çekiliş dolu (en fazla ${KATILIMCI_SINIRI} kişi).`);
-  return cevapla(durum === 'katildi' ? '🎉 Çekilişe katıldın. Bol şans!' : '👋 Çekilişten çekildin.');
 }
 
-module.exports = { SUNUCU_BASI_SINIR, KATILIMCI_SINIRI, EN_UZUN, kart, bul, suren, ekle, bitir, yenidenCek, iptal, hepsiniYukle, etkilesim };
+// index.js, customId'si "ck:" ile başlayan etkileşimleri buraya yönlendirir.
+async function etkilesim(interaction) {
+  if (interaction.isModalSubmit?.() && interaction.customId === 'ck:baslat-form') {
+    return formdanBaslat(interaction);
+  }
+  if (!interaction.isButton()) return;
+  const cevapla = (content) => interaction.reply({ content, flags: MessageFlags.Ephemeral, allowedMentions: { parse: [] } });
+
+  if (interaction.customId === DUGME) {
+    const anahtar = `${interaction.guildId}:${interaction.user.id}`;
+    if (tiklama.bekle(anahtar)) return cevapla('⏳ Biraz yavaş; bir saniye sonra yeniden dene.');
+    tiklama.isaretle(anahtar);
+
+    const kayit = bul(interaction.message.id);
+    if (!kayit || kayit.bitti) return cevapla('❌ Bu çekiliş bitti.');
+    if (kayit.gerekenRol && !interaction.member.roles.cache.has(kayit.gerekenRol)) {
+      return cevapla(`❌ Bu çekilişe katılmak için <@&${kayit.gerekenRol}> rolün olmalı.`);
+    }
+
+    let durum;
+    guncelle(kayit.id, (c) => {
+      if (c.katilanlar.includes(interaction.user.id)) {
+        c.katilanlar = c.katilanlar.filter((k) => k !== interaction.user.id);
+        durum = 'cikti';
+      } else if (c.katilanlar.length >= KATILIMCI_SINIRI) {
+        durum = 'dolu';
+      } else {
+        c.katilanlar.push(interaction.user.id);
+        durum = 'katildi';
+      }
+    });
+    if (durum === 'dolu') return cevapla(`❌ Çekiliş dolu (en fazla ${KATILIMCI_SINIRI} kişi).`);
+    return cevapla(durum === 'katildi' ? '🎉 Çekilişe katıldın. Bol şans!' : '👋 Çekilişten çekildin.');
+  }
+
+  // Yetkili düğmeleri: Bitir, Yeniden çek, İptal
+  if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) {
+    return cevapla('❌ Çekilişi yönetmek için Sunucuyu Yönet yetkin olmalı.');
+  }
+  const kayit = bul(interaction.message?.id);
+  if (!kayit || kayit.sunucuId !== interaction.guildId) return cevapla('❌ Bu sunucuda böyle bir çekiliş yok.');
+
+  if (interaction.customId === 'ck:bitir') {
+    if (kayit.bitti) return cevapla('❌ Bu çekiliş zaten bitti.');
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    const son = await bitir(interaction.client, kayit.id);
+    return interaction.editReply(son ? `✅ Çekiliş bitirildi; ${son.kazananlar.length} kazanan duyuruldu.` : '❌ Çekiliş az önce bitti.');
+  }
+  if (interaction.customId === 'ck:yeniden') {
+    if (!kayit.bitti) return cevapla('❌ Çekiliş henüz bitmedi.');
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    const yeni = await yenidenCek(interaction.client, kayit.id, 1);
+    return interaction.editReply(yeni?.length ? `✅ ${yeni.length} yeni kazanan duyuruldu.` : '❌ Seçilebilecek başka katılımcı kalmadı.');
+  }
+  if (interaction.customId === 'ck:iptal') {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    await iptal(interaction.client, kayit.id);
+    await interaction.editReply('✅ Çekiliş iptal edildi; kimse seçilmedi.');
+    await logGonder(interaction.guild, { baslik: 'Çekiliş iptal edildi', renk: 0x99aab5, yetkili: interaction.user, ek: { name: 'Ödül', value: kayit.odul } });
+  }
+}
+
+module.exports = {
+  SUNUCU_BASI_SINIR,
+  KATILIMCI_SINIRI,
+  EN_UZUN,
+  kart,
+  baslatFormu,
+  bul,
+  suren,
+  ekle,
+  bitir,
+  yenidenCek,
+  iptal,
+  hepsiniYukle,
+  etkilesim,
+};

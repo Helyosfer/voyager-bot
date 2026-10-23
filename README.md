@@ -16,12 +16,12 @@ Node.js ve [discord.js](https://discord.js.org) ile yazıldı. Kodu alıp kendi 
 - [Komutlar](#komutlar)
 - [Özellikler](#özellikler)
   - [Yapay zekâ](#yapay-zekâ)
-  - [Sunucu kurulumu](#sunucu-kurulumu-sunucukur)
-  - [Rol menüsü](#rol-menüsü-rolmenu)
+  - [Sunucu kurulumu](#sunucu-kurulumu-ayarlar--kurulum)
+  - [Rol menüsü](#rol-menüsü-ayarlar--kurulum)
   - [Çekilişler](#çekilişler-cekilis)
-  - [Seviye sistemi](#seviye-sistemi-seviye)
-  - [Acil durum kilidi](#acil-durum-kilidi-kitle-kilidiac)
-  - [Uyarılar](#uyarılar-uyari)
+  - [Seviye sistemi](#seviye-sistemi-yardim--seviye-ve-sıralama)
+  - [Acil durum kilidi](#acil-durum-kilidi-ayarlar--acil-kilit)
+  - [Moderasyon ve uyarılar](#moderasyon-ve-uyarılar-mod)
   - [Otomatik koruma](#otomatik-koruma)
   - [Sunucu günlüğü](#sunucu-günlüğü)
   - [Canlı yayın bildirimleri](#canlı-yayın-bildirimleri)
@@ -29,7 +29,7 @@ Node.js ve [discord.js](https://discord.js.org) ile yazıldı. Kodu alıp kendi 
   - [Instagram gönderi bildirimleri](#instagram-gönderi-bildirimleri)
   - [Oyun fırsatları](#oyun-fırsatları)
   - [Soru cevaplama](#soru-cevaplama-sor)
-  - [Kanal özeti](#kanal-özeti-ozetle)
+  - [Kanal özeti](#kanal-özeti-sağ-tık--buradan-özetle)
 - [Sunucuna ekledikten sonra](#sunucuna-ekledikten-sonra)
 - [Kendi botunu çalıştırmak](#kendi-botunu-çalıştırmak)
 - [VPS'te 7/24 çalıştırma](#vpste-724-çalıştırma-ubuntu)
@@ -42,7 +42,7 @@ Node.js ve [discord.js](https://discord.js.org) ile yazıldı. Kodu alıp kendi 
 **Yapay zekâ** (Google Gemini; [ayrıntılar](#yapay-zekâ)):
 
 - **Soru cevaplama:** `/sor` ile yapay zekâya soru sorulur; kısa, Türkçe cevap gelir. İstenirse cevabı yalnızca soran görür.
-- **Kanal özeti:** `/ozetle` kanaldaki son mesajları kısa maddelerle özetler; sonradan katılan neler konuşulduğunu hemen görür.
+- **Kanal özeti:** mesaja sağ tık → **Uygulamalar** → **Buradan özetle** o mesajdan itibaren konuşulanları kısa maddelerle özetler; sonradan katılan neler konuşulduğunu hemen görür.
 - **Oyun incelemeleri:** popüler ve yeni oyunların fırsat kartlarına spoilersiz konu, kısa yorum, kimlere hitap
   ettiği ve 10 üzerinden puan eklenir.
 - **Dolandırıcılık görseli denetimi:** "ünlü adına para dağıtılıyor, siteye gir kodu yaz" türü sahte çekiliş, kripto
@@ -51,7 +51,7 @@ Node.js ve [discord.js](https://discord.js.org) ile yazıldı. Kodu alıp kendi 
 **Diğer özellikler:**
 
 - **Sunucu kurulumu:** tek komutla roller, kanallar, izinler, üyelik onayı ve destek sistemi.
-- **Moderasyon:** yasaklama, atma, süreli susturma, toplu mesaj silme; kalıcı uyarılar ve uyarı sayısına göre otomatik ceza.
+- **Moderasyon:** üyeye sağ tıklayınca açılan kartta uyarma, süreli susturma, atma ve yasaklama; ayrıca toplu mesaj silme, kalıcı uyarılar ve uyarı sayısına göre otomatik ceza.
 - **Otomatik koruma:** ele geçirilmiş hesapların spam'ini durdurur, ağır küfürleri ve Discord/Steam taklidi zararlı bağlantıları siler.
 - **Acil durum kilidi:** saldırı anında bütün kanalları kilitler, sonra eski haline döndürür.
 - **Sunucu günlüğü:** üye giriş çıkışları, silinen ve düzenlenen mesajlar, ses kanalları ve yönetim işlemleri tek kanalda.
@@ -61,9 +61,9 @@ Node.js ve [discord.js](https://discord.js.org) ile yazıldı. Kodu alıp kendi 
 - **Oyun fırsatları:** Steam, Epic ve GOG'daki bedava oyunları ve indirimleri Türkiye fiyatlarıyla duyurur.
 - **Karşılama:** yeni üyeye hoş geldin mesajı ve otomatik rol.
 - **Rol menüsü:** üyeler düğmeye basarak seçtiğin rolleri alıp bırakır.
-- **Seviye sistemi:** mesaj yazdıkça XP, seviye atlayınca duyuru ve ödül rolleri, sıralama.
-- **Çekiliş:** düğmeyle katılınan, süre dolunca kazananı kendiliğinden seçip duyuran çekilişler.
-- **Hatırlatıcı:** belirttiğin süre sonra seni etiketler.
+- **Seviye sistemi:** mesaj yazdıkça XP, seviye atlayınca duyuru ve ödül rolleri, `/yardim` içinde seviye ve sıralama.
+- **Çekiliş:** `/cekilis` formuyla başlayan, mesaj üstündeki düğmelerle katılınan ve yönetilen çekilişler.
+- **Hatırlatıcı:** mesaja sağ tık → **Uygulamalar** → **Hatırlat** ile seçtiğin süre sonra seni etiketler.
 
 Her sunucunun ayarları ayrıdır ve bir özellik açılmadıkça kapalı kalır.
 
@@ -72,37 +72,49 @@ diliyle gösterilir.
 
 ## Komutlar
 
+Bot **5 slash komutu** ve **3 sağ tık menüsü** ile çalışır:
+
 | Komut | Ne yapar | Gereken yetki |
 |---|---|---|
-| `/yardim` | Başlangıç adımları, "Nasıl yapılır?" rehberleri (yayın bildirimi kur, korumayı aç, haberleri konuya göre etiketle…), bölüm bölüm komutlar; her komutun ve alt komutun ayrıntılı sayfası (seçenekler, örnekler, bilmen gerekenler). `/yardim komut:ban` ya da `/yardim komut:oyun ayar` ile doğrudan açılır. Ana sayfanın altında botun gecikmesi yazar | Herkes |
-| `/hatirlat` | Belirtilen süre sonra hatırlatma yapar (kişi başı en fazla 5) | Herkes |
-| `/seviye` | Seviyeni ve sunucu sıralamasını gösterir; yöneticiler sistemi açar, seviye ödülü rolleri belirler | Herkes (ayarlar için Sunucuyu Yönet) |
-| `/ozetle` | Kanaldaki son 10-100 mesajı yapay zekâyla özetler (sunucuda `/ayarla ozet` ile açılırsa; `/sor` hakkını kullanır) | Herkes (kanal geçmişini okuyabilen) |
+| `/ayarlar` | Botun bütün sunucu ayarları tek kartta: bildirimler (oyun fırsatları, yayın, haber, Instagram), koruma, günlük, karşılama, seviye, uyarı kuralları, acil kilit, kurulum (hazır sunucu şablonu, rol menüsü) | Sunucuyu Yönet (acil kilit ve şablon için Yönetici) |
+| `/mod` | Moderasyon: `uye` (moderasyon kartı), `temizle` (1-100 mesaj sil), `yasakla` (kimlikle yasakla), `yasak-kaldir` | Üyelere Zaman Aşımı Uygula / Üyeleri At / Üyeleri Yasakla / Mesajları Yönet |
+| `/cekilis` | Çekiliş başlatma formunu açar; bitirme, yeniden çekme ve iptal çekiliş mesajındaki düğmelerle yapılır | Sunucuyu Yönet |
 | `/sor` | Yapay zekâya soru sorar (yalnızca kurulduysa; günlük hak kullanıma göre ayarlanır) | Herkes |
-| `/ban` | Kullanıcıyı yasaklar | Üyeleri Yasakla |
-| `/unban` | Kullanıcının yasağını kaldırır | Üyeleri Yasakla |
-| `/kick` | Üyeyi atar | Üyeleri At |
-| `/sustur` | Üyeyi belirli dakika susturur (0 = kaldır) | Üyelere Zaman Aşımı Uygula |
-| `/temizle` | Kanaldaki son 1-100 mesajı siler | Mesajları Yönet |
-| `/uyari` | Üyeye kalıcı uyarı verir; uyarı sayısına göre otomatik susturma, atma ya da yasaklama | Üyelere Zaman Aşımı Uygula (kural değiştirmek için Sunucuyu Yönet) |
-| `/ayarla` | Günlük kanalı ve kategorileri, hoş geldin kanalı ve oto rol, kanal özetleri (`sifirla` ile kaldırılır) | Sunucuyu Yönet |
-| `/koruma` | Otomatik spam koruması, ağır küfür filtresi, zararlı bağlantı ve dolandırıcılık görseli denetimi | Sunucuyu Yönet |
-| `/cekilis` | Düğmeyle katılınan çekiliş başlatır, erken bitirir, yeniden çeker ya da iptal eder | Sunucuyu Yönet |
-| `/rolmenu` | Üyelerin düğmeyle rol alıp bırakabildiği bir menü mesajı kurar (en fazla 10 rol) | Rolleri Yönet |
-| `/sunucukur` | Hazır şablonla sunucu kurar (topluluk, oyun, yayıncı, basit, eğitim, yazılım, ürün desteği): roller, kanallar, izinler ve bot ayarları | Yönetici |
-| `/kilit` | Acil durumda bütün kanalları kilitler (`kapat`) ve geri açar (`ac`) | Yönetici |
-| `/yayin` | Canlı yayın bildirimlerini ayarlar (Twitch, Kick, YouTube) | Sunucuyu Yönet |
-| `/haber` | Haber sitelerinin yeni haberlerini duyurur (RSS) | Sunucuyu Yönet |
-| `/instagram` | Instagram hesaplarının yeni gönderilerini duyurur | Sunucuyu Yönet |
-| `/oyun` | Bedava oyun ve indirim bildirimlerini ayarlar (Steam, Epic, GOG) | Sunucuyu Yönet |
+| `/yardim` | Başlangıç adımları, "Nasıl yapılır?" rehberleri, seviye ve sıralama (seviye açıksa), bölüm bölüm komutlar ve alt komut sayfaları. `/yardim komut:mod temizle` ile doğrudan açılır. Ana sayfanın altında botun gecikmesi yazar | Herkes |
 
-Yetki gerektiren komutlar yalnızca o yetkisi olanlara görünür. `/ban`, `/kick`, `/sustur` ve `/uyari ver` ayrıca rol sırasına
-bakar: kendinle aynı ya da daha yüksek roldeki bir üyeye işlem yapamazsın. `/sunucukur` ve `/kilit`
-Sunucu Ayarları → Entegrasyonlar'dan başka bir role açılsa bile yalnızca Yönetici yetkisi olanlarca kullanılabilir.
+### Sağ tık menüleri (Uygulamalar)
 
-**Ayar alt komutları:** `/oyun ayar`, `/yayin ayar`, `/haber ayar`, `/instagram ayar`, `/seviye ayar`, `/ayarla gunluk` ve
-`/ayarla hosgeldin` seçeneksiz yazılırsa mevcut ayarları gösterir; seçenek verilirse yalnızca verilenler değişir, gerisi
-olduğu gibi (ya da varsayılan) kalır. Bir ayarı kaldırmak için `kaldir` seçeneği kullanılır.
+| Menü | Nerede | Ne yapar | Gereken yetki |
+|---|---|---|---|
+| **Moderasyon** | Üyeye sağ tık → Uygulamalar | Üyenin moderasyon kartını açar: uyarı geçmişi, **Uyar**, **Sustur**, **At**, **Yasakla** ve uyarı silme | Üyelere Zaman Aşımı Uygula / Üyeleri At / Üyeleri Yasakla |
+| **Hatırlat** | Mesaja sağ tık → Uygulamalar | Mesaj metni hazır dolu hatırlatıcı formu açar; süre dolunca seni etiketler (kişi başı en fazla 5) | Herkes |
+| **Buradan özetle** | Mesaja sağ tık → Uygulamalar | O mesajdan itibaren kanaldaki konuşmaları yapay zekâyla özetler (`/ayarlar` → Günlük'te açıksa; `/sor` hakkını kullanır) | Herkes (kanal geçmişini okuyabilen) |
+
+Yetki gerektiren komutlar yalnızca o yetkisi olanlara görünür. Moderasyon işlemleri ayrıca rol sırasına
+bakar: kendinle aynı ya da daha yüksek roldeki bir üyeye işlem yapamazsın. `/ayarlar` paneli Sunucu Ayarları →
+Entegrasyonlar'dan başka bir role açılsa bile Sunucuyu Yönet yetkisini bot da denetler; acil kilit ve hazır sunucu
+şablonu yalnızca Yönetici yetkisi olanlarca kullanılabilir.
+
+### Ayarlar paneli (`/ayarlar`)
+
+Botun bütün sunucu ayarları tek komutta. `/ayarlar` hiç seçenek almaz; yazılınca yalnızca yazana görünen bir kart
+açılır. Kartın en üstünde her zaman bir **bölüm menüsü** durur; bölüm seçilince kart o bölümün ekranına döner ve her
+şey düğmeler, seçme menüleri ve küçük formlarla yapılır:
+
+| Bölüm | Kartta neler var |
+|---|---|
+| 🏠 Genel bakış | Her bölümün tek satırlık durumu |
+| 🎮 Oyun fırsatları | Kanal ve rol menüleri; bedava oyunlar, indirimler, @everyone aç/kapat; **Şimdi gönder**; **Bildirimleri kapat** |
+| 📡 Yayın · 📰 Haber · 📸 Instagram | Kanal ve rol menüleri; **➕ Ekle** formu (kayda özel rol de seçilir; kayıt zaten listedeyse yalnızca rolü değişir); listeden seçerek çıkarma (25'ten fazla kayıt sayfalara bölünür); **Deneme bildirimi** (yayın, Instagram); **Bildirimleri kapat** |
+| 🛡️ Koruma | Spam, küfür, görsel ve bağlantı filtrelerini aç/kapat; görsel kapsamı ve kısaltıcılar; susturma süreleri, özel kelimeler, engel ve izin alanları (formla) |
+| 📋 Günlük | Günlük kanalı (boşaltınca kayıt durur), kaydedilecek olay türleri, kanal özetleri aç/kapat |
+| 👋 Karşılama | Hoş geldin kanalı ve oto rol (boşaltınca kalkar) |
+| 📈 Seviye | Sistemi aç/kapat, duyuru kanalı, ödül ekle (formla) ve kaldır, üyenin XP'sini sıfırla |
+| ⚠️ Uyarı kuralları | Kural ekle (formla), listeden kaldır |
+| 🚨 Acil kilit | Tek düğmeyle bütün sunucuyu kilitle ve kilidi aç (yalnızca Yönetici görür) |
+| 🧰 Kurulum | Hazır sunucu şablonu (Yönetici) ve rol menüsü kur (Rolleri Yönet) |
+
+Instagram bölümü, botta Instagram bağlantısı kuruluysa görünür.
 
 ## Özellikler
 
@@ -113,15 +125,15 @@ Dört özellik Google'ın Gemini modelleriyle çalışır. Her biri ayrıntılı
 | Özellik | Nasıl açılır | Ayrıntılar |
 |---|---|---|
 | `/sor`: yapay zekâya soru sorma | Her sunucuda kendiliğinden açık | [Soru cevaplama](#soru-cevaplama-sor) |
-| `/ozetle`: kanaldaki son mesajları özetleme | Sunucu başına `/ayarla ozet` ile; varsayılan olarak kapalı | [Kanal özeti](#kanal-özeti-ozetle) |
-| Oyun fırsatı kartlarına inceleme ve puan | `/oyun ayar kanal:` ile fırsat bildirimleri açılınca | [Oyun fırsatları](#oyun-fırsatları) |
-| Dolandırıcılık görseli denetimi (`/koruma filtre`) | Sunucu başına; varsayılan olarak kapalı | [Otomatik koruma](#otomatik-koruma) |
+| Sağ tık → **Buradan özetle**: kanaldaki konuşmaları özetleme | Sunucu başına `/ayarlar` → Günlük ile; varsayılan olarak kapalı | [Kanal özeti](#kanal-özeti-sağ-tık--buradan-özetle) |
+| Oyun fırsatı kartlarına inceleme ve puan | `/ayarlar` → Oyun fırsatları'nda kanal seçilince | [Oyun fırsatları](#oyun-fırsatları) |
+| Dolandırıcılık görseli denetimi (`/ayarlar` → Koruma) | Sunucu başına; varsayılan olarak kapalı | [Otomatik koruma](#otomatik-koruma) |
 
 Ortak noktalar:
 
 - **Yapay zekâ yanılabilir.** Bot bunu her cevabın ve her incelemenin altında söyler. Görsel denetimi yanlış alarm
   verirse susturma elle kaldırılır.
-- **Ne Google'a gider:** `/sor` soruları, `/ozetle` ile özetlenen mesajlar (yazanların görünen adlarıyla), oyun incelemeleri için Steam mağaza bilgileri ve görsel denetimi açık
+- **Ne Google'a gider:** `/sor` soruları, **Buradan özetle** ile özetlenen mesajlar (yazanların görünen adlarıyla), oyun incelemeleri için Steam mağaza bilgileri ve görsel denetimi açık
   sunucularda denetlenen resimler. Ücretsiz katmanda Google bu verileri ürünlerini geliştirmek için kullanabilir.
   Bot soruları ve özetlenen mesajları kaydetmez. Resimleri de saklamaz, yalnızca parmak izlerini (SHA-256) tutar; yakalanan resmin kanıtı
   sunucunun kendi günlük kanalına bulanık olarak düşer.
@@ -134,11 +146,11 @@ Ortak noktalar:
   `/sor` yüklenmez, kartlar incelemesiz gider, görsel denetimi açılamaz. Diğer `GEMINI_*` ayarları isteğe bağlıdır
   ve `.env.example` içinde açıklanır.
 
-### Sunucu kurulumu (`/sunucukur`)
+### Sunucu kurulumu (`/ayarlar` → Kurulum)
 
-Yalnızca Yönetici yetkisi olanlar çalıştırabilir. Sunucuyu kullanım amacına uyan bir şablonla kurar. Şablon
-seçilmezse (`/sunucukur`) hepsi açıklamalarıyla listelenir; `/sunucukur sablon:` ile doğrudan seçilebilir. Önce ne
-oluşturulacağını gösterir ve onay ister. Mevcut kanal ve roller silinmez ya da değiştirilmez; aynı adda olanlar atlanır,
+Yalnızca Yönetici yetkisi olanlar çalıştırabilir. Sunucuyu kullanım amacına uyan bir şablonla kurar. **Hazır sunucu
+şablonu** düğmesine basınca şablonlar açıklamalarıyla listelenir; seçince ne oluşturulacağı gösterilir ve **Kur**
+düğmesiyle onay istenir. Mevcut kanal ve roller silinmez ya da değiştirilmez; aynı adda olanlar atlanır,
 komut yeniden çalıştırılırsa yalnızca eksikler tamamlanır.
 
 | Şablon | Kimin için | Rol / kategori / kanal | Üyelik onayı | Kendiliğinden açılanlar |
@@ -156,7 +168,7 @@ komut yeniden çalıştırılırsa yalnızca eksikler tamamlanır.
   ve ilgili bildirime bağlanır; şablona göre koruma ve seviye sistemi açılır. **Daha önce elle seçilmiş bir ayara
   dokunulmaz.** Mesaj metnini okumayı gerektiren korumalar (küfür, bağlantı) botta Message Content Intent kapalıysa açılmaz.
 - **Bildirim rolleri:** üyeler `rol-seçimi` kanalındaki menüden ilgi alanlarıyla birlikte bildirim rollerini de seçer;
-  yalnızca ilgilendikleri konularda etiketlenirler. Haber kaynaklarına sonradan `/haber ekle adres: rol:` ile konu rolü verilebilir.
+  yalnızca ilgilendikleri konularda etiketlenirler. Haber kaynaklarına sonradan `/ayarlar` → Haber bildirimleri → **Ekle** formundan konu rolü verilebilir.
 
 - **İzinler kategori düzeyinde tanımlanır** ve kanallar kategorisiyle eşitlenmiş (senkron) oluşur. Yalnızca farklı
   davranması gereken kanallar (kurallar, duyurular, bot akışları...) kendi iznini taşır.
@@ -184,10 +196,12 @@ Botta **Kanalları Yönet** ve **Rolleri Yönet** izinleri olmalı; bot yalnızc
 yazabildiği için **Bağlan**, **Konuş**, **Video** ve **Dosya Ekle** izinleri de önerilir. Kurulumdan sonra Voyager rolü
 yeni rollerin üstüne taşınmalıdır.
 
-### Rol menüsü (`/rolmenu`)
+### Rol menüsü (`/ayarlar` → Kurulum)
 
-`/rolmenu` seçtiğin kanala başlık, açıklama ve her rol için bir düğme içeren bir mesaj koyar. Üye düğmeye basınca
-rolü alır, yeniden basınca bırakır. `tek-secim` açıksa üye o menüden yalnızca bir rol taşıyabilir; yenisini seçince
+**Rol menüsü kur** düğmesi tek bir form açar: başlık, açıklama, roller (en fazla 10), kanal (boşsa kartın açıldığı
+kanal) ve üyenin kaç rol alabileceği. Gönderince seçilen kanala başlık, açıklama ve her rol için bir düğme içeren bir
+mesaj konur. Üye düğmeye basınca rolü alır, yeniden basınca bırakır. "Yalnızca bir tane" seçilirse üye o menüden
+yalnızca bir rol taşıyabilir; yenisini seçince
 eskisi bırakılır (renk ya da takım rolleri için). Menüyü kaldırmak için mesajı silmek yeterlidir; bot ayrıca bir kayıt
 tutmaz, hangi rollerin menüde olduğunu mesajın düğmelerinden okur.
 
@@ -198,32 +212,25 @@ tutmaz, hangi rollerin menüde olduğunu mesajın düğmelerinden okur.
 
 ### Çekilişler (`/cekilis`)
 
-| Komut | Ne yapar |
-|---|---|
-| `/cekilis baslat` | Ödül, süre (en fazla 14 gün), kazanan sayısı (en fazla 20) ve isteğe bağlı rol şartıyla çekiliş başlatır |
-| `/cekilis bitir` | Çekilişi süresi dolmadan bitirir ve kazananları seçer |
-| `/cekilis yeniden` | Biten çekilişte daha önce kazanmamış katılımcılar arasından yeniden seçer |
-| `/cekilis iptal` | Çekilişi kimseyi seçmeden iptal eder |
+`/cekilis` hiç seçenek almaz; yazılınca çekiliş başlatma formunu açar: ödül, süre (en fazla 14 gün), kazanan sayısı (en
+fazla 20), isteğe bağlı rol şartı ve kanal (boşsa komutun yazıldığı kanal).
 
-- Üyeler mesajdaki **Katıl** düğmesiyle katılır, yeniden basınca çekilir. Süre dolunca kazananlar rastgele seçilir,
+- Üyeler mesajdaki **🎉 Katıl** düğmesiyle katılır, yeniden basınca çekilir. Süre dolunca kazananlar rastgele seçilir,
   mesaj güncellenir ve kanalda yalnızca kazananlar etiketlenerek duyurulur.
-- Kazananlar yalnızca hâlâ sunucuda olan katılımcılar arasından seçilir.
+- Çekiliş mesajının üstündeki **Bitir** ve **İptal** düğmeleriyle (bittiğinde **Yeniden çek** düğmesiyle) **Sunucuyu
+  Yönet** yetkisi olanlar çekilişi doğrudan mesajdan yönetir.
+- Kazananlar yalnızca hâlâ sunucuda olan katılımcılar arasından seçilir; yeniden çekilişte önceki kazananlar tekrar seçilmez.
 - Çekilişler kaydedilir; bot yeniden başlarsa süren çekilişler kaldığı yerden devam eder. Biten çekilişler yeniden
   çekiliş için 7 gün saklanır.
 - Bir sunucuda aynı anda en fazla 10 çekiliş sürebilir; bir çekilişe en fazla 5.000 kişi katılabilir.
-- `bitir`, `yeniden` ve `iptal` çekiliş mesajının bağlantısını (Mesaj → Bağlantıyı Kopyala) ya da kimliğini ister.
 
-### Seviye sistemi (`/seviye`)
+### Seviye sistemi (`/yardim` → Seviye ve sıralama)
 
-`/seviye ayar durum:Açık` ile sunucu başına açılır; varsayılan olarak kapalıdır.
+`/ayarlar` → Seviye bölümünden sunucu başına açılır; varsayılan olarak kapalıdır. Duyuru kanalı, ödül rolleri (en
+fazla 10) ve üyenin XP'sini sıfırlama da oradadır.
 
-| Komut | Ne yapar |
-|---|---|
-| `/seviye goster` | Seviyeni (ya da başka bir üyenin seviyesini), sırasını ve sonraki seviyeye kalan XP'yi gösterir |
-| `/seviye siralama` | En yüksek seviyedeki 10 üyeyi gösterir |
-| `/seviye ayar` | Ayarları gösterir; sistemi açar, kapatır, seviye duyurularının yapılacağı kanalı seçer |
-| `/seviye odul` | Bir seviyeye ulaşanlara verilecek rolü belirler (en fazla 10 ödül); rol boş bırakılırsa o seviyenin ödülünü kaldırır |
-| `/seviye sifirla` | Bir üyenin XP'sini sıfırlar |
+Sistem açıkken üyeler `/yardim` yazıp menüden **📈 Seviye ve sıralama** sayfasını açarak kendi seviyelerini, sıralarını,
+sonraki seviyeye kalan XP'yi ve sunucudaki ilk 10 kişiyi görür.
 
 - Üye her mesajda 15-25 XP kazanır, ama dakikada en fazla bir kez; art arda yazmak XP kazandırmaz. Botlar ve
   webhook'lar XP kazanmaz. Seviye atlamak giderek zorlaşır (0→1: 100 XP, 9→10: 1.005 XP).
@@ -234,60 +241,64 @@ tutmaz, hangi rollerin menüde olduğunu mesajın düğmelerinden okur.
 - Ödül rollerine oto rolle aynı kurallar uygulanır: yönetim yetkisi taşıyan, botun rolünden yüksek ya da ödülü
   ekleyenin kendisinin veremeyeceği roller ödül yapılamaz. Rol sonradan yönetim yetkisi alırsa verilmez.
   Ödül eklenmeden önce o seviyeyi geçmiş üyeler rolü bir sonraki seviye atlayışlarında alır.
-- `ayar`, `odul` ve `sifirla` Sunucuyu Yönet yetkisi ister. Sistem kapatılınca XP silinmez.
+- Seviye ayarları Sunucuyu Yönet yetkisi ister. Sistem kapatılınca XP silinmez.
 - XP her mesajda diske yazılmaz; dakikada bir ve bot kapanırken kaydedilir. Bot çökerse en fazla son dakikanın
   XP'si kaybolur.
 
-### Acil durum kilidi (`/kilit`)
+### Acil durum kilidi (`/ayarlar` → Acil kilit)
 
-`/kilit kapat` saldırı anında bütün kanalları kilitler: sunucu sahibi dışındaki üyeler yazamaz, tepki ekleyemez, konu açamaz ve
-ses kanallarına giremez. Her kanalın izinleri saklanır; `/kilit ac` hepsini kilitten önceki haline birebir döndürür.
+**Sunucuyu kilitle** düğmesi saldırı anında bütün kanalları kilitler: sunucu sahibi dışındaki üyeler yazamaz, tepki
+ekleyemez, konu açamaz ve ses kanallarına giremez. Onay sorulmaz. Her kanalın izinleri saklanır; **Kilidi aç** hepsini
+kilitten önceki haline birebir döndürür. Bölümü yalnızca Yönetici yetkisi olanlar görür.
 
 - Kilitliyken sunucuya eklenen botlar kendiliğinden atılır.
 - Yetki varsa (Üyeleri Taşı) ses kanallarındakiler çıkarılır.
 - Discord kuralı gereği sunucu sahibi ve **Administrator** iznine sahip roller kanal izinlerinden etkilenmez.
-- Bot bir izni ancak kendisinde de varsa kilitleyebilir; eksik olanlar komutun cevabında listelenir.
-- Bir ses kanalını kilitleyebilmesi için botun o kanalda **Bağlan** izni olmalıdır. `/sunucukur` bunu kendisi verir;
-  elle kurulmuş ya da eski bir kurulumdan kalan ses kanallarında izin yoksa komut o kanalları "erişimim yok" diye bildirir.
+- Bot bir izni ancak kendisinde de varsa kilitleyebilir; eksik olanlar kartta listelenir.
+- Bir ses kanalını kilitleyebilmesi için botun o kanalda **Bağlan** izni olmalıdır. Hazır sunucu şablonu bunu kendisi
+  verir; elle kurulmuş ya da eski bir kurulumdan kalan ses kanallarında izin yoksa o kanallar "erişimim yok" diye bildirilir.
 - Bot **Yönetici** olmak zorunda değildir. Kilit, botun kanalda elinde olan izinlerle uygulanır.
 
-### Uyarılar (`/uyari`)
+### Moderasyon ve uyarılar (`/mod`)
 
-Moderatörlerin verdiği uyarılar kalıcı olarak saklanır; bot yeniden başlasa da kaybolmaz.
+Bir üyeye sağ tıklayıp **Uygulamalar** → **Moderasyon** seçildiğinde (ya da `/mod uye` ile) yalnızca yetkiliye görünen
+moderasyon kartı açılır:
 
-| Komut | Ne yapar |
-|---|---|
-| `/uyari ver` | Üyeye sebebiyle birlikte uyarı verir; üyeye özel mesajla da bildirilir |
-| `/uyari liste` | Üyenin uyarılarını numaralarıyla gösterir (yalnızca komutu kullanan görür) |
-| `/uyari sil` | Tek bir uyarıyı (`numara`) ya da bütün uyarıları (`hepsi:True`) siler |
-| `/uyari kural` | Seçeneksiz kuralları gösterir. `esik` ve `islem` ile uyarı sayısı bir eşiğe gelince uygulanacak işlemi belirler: susturma, atma ya da yasaklama; `islem:Kuralı kaldır` kuralı siler (değiştirmek Sunucuyu Yönet ister) |
+- Kartta üyenin durumu, varsa aktif susturması ve numaralı uyarı geçmişi görünür.
+- Yetkiye göre **⚠️ Uyar**, **🔇 Sustur** (susturulmuşsa **🔊 Susturmayı kaldır**), **👢 At** ve **🔨 Yasakla** düğmeleri
+  çıkar; uyarma, susturma, atma ve yasaklama sebep soran küçük bir form açar.
+- Uyarılar karttaki seçme menüsünden tek tek ya da **🗑️ Tüm uyarıları sil** düğmesiyle topluca silinir.
+- Diğer işlemler `/mod` alt komutlarındadır: `/mod temizle` (1-100 mesaj siler), `/mod yasakla` (sunucuda olmayan
+  birini de kullanıcı kimliğiyle yasaklar) ve `/mod yasak-kaldir`.
+
+Otomatik ceza kuralları `/ayarlar` → Uyarı kuralları bölümünden kurulur (Sunucuyu Yönet): uyarı sayısı bir eşiğe gelince
+susturma, atma ya da yasaklama.
 
 - Kural, üyenin uyarı sayısı **tam** eşiğe geldiğinde bir kez uygulanır (ör. 3. uyarıda 1 gün susturma, 5. uyarıda
   atma). En fazla 5 kural olabilir; eşik en fazla 20'dir. Bir üyenin en fazla 50 uyarısı saklanır.
 - Kural bot üzerinden yetki aşmaya yaramaz: uyarıyı veren yetkili kuralın işlemini kendisi yapamıyorsa (ör. yalnızca
   susturma yetkisi varken atma kuralı) işlem uygulanmaz, bu durum cevapta ve günlükte söylenir. Kural ekleyen de
   işlemi kendisi yapabiliyor olmalıdır.
-- Uyarılar, susturma gibi rol sırasına bakar: kendinle aynı ya da daha yüksek roldeki üyeye uyarı veremezsin.
-- Verilen, silinen ve temizlenen uyarılar günlüğün Moderasyon kategorisine yazılır.
+- Bütün moderasyon işlemleri rol sırasına bakar: kendinle aynı ya da daha yüksek roldeki üyeye işlem yapamazsın.
+- Verilen, silinen ve temizlenen uyarılar ile diğer işlemler günlüğün Moderasyon kategorisine yazılır.
 
 ### Otomatik koruma
 
-`/koruma filtre tur:<filtre> durum:Açık` ile sunucu başına açılır; hepsi varsayılan olarak kapalıdır. Mesajları Yönet
-yetkisi olanlar ve botlar muaftır. `/koruma filtre` yalnızca tür seçilerek yazılırsa bütün ayarları gösterir; `durum`
-verilmeden yalnızca susturma süresi gibi ayarlar değiştirilebilir.
+`/ayarlar` → Koruma bölümünde her filtre bir düğmeyle açılıp kapanır; hepsi varsayılan olarak kapalıdır. Mesajları
+Yönet yetkisi olanlar ve botlar muaftır. Susturma süreleri (0 = yalnızca sil), özel kelimeler ve alan listeleri aynı
+karttaki formlarla değişir.
 
-| Filtre (`tur`) | Ne yapar |
+| Filtre | Ne yapar |
 |---|---|
 | Spam | 30 saniyede 3 farklı kanala yazan, aynı içeriği 4 kez tekrarlayan ya da yetkisiz `@everyone` ile bağlantı/dosya gönderen üyenin mesajlarını siler ve üyeyi susturur (varsayılan 60 dakika) |
 | Küfür | Ağır küfür içeren mesajları siler; istenirse yazanı susturur |
-| Dolandırıcılık görseli | Dolandırıcılık resimlerini (ünlü adına para dağıtma, kripto kumarhane bonusu, bedava Nitro vb.) yapay zekâyla yakalar; mesajı siler, atanı susturur (varsayılan 1 gün), günlüğe kanıtıyla yazar. `kapsam` ile yalnızca riskli ya da bütün resimler |
-| Zararlı ve sahte bağlantı | Discord, Steam, Epic Games, Roblox ve Twitch'i taklit eden alanları, yanıltıcı bağlantıları ve bedava Nitro alanlarını siler; atanı susturur (varsayılan 60 dakika). `kisaltici:True` ile kısaltılmış bağlantıları (bit.ly vb.) da siler |
+| Dolandırıcılık görseli | Dolandırıcılık resimlerini (ünlü adına para dağıtma, kripto kumarhane bonusu, bedava Nitro vb.) yapay zekâyla yakalar; mesajı siler, atanı susturur (varsayılan 1 gün), günlüğe kanıtıyla yazar. Kartta yalnızca riskli ya da bütün resimler seçilir |
+| Zararlı ve sahte bağlantı | Discord, Steam, Epic Games, Roblox ve Twitch'i taklit eden alanları, yanıltıcı bağlantıları ve bedava Nitro alanlarını siler; atanı susturur (varsayılan 60 dakika). Kartta istenirse kısaltılmış bağlantıları (bit.ly vb.) da siler |
 
-| Komut | Ne yapar |
+| Kartta | Ne yapar |
 |---|---|
-| `/koruma kelime` | Sunucuya özel yasaklı kelime ekler (`islem:Çıkar` ile çıkarır) |
-| `/koruma alan` | Bağlantı denetimi için sunucuya özel engel ve izin listesi (alt alan adları da kapsanır) |
-| `/koruma goster` | Ayarları gösterir |
+| 📝 Özel kelimeler | Sunucuya özel yasaklı kelime ekler ya da çıkarır |
+| 🔗 Alanlar | Bağlantı denetimi için sunucuya özel engel ve izin listesi (alt alan adları da kapsanır) |
 
 Spam koruması özellikle ele geçirilmiş hesapların bütün kanallara aynı görselleri atmasını hedefler; bu yüzden
 üyeyi banlamaz, susturur. Küfür filtresi yalnızca ağır küfürleri yakalar ve masum kelimelere takılmamak için
@@ -302,8 +313,8 @@ bilerek dardır ("amk", "aq" gibi kısaltmalar hazır listede yoktur). Küfür f
   adresin başına başka site adı gizleyenler (`https://discord.com@kotu.site`).
 - `free-nitro` gibi bedava Nitro/hediye alanları.
 - Kurallar yanlış alarm vermemek için bilerek dardır: markanın adını taşıyan ama hediye kelimesi içermeyen siteler
-  (`discordbotlist.com`, `discord.js.org`) yakalanmaz. Yine de yanlış alarm olursa alan `/koruma alan islem:İzin ver`
-  ile izin listesine eklenir. Bilinen her zararlı alanı tanımaz; gördüğün bir alanı `/koruma alan islem:Engelle` ile ekle.
+  (`discordbotlist.com`, `discord.js.org`) yakalanmaz. Yine de yanlış alarm olursa alan **🔗 Alanlar** formundan
+  izin listesine eklenir. Bilinen her zararlı alanı tanımaz; gördüğün bir alanı aynı formdan engelle.
 - Mesajı düzenleyerek bağlantı eklemek de yakalanır. Message Content Intent gerekir.
 
 **Görsel denetimi** metin filtrelerinin göremediği, resmin içindeki dolandırıcılığı yakalar:
@@ -312,7 +323,7 @@ bilerek dardır ("amk", "aq" gibi kısaltmalar hazır listede yoktur). Küfür f
   çıkarılır. Daha önce yakalanmış bir resim yeniden atılırsa yapay zekâya sorulmadan anında silinir; bu saldırılarda
   aynı resim art arda birçok kanala atıldığı için ilk mesajdan sonrakiler beklemeden temizlenir.
 - Varsayılan kapsam **riskli** mesajlardır: yeni üyeler (son 7 gün), bağlantı ya da toplu etiket içeren mesajlar,
-  tek mesajda birden fazla resim ve aynı resmin birden fazla kanala atılması. `kapsam: Bütün resimler` ile hepsi denetlenir.
+  tek mesajda birden fazla resim ve aynı resmin birden fazla kanala atılması. Kartta "bütün resimler" seçilirse hepsi denetlenir.
 - Model en az %70 emin olduğunda işlem yapılır: mesaj ve aynı kişinin aynı resimli son mesajları silinir, kişi
   susturulur, kanala kısa bir uyarı yazılır, günlüğe sebep ve bulanık kanıt resmi düşer. Banlamaz; bu hesaplar
   çoğu zaman sahibinin elinden çalınmıştır.
@@ -323,12 +334,12 @@ bilerek dardır ("amk", "aq" gibi kısaltmalar hazır listede yoktur). Küfür f
 
 ### Sunucu günlüğü
 
-`/ayarla gunluk kanal:` ile seçilen kanala sunucuda olan biten yazılır. Kategoriler `/ayarla gunluk kategori: durum:` ile
-tek tek açılıp kapatılır (kategori seçilmezse hepsine uygulanır); hepsi varsayılan olarak açıktır.
+`/ayarlar` → Günlük bölümünde seçilen kanala sunucuda olan biten yazılır. Kaydedilecek olay türleri aynı karttaki
+menüden seçilir; hepsi varsayılan olarak açıktır.
 
 | Kategori | Neler yazılır |
 |---|---|
-| Moderasyon | Ban, yasak kaldırma, kick, susturma, uyarılar, `/temizle` (bot komutuyla ya da elle yapılanlar) |
+| Moderasyon | Ban, yasak kaldırma, kick, susturma, uyarılar, `/mod temizle` (botla ya da elle yapılanlar) |
 | Üyeler | Katılma, ayrılma, takma ad ve rol değişikliği |
 | Mesajlar | Silinen ve düzenlenen mesajlar, toplu silme |
 | Ses kanalları | Girme, çıkma, kanal değiştirme |
@@ -342,12 +353,9 @@ tek tek açılıp kapatılır (kategori seçilmezse hepsine uygulanır); hepsi v
 ### Canlı yayın bildirimleri
 
 Seçilen yayıncılar yayına geçince bot seçilen kanala haber verir. Yalnızca **Sunucuyu Yönet** yetkisi olanlar ayarlar.
-
-| Komut | Ne yapar |
-|---|---|
-| `/yayin ekle` | Platform ve kanal adı (ya da adresi) ile yayıncı ekler; isteğe bağlı olarak o yayıncıya özel etiket rolü |
-| `/yayin cikar` | Yayıncıyı çıkarır (yazarken takip edilenler önerilir) |
-| `/yayin ayar` | Seçeneksiz: takip edilenler ve ayarlar. `kanal`, `rol` (genel ya da `yayinci` ile o yayıncının), `kaldir`, `test:True` (örnek bildirim) |
+Her şey `/ayarlar` → Yayın bildirimleri kartından yapılır: **➕ Ekle** formunda platform, kanal adı (ya da adresi) ve isteğe bağlı olarak o
+yayıncıya özel etiket rolü seçilir; çıkarmak için kartın listesinden yayıncı seçilir. Kartta ayrıca kanal ve genel rol
+menüleri, **Deneme bildirimi** ve **Bildirimleri kapat** vardır.
 
 | Platform | Hız | Gereken |
 |---|---|---|
@@ -362,14 +370,14 @@ takip etmek istedikleri yayıncıların rolünü alabilir. Kanal seçilmeden ilk
 
 ### Haber bildirimleri
 
-`/haber` ile haber sitelerinin yeni haberleri bir kanala duyurulur (`ekle`, `cikar`, `ayar`). Sitelerin
+`/ayarlar` → Haber bildirimleri kartıyla haber sitelerinin yeni haberleri bir kanala duyurulur (**Ekle** formu, çıkarma listesi, kanal ve rol menüleri). Sitelerin
 kendi RSS/Atom beslemeleri okunur; anahtar ya da hesap gerekmez.
 
-- **Konuya göre etiket:** her kaynağın kendi rolü olabilir (`/haber ekle adres: rol:` ya da `/haber ayar kaynak: rol:`).
+- **Konuya göre etiket:** her kaynağın kendi rolü olabilir (**Ekle** formunda rol seçilir; kaynak listedeyse yalnızca rolü değişir).
   Örneğin oyun sitelerine `@Oyun Haberleri`, teknoloji sitelerine `@Teknoloji Haberleri` verilir; üyeler bu rolleri rol
   menüsünden alır ve yalnızca ilgilendikleri haberlerde etiketlenir. Kendi rolü olmayan kaynak genel haber rolünü kullanır.
 
-- `/haber ekle` sitenin adresini (ör. `webtekno.com`) ya da doğrudan RSS adresini kabul eder; site adresi verilirse besleme otomatik bulunur.
+- **Ekle** formu sitenin adresini (ör. `webtekno.com`) ya da doğrudan RSS adresini kabul eder; site adresi verilirse besleme otomatik bulunur.
 - Kaynaklar 10 dakikada bir kontrol edilir; bir kaynaktan tek seferde en fazla 3 haber duyurulur. Sunucu başına 15 kaynak.
 - Kaynak eklendiğinde mevcut haberler gönderilmez, yalnızca sonradan yayınlananlar duyurulur.
 - Adresi kullanıcılar verdiği için bot yalnızca herkese açık adreslere, standart portlardan bağlanır; iç ağ adresleri reddedilir.
@@ -377,7 +385,7 @@ kendi RSS/Atom beslemeleri okunur; anahtar ya da hesap gerekmez.
 
 ### Instagram gönderi bildirimleri
 
-`/instagram` ile seçilen hesapların yeni gönderileri bir kanala duyurulur (`ekle`, `cikar`, `ayar`); her hesabın kendi etiket rolü olabilir.
+`/ayarlar` → Instagram bildirimleri kartıyla seçilen hesapların yeni gönderileri bir kanala duyurulur (**Ekle** formu, çıkarma listesi, kanal ve rol menüleri); her hesabın kendi etiket rolü olabilir.
 Sunucu başına 20 hesap. Instagram'ın resmi Business Discovery servisi kullanılır:
 
 - Yalnızca **profesyonel** (işletme / içerik üreticisi) ve herkese açık hesaplar takip edilebilir.
@@ -405,19 +413,17 @@ Bot 15 dakikada bir bedava oyunları ve mağaza indirimlerini kontrol eder:
 | Epic Games indirimleri | Epic mağaza vitrinindeki indirimli oyunlar | Türkiye bölgesi (TL) |
 | GOG indirimleri | GOG'da en çok ilgi gören 15 indirim | Türkiye bölgesi (dolar) |
 
-| Komut | Ne yapar |
-|---|---|
-| `/oyun ayar` | Seçeneksiz ayarları gösterir; seçenek verilirse yalnızca onları değiştirir (aşağıda) |
-| `/oyun simdi` | Şu an yayında olan fırsatları hemen gönderir (sunucu başına 5 dakikada bir) |
+Steam, Epic Games ve GOG takip edilir; indirimlerde en az %50 aranır. Her şey `/ayarlar` → Oyun fırsatları kartından yapılır:
 
-| `/oyun ayar` seçeneği | Ne yapar |
+| Kartta | Ne yapar |
 |---|---|
-| `kanal` | Kanalı seçer ve bildirimleri başlatır |
-| `bedava`, `bedava-magaza` | Bedava oyunları açar/kapatır; mağaza seçer (varsayılan: açık; Steam, Epic ve GOG) |
-| `indirim`, `indirim-magaza`, `en-az-yuzde` | İndirimleri açar/kapatır; mağaza ve en az indirim oranı (varsayılan: açık; Steam, Epic ve GOG; %50) |
-| `rol` | Fırsat geldiğinde etiketlenecek rol |
-| `everyone` | Önemli fırsatlarda @everyone atılsın mı (en fazla 6 saatte bir; arada gelenlerde rol etiketlenir). Botta **@everyone, @here ve Tüm Rollerden Bahset** izni olmalı |
-| `kaldir` | Rol etiketlemesini kaldırır ya da bildirimleri kapatır |
+| Kanal menüsü | Kanalı seçer ve bildirimleri başlatır |
+| Rol menüsü | Fırsat geldiğinde etiketlenecek rol (boşaltınca kimse etiketlenmez) |
+| Bedava oyunlar | Bedava oyun bildirimlerini açar/kapatır (başlangıçta açık) |
+| İndirimler | İndirim bildirimlerini açar/kapatır (başlangıçta açık) |
+| @everyone | Önemli fırsatlarda @everyone atılsın mı (başlangıçta kapalı; en fazla 6 saatte bir, arada gelenlerde rol etiketlenir). Botta **@everyone, @here ve Tüm Rollerden Bahset** izni olmalı |
+| Şimdi gönder | Şu an yayında olan fırsatları hemen gönderir (sunucu başına 5 dakikada bir) |
+| Bildirimleri kapat | Kanalı kaldırır; ayarlar silinmez |
 
 Kanal ilk seçildiğinde o an yayında olanlar gönderilmez, yalnızca sonradan çıkanlar bildirilir.
 
@@ -463,14 +469,14 @@ etiketleyen mesajların içeriğini verdiğinden, yanıt yalnızca etiket (Yanı
   yavaştır: cevaptan önce kendiliğinden düşünür, bu kapatılamaz ve cevap 15-30 saniye sürer. Bu yüzden asıl model
   olarak değil, yedek olarak uygundur.
 
-### Kanal özeti (`/ozetle`)
+### Kanal özeti (sağ tık → Buradan özetle)
 
-`/ozetle` bulunduğun kanalın son mesajlarını (varsayılan 50, `adet` ile 10-100) yapay zekâya özetletir: konuşulan
-konular, varılan kararlar, açık kalan sorular. Özet varsayılan olarak yalnızca isteyene görünür; `paylas` seçeneğiyle
-kanala yazılır.
+Kanaldaki bir mesaja sağ tıklayıp **Uygulamalar** → **Buradan özetle** seçildiğinde, bot o mesajdan başlayarak kanaldaki
+son konuşmaları (en fazla 100 mesaj) yapay zekâya özetletir: konuşulan konular, varılan kararlar, açık kalan sorular.
+Özet yalnızca isteyene görünür.
 
 - **Sunucu başına açılır.** Özetlenen mesajlar başkalarının yazdıklarıdır ve Google'a gönderilir; bu yüzden özellik
-  varsayılan olarak kapalıdır, bir yönetici `/ayarla ozet durum:Açık` ile açar. Bot mesajları saklamaz.
+  varsayılan olarak kapalıdır, bir yönetici `/ayarlar` → Günlük bölümünden açar. Bot mesajları saklamaz.
 - Yalnızca kanalın mesaj geçmişini okuyabilen üyeler özet alabilir; göremediği mesajların özetini bu yoldan alamaz.
 - Botların ve sistemin mesajları özete katılmaz. Her mesajın en fazla 400 karakteri, toplamda en fazla 15.000
   karakter gönderilir; sığmazsa en yeni mesajlar kalır.
@@ -481,15 +487,15 @@ kanala yazılır.
 
 ## Sunucuna ekledikten sonra
 
-Boş bir sunucuyu baştan kurmak istiyorsan `/sunucukur` ile başla ve amacına uyan şablonu seç (oyun, yayıncı, basit...);
+Boş bir sunucuyu baştan kurmak istiyorsan `/ayarlar` → Kurulum → **Hazır sunucu şablonu** ile başla ve amacına uyan şablonu seç (oyun, yayıncı, basit...);
 günlük, hoş geldin ve bildirim kanallarını, bildirim rollerini ve temel korumayı kendisi ayarlar. Hazır bir sunucuda:
 
 1. Sunucu Ayarları → Roller: **Voyager rolünü**, yöneteceği rollerin üstüne sürükle. Bot kendi rolünden yüksek
    kişilere işlem yapamaz ve yüksek rolleri veremez.
-2. `/ayarla gunluk kanal:` ile günlük kanalını seç.
-3. İstersen `/ayarla hosgeldin kanal: oto-rol:` ile karşılamayı aç.
-4. `/koruma filtre tur:Spam durum:Açık` ile otomatik korumayı aç. Ele geçirilmiş hesapların attığı dolandırıcılık
-   resimlerine karşı `tur:Dolandırıcılık görseli` ile görsel denetimini de açabilirsin.
+2. `/ayarlar` yaz; **Günlük** bölümünden günlük kanalını seç.
+3. İstersen **Karşılama** bölümünden hoş geldin kanalını ve oto rolü seç.
+4. **Koruma** bölümünde **Spam** düğmesine basarak otomatik korumayı aç. Ele geçirilmiş hesapların attığı
+   dolandırıcılık resimlerine karşı **Görsel** denetimini de açabilirsin.
 5. Gerisi için `/yardim`.
 
 Oto rolü, ancak o rolü kendisi de verebilen biri ayarlayabilir (Rolleri Yönet yetkisi ve rol sırası). Yönetim
@@ -541,7 +547,7 @@ Komutlar genel yüklenir: bot hangi sunucuya eklenirse orada kendiliğinden gör
 ### 5. Botu sunucuna ekle
 
 Bot çalışırken tarayıcıda <http://localhost:8788> adresini aç. Sayfadaki bütün **Sunucuna ekle** düğmeleri aynı
-davete gider: bot, moderasyon, günlük, bildirimler, `/sunucukur` ve `/kilit` dahil bütün özellikleri için gereken
+davete gider: bot, moderasyon, günlük, bildirimler, hazır sunucu şablonu ve acil kilit dahil bütün özellikleri için gereken
 izinlerle eklenir. Yönetici (Administrator) izni istenmez. Davet `bot` kapsamını ve izinleri açıkça taşır;
 Developer Portal'daki varsayılan kurulum ayarlarına bağlı değildir.
 
@@ -723,19 +729,22 @@ src/
   index.js            Botun başlangıç noktası
   komutlari-yukle.js  Komutları Discord'a tanıtır
   commands/           Her dosya bir komut
+  ayarlar/            /ayarlar paneli: index.js (bölüm menüsü ve yönlendirme) ve her bölüm ayrı dosyada
   depo.js             Ayarları data/ klasörüne kaydeder
   yardimci.js         Yetki kontrolleri ve log gönderme
   gunluk.js           Sunucu günlüğü
+  moderasyon.js       Moderasyon kartı (sağ tık → Moderasyon ve /mod uye) ve /mod alt komutları
   koruma.js           Spam koruması ve küfür filtresi
   baglanti.js         Zararlı bağlantı denetimi
   uyari.js            Uyarı kayıtları ve otomatik ceza kuralları
   rolmenu.js          Rol menüsü düğmeleri
-  cekilis.js          Çekiliş kayıtları, zamanlayıcıları ve kazanan seçimi
-  seviye.js           Seviye sistemi: XP, seviye atlama, ödül rolleri
+  cekilis.js          Çekiliş başlatma formu, kart düğmeleri, zamanlayıcılar ve kazanan seçimi
+  seviye.js           Seviye sistemi: XP, seviye atlama, ödül rolleri, /yardim seviye sayfası
+  ozet.js             Sağ tık → Buradan özetle ile kanal özeti
   gorsel.js           Dolandırıcılık görseli denetimi
-  sablonlar.js        /sunucukur şablonları: roller, kategoriler, kanallar, izinler, varsayılan ayarlar
-  topluluk.js         /sunucukur kurulumu, üyelik onayı, ilgi ve bildirim rolleri, destek talepleri
-  bildirim-ayar.js    /oyun, /yayin, /haber, /instagram ayar alt komutlarının ortak kanal ve rol denetimi
+  sablonlar.js        Hazır sunucu şablonları: roller, kategoriler, kanallar, izinler, varsayılan ayarlar
+  topluluk.js         Şablon kurulumu, üyelik onayı, ilgi ve bildirim rolleri, destek talepleri
+  bildirim-ayar.js    /ayarlar'ın bildirim bölümleri için ortak kart: menüler, düğmeler, ekleme formu, çıkarma listesi
   kilit.js            Acil durum kilidi
   haber.js            Haber bildirimleri; haber-ayristir.js ayrı iş parçacığında çalışır
   instagram.js        Instagram gönderi bildirimleri

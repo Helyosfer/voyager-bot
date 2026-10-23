@@ -313,122 +313,171 @@ test('günlük: olay işlenirken çıkan hata yakalanır, bot kapanmaz', async (
   );
 });
 
-// --- /ayarla ---
+// --- /ayarlar paneli ---
 // Komutu çalıştırır, son cevabı döndürür
 async function calistir(ad, ayarlar) {
   const e = etkilesim(ayarlar);
   await komut(ad).execute(e);
   return son(e);
 }
-const kartAlani = (cevap, ad) => cevap.embeds[0].data.fields.find((a) => a.name === ad)?.value;
+const ayarlarPaneli = src('ayarlar');
 
-test('/ayarla gunluk ve hosgeldin: bot yazamadığı kanalı kabul etmez; seçeneksiz ayarları gösterir', async () => {
-  // Günlük kart (embed) gönderir; Bağlantı Yerleştir izni olmadan kart görünmez
-  const kartsiz = sahteKanal('kartsiz', [P.ViewChannel, P.SendMessages]);
-  const red = await calistir('ayarla', { sunucu: 'ayar-1', alt: 'gunluk', secenekler: { kanal: kartsiz } });
-  assert.match(red.content, /^❌ <#kartsiz> kanalına yazamıyorum.*Bağlantı Yerleştir/);
-  assert.equal(red.flags, MessageFlags.Ephemeral);
-  assert.equal(ayar('ayar-1').logKanali, undefined);
+// Kartın bileşenleri (bölüm menüsü hariç): [customId, etiket ya da yer tutucu]
+const bilesenleri = (cevap) =>
+  (cevap.components ?? []).flatMap((s) => s.toJSON().components.map((b) => [b.custom_id, b.label ?? b.placeholder])).filter(([id]) => id !== 'ay:nav');
+const bilesen = (cevap, id) => (cevap.components ?? []).flatMap((s) => s.toJSON().components).find((b) => b.custom_id === id);
 
-  const kabul = await calistir('ayarla', { sunucu: 'ayar-1', alt: 'gunluk', secenekler: { kanal: sahteKanal('log') } });
-  assert.equal(kabul.content, '✅ Günlük kanalı <#log> olarak ayarlandı.');
-  assert.equal(kartAlani(kabul, 'Günlük kanalı'), '<#log>', 'cevapta güncel ayarlar da görünür');
-  assert.equal(ayar('ayar-1').logKanali, 'log');
+// Paneldeki bir bileşeni kullanır (customId "ay:<bölüm>:<işlem>"); kartın yeni hâlini döndürür.
+// secilenKanal / secilenRol: seçme menüsü (null: seçim boşaltıldı); degerler: listeden seçim;
+// form: { alan: değer } ile gönderilen form; guild: sahte sunucuyu değiştirir. Hiçbiri yoksa düğmeye basılmıştır.
+async function kartta(bolum, islem, ek = {}) {
+  const { secilenKanal, secilenRol, degerler, form, guild, ...ayarlar } = ek;
+  const e = etkilesim(ayarlar);
+  if (guild) Object.assign(e, { guild, guildId: guild.id });
+  const secim = 'secilenKanal' in ek || 'secilenRol' in ek || Boolean(degerler);
+  const koleksiyon = (deger) => (deger ? new Collection([deger].flat().map((d) => [d.id, d])) : null);
+  Object.assign(e, {
+    customId: `ay:${bolum}:${islem}`,
+    isButton: () => !secim && !form,
+    isModalSubmit: () => Boolean(form),
+    isFromMessage: () => true,
+    channels: new Collection(secilenKanal ? [[secilenKanal.id, secilenKanal]] : []),
+    roles: new Collection(secilenRol ? [[secilenRol.id, secilenRol]] : []),
+    values: degerler ?? [],
+    fields: form && {
+      getTextInputValue: (id) => form[id] ?? '',
+      getStringSelectValues: (id) => (form[id] === undefined ? [] : [form[id]]),
+      getSelectedRoles: (id) => koleksiyon(form[id]),
+      getSelectedUsers: (id) => koleksiyon(form[id]),
+      getSelectedChannels: (id) => koleksiyon(form[id]),
+    },
+    deferUpdate: async () => e.cevaplar.push({ ertelendi: true }),
+    update: async (m) => e.cevaplar.push(m),
+    showModal: async (m) => e.cevaplar.push({ form: m.toJSON() }),
+  });
+  await ayarlarPaneli.etkilesim(e);
+  return son(e);
+}
+// Bir bölümün kartı (bölüm menüsünden seçilmiş gibi)
+const kartAc = (bolum, ayarlar = {}) => ayarlarPaneli.mesaj(etkilesim(ayarlar), bolum);
 
-  // Hoş geldin mesajı düz metindir: Bağlantı Yerleştir gerekmez, görme ve yazma gerekir
-  await calistir('ayarla', { sunucu: 'ayar-1', alt: 'hosgeldin', secenekler: { kanal: kartsiz } });
-  assert.equal(ayar('ayar-1').hosgeldinKanali, 'kartsiz');
-  const gorunmez = await calistir('ayarla', { sunucu: 'ayar-1', alt: 'hosgeldin', secenekler: { kanal: sahteKanal('gizli', [P.SendMessages]) } });
-  assert.match(gorunmez.content, /^❌/);
-  assert.equal(ayar('ayar-1').hosgeldinKanali, 'kartsiz');
+test('/ayarlar: yalnızca kullanana görünen genel bakış açılır; menüde yetkiye göre bölümler var', async () => {
+  assert.equal(komut('ayarlar').data.toJSON().options?.length ?? 0, 0, 'seçeneği yok');
+  const e = etkilesim({ sunucu: 'panel-1' });
+  await komut('ayarlar').execute(e);
+  const kart = son(e);
+  assert.equal(kart.flags, MessageFlags.Ephemeral);
+  assert.equal(kart.content, undefined);
+  assert.equal(kart.embeds[0].data.title, '⚙️ Voyager ayarları');
+  const menu = kart.components[0].toJSON().components[0];
+  assert.equal(menu.custom_id, 'ay:nav');
+  assert.deepEqual(
+    menu.options.map((o) => o.value),
+    ['genel', 'oyun', 'yayin', 'haber', 'koruma', 'gunluk', 'karsilama', 'seviye', 'uyari', 'kurulum'],
+    'Instagram bağlantısı kurulmamış; acil kilit yalnızca Yöneticiye',
+  );
+  assert.equal(kart.embeds[0].data.fields.length, menu.options.length - 1, 'genel bakışta her bölümün bir satırı var');
 
-  // Seçeneksiz: yalnızca ayarlar
-  const goster = await calistir('ayarla', { sunucu: 'ayar-1', alt: 'hosgeldin' });
-  assert.equal(goster.content, undefined);
-  assert.equal(kartAlani(goster, 'Hoş geldin kanalı'), '<#kartsiz>');
+  const yonetici = etkilesim({ sunucu: 'panel-1', izinler: [P.Administrator] });
+  await komut('ayarlar').execute(yonetici);
+  assert.ok(son(yonetici).components[0].toJSON().components[0].options.some((o) => o.value === 'kilit'));
+
+  // Menüden bölüm seçilir; bölüm menüsü her zaman ilk satırda kalır
+  const secim = await kartta('nav', '', { sunucu: 'panel-1', degerler: ['koruma'] });
+  assert.equal(secim.embeds[0].data.title, '🛡️ Otomatik koruma');
+  assert.equal(secim.components[0].toJSON().components[0].options.find((o) => o.default).value, 'koruma');
+  assert.equal((await kartta('nav', '', { sunucu: 'panel-1', degerler: ['genel'] })).embeds[0].data.title, '⚙️ Voyager ayarları');
+
+  // Yetkisi olmayan bölüm açılamaz ve kullanılamaz; Sunucuyu Yönet'i olmayan hiçbir şeyi değiştiremez
+  assert.match((await kartta('nav', '', { sunucu: 'panel-1', degerler: ['kilit'] })).content, /açamazsın/);
+  assert.match((await kartta('kilit', 'kapat', { sunucu: 'panel-1' })).content, /Yönetici/);
+  assert.match((await kartta('koruma', 'spam', { sunucu: 'panel-1', izinler: [] })).content, /Sunucuyu Yönet/);
+  assert.equal(src('koruma').ayarCoz(ayar('panel-1')).spam, false);
+  assert.match((await kartta('yok', 'x', { sunucu: 'panel-1' })).content, /kart eski/);
+  // Önceki sürümün kartları yeni panele yönlendirilir
+  const eski = etkilesim();
+  await ayarlarPaneli.eskiKart(eski);
+  assert.match(son(eski).content, /`\/ayarlar`/);
 });
 
-test('/ayarla hosgeldin oto-rol: komutu kullanan rolü verebiliyor olmalı; hatalı seçenekte hiçbir şey kaydedilmez', async () => {
-  const uyeRolu = rol('uye', { managed: false, position: 3, permissions: izinli() });
-  const yetkisiz = await calistir('ayarla', { sunucu: 'ayar-oto', alt: 'hosgeldin', izinler: [P.ManageGuild], secenekler: { 'oto-rol': uyeRolu, kanal: sahteKanal('hg') } });
-  assert.match(yetkisiz.content, /^❌/);
-  assert.equal(ayar('ayar-oto').hosgeldinKanali, undefined, 'rol reddedilince kanal da kaydedilmez');
-
-  const kabul = await calistir('ayarla', { sunucu: 'ayar-oto', alt: 'hosgeldin', izinler: [P.ManageGuild, P.ManageRoles], secenekler: { 'oto-rol': uyeRolu, kanal: sahteKanal('hg') } });
-  assert.equal(kabul.content, '✅ Hoş geldin kanalı <#hg> olarak ayarlandı.\n✅ Yeni üyelere <@&uye> rolü verilecek.');
-  assert.deepEqual([ayar('ayar-oto').hosgeldinKanali, ayar('ayar-oto').otoRol], ['hg', 'uye']);
-});
-
-test('/ayarla gunluk kategori: tek kategori ya da hepsi açılıp kapanır; günlük buna uyar', async () => {
-  const kategori = async (secenekler, sunucu = 'ayar-2') => (await calistir('ayarla', { sunucu, alt: 'gunluk', secenekler })).content;
-  // Kanal seçilmeden açılırsa kayıtların neden gelmediği söylenir
-  assert.match(await kategori({ kategori: 'ses', durum: 'acik' }, 'ayar-2b'), /`\/ayarla gunluk kanal:` ile bir kanal seç/);
-  assert.match(await kategori({ kategori: 'ses' }), /^❌ .*`durum`/, 'durumsuz kategori');
-
-  const { guild, giden } = gunlukSunucusu('ayar-2');
-  assert.equal(await kategori({ kategori: 'mesajlar', durum: 'kapali' }), '✅ Mesajlar (silinen ve düzenlenen mesajlar): kapalı.');
-  assert.deepEqual(ayar('ayar-2').logKategorileri, { mesajlar: false });
-  await gunluk.olaylar.mesajSilindi({ guild, author: kullanici('a'), channel: '<#genel>', content: 'gizli' });
-  await gunluk.olaylar.uyeKatildi({ guild, user: kullanici('a') });
-  assert.deepEqual(giden.map(baslik), ['Üye katıldı']);
-
-  // Kategori seçilmezse durum hepsine uygulanır
-  assert.equal(await kategori({ durum: 'kapali' }), '✅ Tüm kategoriler: kapalı.');
-  assert.ok(Object.keys(gunluk.KATEGORILER).every((k) => !gunluk.kategoriAcik(ayar('ayar-2'), k)));
-  assert.doesNotMatch(await kategori({ kategori: 'hepsi', durum: 'acik' }), /gunluk kanal/, 'kanal seçiliyken uyarı yok');
-  assert.ok(Object.keys(gunluk.KATEGORILER).every((k) => gunluk.kategoriAcik(ayar('ayar-2'), k)));
-});
-
-test('/ayarla sifirla: seçilen ayar kaldırılır, diğerleri kalır', async () => {
-  for (const [anahtar, deger] of [['logKanali', 'l'], ['hosgeldinKanali', 'h'], ['otoRol', 'r']]) depo.ayarKaydet('ayar-3', anahtar, deger);
-  for (const [secim, anahtar] of [['log-kanali', 'logKanali'], ['hosgeldin-kanali', 'hosgeldinKanali'], ['oto-rol', 'otoRol']]) {
-    const cevap = await calistir('ayarla', { sunucu: 'ayar-3', alt: 'sifirla', secenekler: { ayar: secim } });
-    assert.equal(cevap.content, `✅ ${secim} ayarı kaldırıldı.`);
-    assert.equal(ayar('ayar-3')[anahtar], null);
+test('/ayarlar: her bölümün kartı en fazla 5 satır; genel bakış satırları sığar', async () => {
+  for (const b of ayarlarPaneli.BOLUMLER) {
+    const kart = kartAc(b.id, { sunucu: 'panel-2', izinler: [P.Administrator] });
+    assert.ok(kart.components.length <= 5, `${b.id}: ${kart.components.length} satır`);
+    assert.ok(b.ozet({ id: 'panel-2' }).length <= 1024, b.id);
   }
 });
 
-test('/ayarla ozet: yapay zekâ kurulu değilse ya da mesaj içeriği okunamıyorsa açılmaz', async () => {
+test('/ayarlar → Günlük: kanal yalnızca bot kart gönderebiliyorsa kaydedilir; olay türleri menüden seçilir', async () => {
+  const sunucu = 'gunluk-panel';
+  // Günlük kart (embed) gönderir; Bağlantı Yerleştir izni olmadan kart görünmez
+  const red = await kartta('gunluk', 'kanal', { sunucu, secilenKanal: sahteKanal('kartsiz', [P.ViewChannel, P.SendMessages]) });
+  assert.match(red.content, /^❌ <#kartsiz> kanalına yazamıyorum.*Bağlantı Yerleştir/);
+  assert.equal(ayar(sunucu).logKanali, undefined);
+
+  const kabul = await kartta('gunluk', 'kanal', { sunucu, secilenKanal: sahteKanal('log') });
+  assert.equal(kabul.content, '✅ Günlük kanalı <#log> olarak ayarlandı.');
+  assert.match(kabul.embeds[0].data.description, /\*\*Günlük kanalı:\*\* <#log>/, 'kart güncellenir');
+  assert.ok(bilesen(kabul, 'ay:gunluk:kategoriler').options.every((o) => o.default), 'olay türleri başlangıçta açık');
+
+  const { guild, giden } = gunlukSunucusu(sunucu);
+  const secim = await kartta('gunluk', 'kategoriler', { sunucu, degerler: ['moderasyon', 'uyeler'] });
+  assert.equal(secim.content, '✅ Kaydedilecek olaylar: Moderasyon, Üyeler.');
+  assert.equal(bilesen(secim, 'ay:gunluk:kategoriler').options.filter((o) => o.default).length, 2);
+  await gunluk.olaylar.mesajSilindi({ guild, author: kullanici('a'), channel: '<#genel>', content: 'gizli' });
+  await gunluk.olaylar.uyeKatildi({ guild, user: kullanici('a') });
+  assert.deepEqual(giden.map(baslik), ['Üye katıldı'], 'kapatılan olay türü yazılmaz');
+  assert.equal((await kartta('gunluk', 'kategoriler', { sunucu, degerler: [] })).content, '✅ Kaydedilecek olaylar: hiçbiri.');
+
+  // Kanal menüsünü boşaltmak kaydı durdurur
+  assert.equal((await kartta('gunluk', 'kanal', { sunucu, secilenKanal: null })).content, '✅ Günlük kanalı kaldırıldı; artık kayıt tutulmuyor.');
+  assert.equal(ayar(sunucu).logKanali, null);
+});
+
+test('/ayarlar → Günlük: kanal özetleri yapay zekâ ve mesaj içeriği olmadan açılmaz', async () => {
   const yapayzeka = src('yapayzeka');
-  const ozet = async (durum, intents = [GatewayIntentBits.MessageContent]) => (await calistir('ayarla', { sunucu: 'ayar-4', alt: 'ozet', secenekler: { durum }, intents })).content;
+  const ozet = async (intents = [GatewayIntentBits.MessageContent]) => (await kartta('gunluk', 'ozet', { sunucu: 'ozet-panel', intents })).content;
   assert.equal(yapayzeka.hazir(), false);
-  assert.match(await ozet('acik'), /yapay zekâ kurulu değil/);
-  assert.equal(ayar('ayar-4').ozetAcik, undefined);
+  assert.match(await ozet(), /yapay zekâ kurulu değil/);
+  assert.equal(ayar('ozet-panel').ozetAcik, undefined);
 
   const hazir = mock.method(yapayzeka, 'hazir', () => true);
   try {
-    assert.match(await ozet('acik', []), /Message Content Intent/);
-    assert.equal(ayar('ayar-4').ozetAcik, undefined);
-    const acik = await ozet('acik');
-    assert.match(acik, /^✅ Özetleme açık/);
+    assert.match(await ozet([]), /Message Content Intent/);
+    assert.equal(ayar('ozet-panel').ozetAcik, undefined);
+    const acik = await ozet();
+    assert.match(acik, /^✅ Kanal özetleri açık/);
     assert.match(acik, /Google'ın yapay zekâsına gönderilir/, 'mesajların dışarı gittiği söylenir');
-    assert.equal(ayar('ayar-4').ozetAcik, true);
+    assert.equal(ayar('ozet-panel').ozetAcik, true);
   } finally {
     hazir.mock.restore();
   }
   // Kapatmak her zaman serbest
-  assert.equal(await ozet('kapali', []), '✅ Özetleme kapatıldı.');
-  assert.equal(ayar('ayar-4').ozetAcik, false);
+  assert.equal(await ozet([]), '✅ Kanal özetleri kapatıldı.');
+  assert.equal(ayar('ozet-panel').ozetAcik, false);
 });
 
-test('/ayarla goster: ayarlar ve günlük kategorileri gizli kartla gösterilir', async () => {
-  const bos = await calistir('ayarla', { sunucu: 'ayar-5', alt: 'goster' });
-  assert.equal(bos.flags, MessageFlags.Ephemeral);
-  assert.equal(kartAlani(bos, 'Günlük kanalı'), 'Ayarlanmadı');
-  assert.equal(kartAlani(bos, 'Kanal özetleri (/ozetle)'), '⚫ Kapalı');
-  assert.ok(kartAlani(bos, 'Günlük kategorileri').split('\n').every((s) => s.startsWith('🟢')));
+test('/ayarlar → Karşılama: hoş geldin kanalı ve oto rol; oto rolü yalnızca o rolü verebilen seçer; boşaltınca kalkar', async () => {
+  const sunucu = 'karsilama-panel';
+  // Hoş geldin mesajı düz metindir: Bağlantı Yerleştir gerekmez, görme ve yazma gerekir
+  const kartsiz = sahteKanal('kartsiz', [P.ViewChannel, P.SendMessages]);
+  assert.equal((await kartta('karsilama', 'kanal', { sunucu, secilenKanal: kartsiz })).content, '✅ Hoş geldin kanalı <#kartsiz> olarak ayarlandı.');
+  assert.match((await kartta('karsilama', 'kanal', { sunucu, secilenKanal: sahteKanal('gizli', [P.SendMessages]) })).content, /^❌/);
+  assert.equal(ayar(sunucu).hosgeldinKanali, 'kartsiz');
 
-  depo.ayarKaydet('ayar-5', 'logKanali', 'l');
-  depo.ayarKaydet('ayar-5', 'otoRol', 'r');
-  depo.ayarKaydet('ayar-5', 'logKategorileri', { ses: false });
-  const dolu = await calistir('ayarla', { sunucu: 'ayar-5', alt: 'goster' });
-  assert.equal(kartAlani(dolu, 'Günlük kanalı'), '<#l>');
-  assert.equal(kartAlani(dolu, 'Oto rol'), '<@&r>');
-  assert.match(kartAlani(dolu, 'Günlük kategorileri'), /⚫ Ses kanalları/);
-  assert.match(kartAlani(dolu, 'Günlük kategorileri'), /🟢 Moderasyon/);
+  const uyeRolu = rol('uye', { managed: false, position: 3, permissions: izinli() });
+  assert.match((await kartta('karsilama', 'rol', { sunucu, secilenRol: uyeRolu })).content, /^❌.*sen de veremiyorsun/);
+  assert.equal(ayar(sunucu).otoRol, undefined);
+  const kabul = await kartta('karsilama', 'rol', { sunucu, secilenRol: uyeRolu, izinler: [P.ManageGuild, P.ManageRoles] });
+  assert.equal(kabul.content, '✅ Yeni üyelere <@&uye> rolü verilecek.');
+  assert.match(kabul.embeds[0].data.description, /\*\*Oto rol:\*\* <@&uye>/);
+
+  assert.equal((await kartta('karsilama', 'rol', { sunucu, secilenRol: null })).content, '✅ Oto rol kaldırıldı.');
+  assert.equal((await kartta('karsilama', 'kanal', { sunucu, secilenKanal: null })).content, '✅ Hoş geldin mesajı kapatıldı.');
+  assert.deepEqual([ayar(sunucu).hosgeldinKanali, ayar(sunucu).otoRol], [null, null]);
 });
 
-// --- Acil durum kilidi: /kilit kapat ve /kilit ac ---
+// --- /ayarlar → Acil kilit ---
 // İzin satırı listesini karşılaştırılabilir hale getirir
 const satirlar = (kanal) =>
   [...kanal.permissionOverwrites.cache.values()]
@@ -484,8 +533,8 @@ function kilitSunucusu(id, { botIzinleri = [P.ManageRoles, P.ManageChannels, P.M
   return { guild, kanallar: { kategori, genel, ses, konu }, sesteki, gunlukKaydi };
 }
 
-// /kilit kapat ya da /kilit ac etkileşimi
-const kilitEtkilesimi = (guild, alt) => ({ ...etkilesim({ sunucu: guild.id, alt }), guild, user: kullanici('yonetici') });
+// Paneldeki kilitle ya da kilidi aç düğmesi (Yönetici olarak); kartın yeni hâlini döndürür
+const kilitte = (guild, islem) => kartta('kilit', islem, { guild, izinler: [P.Administrator] });
 // kilit.js her işlemde konsola özet yazar; test çıktısını kirletmesin
 async function sessizce(islem) {
   const [log, hata] = [console.log, console.error];
@@ -496,23 +545,19 @@ async function sessizce(islem) {
     [console.log, console.error] = [log, hata];
   }
 }
-const kilitKomutu = komut('kilit');
 
-test('/kilit kapat ve ac: kanallar kilitlenir, kilit açılınca izinler aynen geri gelir', async () => {
+test('acil kilit: kanallar kilitlenir, kilit açılınca izinler aynen geri gelir', async () => {
   const kilit = src('kilit');
   const { guild, kanallar, sesteki, gunlukKaydi } = kilitSunucusu('kilit-a');
   const once = Object.fromEntries(Object.entries(kanallar).map(([ad, k]) => [ad, satirlar(k)]));
 
-  const acik = kilitEtkilesimi(guild, 'ac');
-  await kilitKomutu.execute(acik);
-  assert.equal(son(acik).content, '🔓 Sunucu kilitli değil.');
+  assert.equal((await kilitte(guild, 'ac')).content, '🔓 Sunucu kilitli değil.');
 
-  const e = kilitEtkilesimi(guild, 'kapat');
-  await sessizce(() => kilitKomutu.execute(e));
-  assert.equal(e.cevaplar[0].flags, MessageFlags.Ephemeral, 'kilit sonucu yalnızca kilitleyene görünür');
-  const aciklama = son(e).embeds[0].data.description;
-  assert.match(aciklama, /\*\*3 kanal\*\* kilitlendi/, 'konular (thread) ayrıca kilitlenmez');
-  assert.match(aciklama, /1 kişi ses kanallarından çıkarıldı/);
+  const kapat = await sessizce(() => kilitte(guild, 'kapat'));
+  assert.match(kapat.content, /\*\*3 kanal\*\* kilitlendi/, 'konular (thread) ayrıca kilitlenmez');
+  assert.match(kapat.content, /1 kişi ses kanallarından çıkarıldı/);
+  assert.equal(kapat.embeds[0].data.title, '🔒 Sunucu kilitli', 'kart güncellenir');
+  assert.equal(bilesen(kapat, 'ay:kilit:ac').label, '🔓 Kilidi aç');
   assert.deepEqual(sesteki, ['saldirgan'], 'sahip ve bot sesten atılmaz');
   assert.equal(kilit.kilitli(guild.id), true);
 
@@ -528,64 +573,58 @@ test('/kilit kapat ve ac: kanallar kilitlenir, kilit açılınca izinler aynen g
   assert.deepEqual(satirlar(kanallar.konu), once.konu);
   assert.equal(baslik(gunlukKaydi[0]), '🔒 Sunucu kilitlendi');
 
-  const tekrar = kilitEtkilesimi(guild, 'kapat');
-  await kilitKomutu.execute(tekrar);
-  assert.equal(son(tekrar).content, '🔒 Sunucu zaten kilitli. Açmak için `/kilit ac` kullan.');
+  assert.equal((await kilitte(guild, 'kapat')).content, '🔒 Sunucu zaten kilitli.');
 
-  const ac = kilitEtkilesimi(guild, 'ac');
-  await sessizce(() => kilitKomutu.execute(ac));
-  assert.equal(son(ac).content, '🔓 Kilit açıldı: 3 kanal kilitten önceki izinlerine döndü.');
+  const ac = await sessizce(() => kilitte(guild, 'ac'));
+  assert.equal(ac.content, '🔓 Kilit açıldı: 3 kanal kilitten önceki izinlerine döndü.');
+  assert.equal(bilesen(ac, 'ay:kilit:kapat').label, '🔒 Sunucuyu kilitle');
   for (const [ad, kanal] of Object.entries(kanallar)) assert.deepEqual(satirlar(kanal), once[ad], ad);
   assert.equal(kilit.kilitli(guild.id), false);
   assert.equal(depo.oku('kilit', {})[guild.id], undefined, 'yedek silinir');
   assert.equal(baslik(gunlukKaydi[1]), '🔓 Sunucunun kilidi açıldı');
 });
 
-test('/kilit kapat: bot izinleri yetmiyorsa hiçbir kanala dokunulmaz', async () => {
+test('acil kilit: bot izinleri yetmiyorsa hiçbir kanala dokunulmaz', async () => {
   const { guild, kanallar } = kilitSunucusu('kilit-b', { botIzinleri: [P.ManageChannels] });
   const once = satirlar(kanallar.genel);
-  const e = kilitEtkilesimi(guild, 'kapat');
-  await kilitKomutu.execute(e);
-  assert.match(son(e).content, /Rolleri Yönet.*Kanalları Yönet/);
+  assert.match((await kilitte(guild, 'kapat')).content, /Rolleri Yönet.*Kanalları Yönet/);
   assert.deepEqual(satirlar(kanallar.genel), once);
   assert.equal(src('kilit').kilitli(guild.id), false);
 });
 
-test('/kilit kapat: aynı anda iki kez çalıştırılırsa ikincisi beklemesini söyler', async () => {
+test('acil kilit: aynı anda iki kez basılırsa ikincisi beklemesini söyler', async () => {
   const { guild } = kilitSunucusu('kilit-c');
-  const [ilk, ikinci] = [kilitEtkilesimi(guild, 'kapat'), kilitEtkilesimi(guild, 'kapat')];
-  await sessizce(() => Promise.all([kilitKomutu.execute(ilk), kilitKomutu.execute(ikinci)]));
-  assert.ok(son(ilk).embeds, 'ilki kilitler');
-  assert.match(son(ikinci).content, /^⏳/);
-  await sessizce(() => kilitKomutu.execute(kilitEtkilesimi(guild, 'ac')));
+  const [ilk, ikinci] = await sessizce(() => Promise.all([kilitte(guild, 'kapat'), kilitte(guild, 'kapat')]));
+  assert.match(ilk.content, /kilitlendi/, 'ilki kilitler');
+  // İkincisi ya beklemesini ya da sunucunun zaten kilitlendiğini söyler; iki kez kilitlemez
+  assert.match(ikinci.content, /^(⏳|🔒 Sunucu zaten kilitli)/);
+  await sessizce(() => kilitte(guild, 'ac'));
 });
 
-test('/kilit ac: açılamayan kanal kalırsa sunucu kilitli sayılır, yeniden çalıştırınca kalanlar açılır', async () => {
+test('acil kilit: açılamayan kanal kalırsa sunucu kilitli sayılır, yeniden basınca kalanlar açılır', async () => {
   const yetkiYok = Object.assign(new Error('Missing Permissions'), { code: 50013 });
   // genel kanalın 1. set çağrısı (kilitleme) geçer, 2.si (açma) reddedilir
   const { guild, kanallar } = kilitSunucusu('kilit-d', { hatalar: [null, yetkiYok] });
   const once = Object.fromEntries(Object.entries(kanallar).map(([ad, k]) => [ad, satirlar(k)]));
-  await sessizce(() => kilitKomutu.execute(kilitEtkilesimi(guild, 'kapat')));
+  await sessizce(() => kilitte(guild, 'kapat'));
 
   // Kilit sırasında bir rol ve bir kanal silindi: geri yüklenemezler, işlemi de bozmazlar
   guild.roles.cache.delete('uyeler');
   guild.channels.cache.delete('ses');
 
-  const ilk = kilitEtkilesimi(guild, 'ac');
-  await sessizce(() => kilitKomutu.execute(ilk));
-  assert.equal(son(ilk).content, '⚠️ 1 kanal eski haline döndü, **1 kanal açılamadı** (Yetkim yetmedi (1 kanal)). Sunucu hâlâ kilitli sayılıyor; `/kilit ac` komutunu yeniden çalıştır.');
+  const ilk = await sessizce(() => kilitte(guild, 'ac'));
+  assert.equal(ilk.content, '⚠️ 1 kanal eski haline döndü, **1 kanal açılamadı** (Yetkim yetmedi (1 kanal)). Sunucu hâlâ kilitli sayılıyor; **Kilidi aç** düğmesine yeniden bas.');
   assert.equal(src('kilit').kilitli(guild.id), true);
   assert.deepEqual(Object.keys(depo.oku('kilit', {})[guild.id]), ['genel'], 'yalnızca açılamayanın yedeği kalır');
   assert.deepEqual(satirlar(kanallar.kategori), once.kategori);
 
-  const ikinci = kilitEtkilesimi(guild, 'ac');
-  await sessizce(() => kilitKomutu.execute(ikinci));
-  assert.match(son(ikinci).content, /^🔓 Kilit açıldı: 1 kanal/);
+  const ikinci = await sessizce(() => kilitte(guild, 'ac'));
+  assert.match(ikinci.content, /^🔓 Kilit açıldı: 1 kanal/);
   assert.deepEqual(satirlar(kanallar.genel), once.genel.filter((s) => s.id !== 'uyeler'), 'silinen rolün satırı geri yazılmaz');
   assert.equal(src('kilit').kilitli(guild.id), false);
 });
 
-// --- Bildirim komutları: /oyun, /yayin, /haber, /instagram ---
+// --- /ayarlar → bildirim bölümleri: oyun, yayın, haber, Instagram ---
 const firsatlar = src('firsatlar');
 const yayin = src('yayin');
 const haber = src('haber');
@@ -608,102 +647,121 @@ async function hatasiz(islem) {
   }
 }
 
-test('bildirim komutları: ayar seçeneksiz yalnızca ayarları gösterir; kanal yalnızca bot kart gönderebiliyorsa kaydedilir', async () => {
-  for (const { ad, kanalAyari } of BILDIRIM_KOMUTLARI) {
-    const sunucu = `kanal-${ad}`;
-    const goster = await calistir(ad, { sunucu, alt: 'ayar' });
-    assert.equal(goster.content, undefined, ad);
-    assert.match(goster.embeds[0].data.description, /ayarlanmadı \(bildirimler kapalı\)/, ad);
-    assert.equal(goster.flags, MessageFlags.Ephemeral, ad);
-
-    const kartsiz = await calistir(ad, { sunucu, alt: 'ayar', secenekler: { kanal: sahteKanal('k', [P.ViewChannel, P.SendMessages]) } });
-    assert.match(kartsiz.content, /^❌ <#k> kanalına yazamıyorum/, ad);
-    assert.equal(ayar(sunucu)[kanalAyari], undefined, ad);
-
-    const kabul = await calistir(ad, { sunucu, alt: 'ayar', secenekler: { kanal: sahteKanal('k') } });
-    assert.match(kabul.content, /^✅ .* <#k> kanalına gönderilecek\./, ad);
-    assert.match(kabul.embeds[0].data.description, /\*\*Kanal:\*\* <#k>/, `${ad}: cevapta güncel ayarlar`);
-    assert.equal(ayar(sunucu)[kanalAyari], 'k', ad);
-
-    const celiski = await calistir(ad, { sunucu, alt: 'ayar', secenekler: { kanal: sahteKanal('k2'), kaldir: 'kanal' } });
-    assert.match(celiski.content, /^❌ Aynı anda/, ad);
-    assert.equal(ayar(sunucu)[kanalAyari], 'k', ad);
-
-    const kapat = await calistir(ad, { sunucu, alt: 'ayar', secenekler: { kaldir: 'kanal' } });
-    assert.match(kapat.content, /^✅ .*kapatıldı/, ad);
-    assert.equal(ayar(sunucu)[kanalAyari], null, ad);
+test('bildirim bölümleri: kanal ve rol menüleri; takip listesi olanlarda Ekle düğmesi', () => {
+  for (const { ad } of BILDIRIM_KOMUTLARI) {
+    const kart = kartAc(ad, { sunucu: `kart-${ad}` });
+    assert.match(kart.embeds[0].data.description, /ayarlanmadı \(bildirimler kapalı\)/, ad);
+    const kimlikler = bilesenleri(kart).map(([id]) => id);
+    assert.deepEqual(kimlikler.slice(0, 2), [`ay:${ad}:kanal`, `ay:${ad}:rol`], `${ad}: kanal ve rol menüleri`);
+    assert.ok(!kimlikler.includes(`ay:${ad}:kapat`), `${ad}: kanal yokken kapatma düğmesi yok`);
+    assert.equal(kimlikler.includes(`ay:${ad}:ekle`), ad !== 'oyun', `${ad}: takip listesi olanlarda Ekle düğmesi`);
+    assert.ok(kart.components.length <= 5, `${ad}: en fazla 5 satır`);
   }
 });
 
-test('bildirim komutları: rolü yalnızca etiketleyebilen seçer; @everyone seçilemez; bot etiketleyemiyorsa uyarılır', async () => {
+test('bildirim bölümleri: kanal menüsü yalnızca botun kart gönderebildiği kanalı kaydeder; kapatma düğmesi kanalı kaldırır', async () => {
+  for (const { ad, kanalAyari } of BILDIRIM_KOMUTLARI) {
+    const sunucu = `kanal-${ad}`;
+    const yazamaz = await kartta(ad, 'kanal', { sunucu, secilenKanal: sahteKanal('k', [P.ViewChannel, P.SendMessages]) });
+    assert.match(yazamaz.content, /^❌ <#k> kanalına yazamıyorum/, ad);
+    assert.equal(ayar(sunucu)[kanalAyari], undefined, ad);
+
+    const kanal = sahteKanal('k');
+    const kabul = await kartta(ad, 'kanal', { sunucu, secilenKanal: kanal, kanallar: { k: kanal } });
+    assert.match(kabul.content, /^✅ .* <#k> kanalına gönderilecek\./, ad);
+    assert.match(kabul.embeds[0].data.description, /\*\*Kanal:\*\* <#k>/, `${ad}: kart güncellenir`);
+    assert.deepEqual(bilesen(kabul, `ay:${ad}:kanal`).default_values, [{ id: 'k', type: 'channel' }], `${ad}: seçili kanal menüde görünür`);
+    assert.equal(ayar(sunucu)[kanalAyari], 'k', ad);
+    assert.equal(bilesen(kabul, `ay:${ad}:kapat`).label, 'Bildirimleri kapat', ad);
+
+    const kapat = await kartta(ad, 'kapat', { sunucu });
+    assert.match(kapat.content, /^✅ .*kapatıldı/, ad);
+    assert.equal(ayar(sunucu)[kanalAyari], null, ad);
+    assert.equal(bilesen(kapat, `ay:${ad}:kapat`), undefined, ad);
+
+    // Sunucuyu Yönet yetkisi olmayan kartı kullanamaz
+    depo.ayarKaydet(sunucu, kanalAyari, 'k');
+    assert.match((await kartta(ad, 'kapat', { sunucu, izinler: [] })).content, /Sunucuyu Yönet/, ad);
+    assert.equal(ayar(sunucu)[kanalAyari], 'k', ad);
+  }
+});
+
+test('bildirim bölümleri: rol menüsü; rolü yalnızca etiketleyebilen seçer, @everyone seçilemez, boşaltınca rol kalkar', async () => {
   for (const { ad, rolAyari } of BILDIRIM_KOMUTLARI) {
     const sunucu = `rol-${ad}`;
-    const rolSec = async (secenekler, { izinler = [P.ManageGuild], botIzinleri = [] } = {}) =>
-      (await calistir(ad, { sunucu, alt: 'ayar', secenekler, izinler, botIzinleri })).content;
+    const rolSec = async (secilenRol, { izinler = [P.ManageGuild], botIzinleri = [] } = {}) =>
+      (await kartta(ad, 'rol', { sunucu, secilenRol, izinler, botIzinleri })).content;
 
-    assert.match(await rolSec({ rol: rol(sunucu, { mentionable: true }) }), /@everyone seçilemez/, ad);
-    assert.match(await rolSec({ rol: rol('gizli') }), /etiketleme yetkin yok/, ad);
+    assert.match(await rolSec(rol(sunucu, { mentionable: true })), /@everyone seçilemez/, ad);
+    assert.match(await rolSec(rol('gizli')), /etiketleme yetkin yok/, ad);
     assert.equal(ayar(sunucu)[rolAyari], undefined, `${ad}: etiketleyemediği rol kaydedilmez`);
 
-    assert.equal(await rolSec({ rol: rol('acik', { mentionable: true }) }), '✅ Bildirimlerde <@&acik> etiketlenecek.', ad);
+    assert.equal(await rolSec(rol('acik', { mentionable: true })), '✅ Bildirimlerde <@&acik> etiketlenecek.', ad);
     assert.equal(ayar(sunucu)[rolAyari], 'acik', ad);
 
     // Herkesi etiketleyebilen yetkili kapalı rolü seçebilir; bot etiketleyemiyorsa bildirim gitmeyeceği söylenir
-    assert.match(await rolSec({ rol: rol('kapali') }, { izinler: [P.ManageGuild, P.MentionEveryone] }), /^⚠️ <@&kapali> kaydedildi ama bildirim gitmeyecek/, ad);
+    assert.match(await rolSec(rol('kapali'), { izinler: [P.ManageGuild, P.MentionEveryone] }), /^⚠️ <@&kapali> kaydedildi ama bildirim gitmeyecek/, ad);
     assert.equal(ayar(sunucu)[rolAyari], 'kapali', ad);
-    assert.match(await rolSec({ rol: rol('kapali') }, { izinler: [P.MentionEveryone], botIzinleri: [P.MentionEveryone] }), /^✅/, ad);
+    assert.match(await rolSec(rol('kapali'), { izinler: [P.ManageGuild, P.MentionEveryone], botIzinleri: [P.MentionEveryone] }), /^✅/, ad);
 
-    assert.match(await rolSec({ rol: rol('x', { mentionable: true }), kaldir: 'rol' }), /^❌ Aynı anda/, ad);
-    assert.equal(await rolSec({ kaldir: 'rol' }), '✅ Bildirimlerde artık rol etiketlenmeyecek.', ad);
+    assert.equal(await rolSec(null), '✅ Bildirimlerde artık rol etiketlenmeyecek.', `${ad}: seçimi boşaltmak rolü kaldırır`);
     assert.equal(ayar(sunucu)[rolAyari], null, ad);
   }
 });
 
-test('/oyun ayar: yalnızca verilen seçenekler değişir, gerisi varsayılan kalır', async () => {
-  const oyunAyar = async (secenekler) => (await calistir('oyun', { sunucu: 'oyun-1', alt: 'ayar', secenekler })).content;
-  assert.equal(await oyunAyar({ bedava: 'acik', 'bedava-magaza': 'epic' }), '✅ Bedava oyun bildirimleri açık. Mağaza: Epic Games.');
-  // Mağaza seçilmezse önceki seçim kalır
-  assert.equal(await oyunAyar({ bedava: 'kapali' }), '✅ Bedava oyun bildirimleri kapalı.');
-  assert.equal(await oyunAyar({ 'indirim-magaza': 'gog', 'en-az-yuzde': 75 }), '✅ İndirim bildirimleri açık. Mağaza: GOG. En az indirim: %75.');
-  assert.deepEqual(
-    (({ bedava, magaza, indirim, indirimMagaza, yuzde, everyone }) => ({ bedava, magaza, indirim, indirimMagaza, yuzde, everyone }))(firsatlar.ayarCoz(ayar('oyun-1'))),
-    { bedava: false, magaza: 'epic', indirim: true, indirimMagaza: 'gog', yuzde: 75, everyone: false },
-  );
+test('/oyun: bedava oyunlar, indirimler ve @everyone düğmeyle açılıp kapanır', async () => {
+  const sunucu = 'oyun-1';
+  // Eski sürümlerin kaydettiği mağaza ve oran ayarları yok sayılır
+  depo.ayarKaydet(sunucu, 'oyunMagaza', 'epic');
+  depo.ayarKaydet(sunucu, 'oyunMinYuzde', 75);
+  const kart = await kartAc('oyun', { sunucu });
+  assert.deepEqual(bilesenleri(kart).slice(2), [
+    ['ay:oyun:bedava', '🎁 Bedava oyunlar: Açık'],
+    ['ay:oyun:indirim', '🏷️ İndirimler: Açık'],
+    ['ay:oyun:everyone', '📢 @everyone: Kapalı'],
+  ]);
+  assert.match(kart.embeds[0].data.description, /\*\*İndirimler:\*\* açık \(en az %50\)/);
 
-  // Kanal ilk kez seçilince mevcut fırsatlar için /oyun simdi önerilir; sonraki seçimlerde değil
-  const ilk = await oyunAyar({ kanal: sahteKanal('firsat') });
-  assert.match(ilk, /`\/oyun simdi`/);
-  assert.doesNotMatch(await oyunAyar({ kanal: sahteKanal('firsat2') }), /oyun simdi/);
+  const bedava = await kartta('oyun', 'bedava', { sunucu });
+  assert.equal(bedava.content, '✅ Bedava oyun bildirimleri kapatıldı.');
+  assert.equal(bilesen(bedava, 'ay:oyun:bedava').label, '🎁 Bedava oyunlar: Kapalı', 'kart ve düğme güncellenir');
+  assert.match(bedava.embeds[0].data.description, /\*\*Bedava oyunlar:\*\* kapalı/);
+  assert.equal((await kartta('oyun', 'bedava', { sunucu })).content, '✅ Bedava oyun bildirimleri açıldı.');
+  assert.equal((await kartta('oyun', 'indirim', { sunucu })).content, '✅ İndirim bildirimleri kapatıldı.');
+  assert.deepEqual(firsatlar.ayarCoz(ayar(sunucu)), { kanal: null, rol: null, bedava: true, indirim: false, yuzde: 50, everyone: false });
 
-  // Kart güncel durumu gösterir
-  const kart = (await calistir('oyun', { sunucu: 'oyun-1', alt: 'ayar' })).embeds[0].data;
-  assert.equal(kart.fields[0].value, '⚫ Kapalı');
-  assert.equal(kart.fields[1].value, '🟢 Açık\nGOG\nEn az %75');
+  // Kanal ilk kez seçilince mevcut fırsatlar için "Şimdi gönder" önerilir; sonraki seçimlerde değil
+  const ilk = await kartta('oyun', 'kanal', { sunucu, secilenKanal: sahteKanal('firsat') });
+  assert.match(ilk.content, /Şimdi gönder/);
+  assert.equal(bilesen(ilk, 'ay:oyun:simdi').label, 'Şimdi gönder');
+  assert.doesNotMatch((await kartta('oyun', 'kanal', { sunucu, secilenKanal: sahteKanal('firsat2') })).content, /Şimdi gönder/);
 });
 
-test('/oyun ayar everyone: bot o kanalda @everyone atamıyorsa uyarılır', async () => {
-  const everyone = async (durum, { kanalIzinleri, botIzinleri = [] } = {}) => {
+test('/oyun @everyone düğmesi: bot o kanalda @everyone atamıyorsa uyarılır', async () => {
+  const everyone = async ({ kanalIzinleri, botIzinleri = [] } = {}) => {
     const kanallar = kanalIzinleri ? { firsat: sahteKanal('firsat', kanalIzinleri) } : {};
     depo.ayarKaydet('oyun-2', 'oyunKanali', kanalIzinleri ? 'firsat' : null);
-    return (await calistir('oyun', { sunucu: 'oyun-2', alt: 'ayar', secenekler: { everyone: durum }, kanallar, botIzinleri })).content;
+    depo.ayarKaydet('oyun-2', 'oyunEveryone', false);
+    return (await kartta('oyun', 'everyone', { sunucu: 'oyun-2', kanallar, botIzinleri })).content;
   };
   // Kanal seçilmemişse sunucu geneli izne bakılır
-  assert.match(await everyone('acik'), /Tüm Rollerden Bahset\*\* izni yok/);
-  assert.doesNotMatch(await everyone('acik', { botIzinleri: [P.MentionEveryone] }), /izni yok/);
+  assert.match(await everyone(), /Tüm Rollerden Bahset\*\* izni yok/);
+  assert.doesNotMatch(await everyone({ botIzinleri: [P.MentionEveryone] }), /izni yok/);
   // Kanal seçiliyse o kanaldaki izne: sunucu genelinde izin olsa da kanalda kapalıysa uyarılır
-  assert.match(await everyone('acik', { kanalIzinleri: [P.SendMessages], botIzinleri: [P.MentionEveryone] }), /izni yok/);
-  assert.match(await everyone('acik', { kanalIzinleri: [P.MentionEveryone] }), /en fazla 6 saatte bir/);
+  assert.match(await everyone({ kanalIzinleri: [P.SendMessages], botIzinleri: [P.MentionEveryone] }), /izni yok/);
+  assert.match(await everyone({ kanalIzinleri: [P.MentionEveryone] }), /en fazla 6 saatte bir/);
   assert.equal(ayar('oyun-2').oyunEveryone, true);
-  assert.equal(await everyone('kapali'), '✅ Önemli fırsatlarda artık @everyone atılmayacak.');
+  // Yeniden basınca kapanır
+  assert.equal((await kartta('oyun', 'everyone', { sunucu: 'oyun-2' })).content, '✅ Önemli fırsatlarda artık @everyone atılmayacak.');
   assert.equal(ayar('oyun-2').oyunEveryone, false);
 });
 
-test('/oyun simdi: kanal ister, sunucu başına 5 dakikada bir çalışır', async () => {
+test('/oyun Şimdi gönder: kanal ister, sunucu başına 5 dakikada bir çalışır', async () => {
   const gonder = mock.method(firsatlar, 'simdiGonder', async () => ({ bedava: 2, indirim: 0 }));
   mock.timers.enable({ apis: ['Date'], now: 5_000_000 });
   try {
-    const simdi = async () => (await calistir('oyun', { sunucu: 'oyun-3', alt: 'simdi' })).content;
-    assert.equal(await simdi(), '❌ Önce `/oyun ayar kanal:` ile bir kanal seç.');
+    const simdi = async () => (await kartta('oyun', 'simdi', { sunucu: 'oyun-3' })).content;
+    assert.equal(await simdi(), '❌ Önce yukarıdan bir kanal seç.');
     depo.ayarKaydet('oyun-3', 'oyunKanali', 'firsat');
     assert.equal(await simdi(), '✅ <#firsat> kanalına 2 bedava oyun ve 0 indirim gönderildi.');
     assert.match(await simdi(), /^⏳ Fırsatlar az önce gönderildi/);
@@ -711,23 +769,33 @@ test('/oyun simdi: kanal ister, sunucu başına 5 dakikada bir çalışır', asy
     mock.timers.tick(5 * 60_000);
     gonder.mock.mockImplementation(async () => ({ bedava: 0, indirim: 0 }));
     assert.equal(await simdi(), 'Şu an ayarlarına uyan bir fırsat yok.');
+    mock.timers.tick(5 * 60_000);
+    gonder.mock.mockImplementation(async () => Promise.reject(new Error('Kaynaklara ulaşılamadı')));
+    assert.match(await hatasiz(simdi), /^❌ Fırsatlar şu an alınamadı/);
   } finally {
     mock.timers.reset();
     gonder.mock.restore();
   }
 });
 
+test('Ekle düğmesi formu açar; formda platform, ad ve isteğe bağlı rol var', async () => {
+  const yayinFormu = (await kartta('yayin', 'ekle', { sunucu: 'form-1' })).form;
+  assert.equal(yayinFormu.custom_id, 'ay:yayin:ekle-form');
+  assert.deepEqual(yayinFormu.components.map((c) => c.component.custom_id), ['platform', 'yayinci', 'rol']);
+  assert.equal(yayinFormu.components[2].component.required, false, 'rol isteğe bağlı');
+  assert.deepEqual((await kartta('haber', 'ekle', { sunucu: 'form-1' })).form.components.map((c) => c.component.custom_id), ['adres', 'rol']);
+  assert.deepEqual((await kartta('instagram', 'ekle', { sunucu: 'form-1' })).form.components.map((c) => c.component.custom_id), ['hesap', 'rol']);
+});
+
 test('/yayin: bağlantısı kurulmamış platform eklenmez, ayar kartı bunu gösterir', async () => {
   for (const platform of Object.keys(yayin.PLATFORMLAR)) {
     assert.equal(yayin.PLATFORMLAR[platform].hazir(), false, platform);
-    const e = etkilesim({ sunucu: 'yayin-1', alt: 'ekle', secenekler: { platform, yayinci: 'deneme' } });
-    await komut('yayin').execute(e);
-    assert.equal(e.cevaplar[0].ertelendi, true, 'platforma sorulacağı için önce ertelenir');
-    assert.match(son(e).content, /^❌ .*bağlantısı henüz kurulmamış/, platform);
+    const sonuc = await kartta('yayin', 'ekle-form', { sunucu: 'yayin-1', form: { platform, yayinci: 'deneme' } });
+    assert.match(sonuc.content, /^❌ .*bağlantısı henüz kurulmamış/, platform);
   }
   assert.deepEqual(yayin.liste('yayin-1'), []);
 
-  const kart = (await calistir('yayin', { sunucu: 'yayin-1', alt: 'ayar' })).embeds[0].data;
+  const kart = (await kartAc('yayin', { sunucu: 'yayin-1' })).embeds[0].data;
   assert.ok(kart.fields.every((a) => a.value === '⚠️ Bağlantı kurulmamış'));
 });
 
@@ -744,11 +812,11 @@ function yayinEkleSahtesi(sonuc) {
   });
 }
 
-test('/yayin ekle: platform hatası genel bir mesajla söylenir; kanal seçilmemişse komutun yazıldığı kanal varsayılır', async () => {
+test('/yayin ekle formu: platform hatası genel bir mesajla söylenir; kanal seçilmemişse kartın açıldığı kanal varsayılır', async () => {
   const ekle = async (sonuc, ek = {}) => {
     const sahte = yayinEkleSahtesi(sonuc);
     try {
-      return (await hatasiz(() => calistir('yayin', { sunucu: 'yayin-2', alt: 'ekle', secenekler: { platform: 'twitch', yayinci: 'deneme', ...ek.secenekler }, ...ek }))).content;
+      return (await hatasiz(() => kartta('yayin', 'ekle-form', { sunucu: 'yayin-2', form: { platform: 'twitch', yayinci: 'deneme' }, ...ek }))).content;
     } finally {
       sahte.mock.restore();
     }
@@ -758,7 +826,7 @@ test('/yayin ekle: platform hatası genel bir mesajla söylenir; kanal seçilmem
 
   // Bot o kanala yazamıyorsa varsayılmaz, nasıl seçileceği söylenir
   const yazamaz = await ekle({ yayinci: { id: '1', giris: 'bir', ad: 'Bir' } }, { kanal: sahteKanal('sohbet', [P.ViewChannel]) });
-  assert.match(yazamaz, /`\/yayin ayar kanal:` ile bir kanal seç/);
+  assert.match(yazamaz, /yukarıdaki menüden bir kanal seç/);
   assert.equal(ayar('yayin-2').yayinKanali, undefined);
 
   const varsayilan = await ekle({ yayinci: { id: '2', giris: 'iki', ad: 'İki' } }, { kanal: sahteKanal('yayinlar') });
@@ -772,20 +840,18 @@ test('/yayin ekle: platform hatası genel bir mesajla söylenir; kanal seçilmem
   assert.equal(await ekle({ yayinci: { id: '4', giris: 'dort', ad: '[tıkla](https://kotu.example) **' } }), '✅ **[tıkla]\\(https://kotu.example) \\*\\*** (Twitch) takibe alındı.');
 });
 
-test('/yayin: yayıncı başına rol; ekle ile verilir, ayar ile değişir; aynı ad iki platformdaysa platform sorulur', async () => {
+test('/yayin: yayıncı başına rol formda verilir; listedeyse yalnızca rolü güncellenir; listeden seçilen çıkarılır', async () => {
   const sunucu = 'yayin-3';
   depo.ayarKaydet(sunucu, 'yayinKanali', 'yayinlar');
   depo.ayarKaydet(sunucu, 'yayinRol', 'genel');
+  const ekle = (form) => kartta('yayin', 'ekle-form', { sunucu, form: { platform: 'kick', yayinci: 'ornek', ...form } });
   const sahte = yayinEkleSahtesi({ yayinci: { id: 'k1', giris: 'ornek', ad: 'Örnek' } });
   try {
     // Etiketleyemediği rol, platforma sorulmadan reddedilir
-    const red = etkilesim({ sunucu, alt: 'ekle', secenekler: { platform: 'kick', yayinci: 'ornek', rol: rol('gizli') } });
-    await komut('yayin').execute(red);
-    assert.match(son(red).content, /etiketleme yetkin yok/);
+    assert.match((await ekle({ rol: rol('gizli') })).content, /etiketleme yetkin yok/);
     assert.equal(sahte.mock.callCount(), 0);
 
-    const e = await calistir('yayin', { sunucu, alt: 'ekle', secenekler: { platform: 'kick', yayinci: 'ornek', rol: rol('kick-hayran', { mentionable: true }) } });
-    assert.equal(e.content, '✅ **Örnek** (Kick) takibe alındı.\nYayına geçince <@&kick-hayran> etiketlenecek.');
+    assert.equal((await ekle({ rol: rol('kick-hayran', { mentionable: true }) })).content, '✅ **Örnek** (Kick) takibe alındı.\nYayına geçince <@&kick-hayran> etiketlenecek.');
     assert.equal(yayin.liste(sunucu)[0].rol, 'kick-hayran');
   } finally {
     sahte.mock.restore();
@@ -795,41 +861,42 @@ test('/yayin: yayıncı başına rol; ekle ile verilir, ayar ile değişir; ayn�
   hepsi[sunucu].push({ platform: 'twitch', id: 't1', giris: 'ornek', ad: 'Örnek' });
   depo.yaz('yayincilar', hepsi);
 
-  const rolVer = async (secenekler) => (await calistir('yayin', { sunucu, alt: 'ayar', secenekler })).content;
-  assert.match(await rolVer({ yayinci: 'ornek', rol: rol('r', { mentionable: true }) }), /birden fazla platformda var/);
-  assert.equal(await rolVer({ yayinci: 'ornek', platform: 'twitch', rol: rol('twitch-hayran', { mentionable: true }) }), '✅ **Örnek** (Twitch) yayına geçince <@&twitch-hayran> etiketlenecek.');
-  // Öneriden gelen "platform:kimlik" değeri tek kaydı bulur
-  assert.equal(await rolVer({ yayinci: 'kick:k1', kaldir: 'rol' }), '✅ **Örnek** (Kick) artık genel yayın rolünü kullanacak.');
-  assert.deepEqual(yayin.liste(sunucu).map((y) => y.rol), [undefined, 'twitch-hayran']);
-  assert.match(await rolVer({ yayinci: 'kick:k1', kanal: sahteKanal('x') }), /yalnızca o yayıncının rolü/);
-  assert.match(await rolVer({ yayinci: 'yok' , rol: rol('r', { mentionable: true }) }), /Listede böyle bir yayıncı yok/);
+  // Listedeki yayıncıyı yeniden eklemek yalnızca rolünü günceller
+  const zaten = yayinEkleSahtesi({ hata: '**Örnek** zaten listede.', zaten: { id: 't1', giris: 'ornek', ad: 'Örnek' } });
+  try {
+    const yeniden = async (form) => (await kartta('yayin', 'ekle-form', { sunucu, form: { platform: 'twitch', yayinci: 'ornek', ...form } })).content;
+    assert.equal(await yeniden({ rol: rol('twitch-hayran', { mentionable: true }) }), '✅ **Örnek** (Twitch) zaten listedeydi; yayına geçince <@&twitch-hayran> etiketlenecek.');
+    assert.equal(await yeniden({}), '❌ **Örnek** zaten listede. Rolünü değiştirmek için formda bir rol seç.');
+  } finally {
+    zaten.mock.restore();
+  }
+  assert.deepEqual(yayin.liste(sunucu).map((y) => y.rol), ['kick-hayran', 'twitch-hayran']);
 
-  // Kart: kendi rolü olan yayıncı oklu gösterilir
-  const kart = (await calistir('yayin', { sunucu, alt: 'ayar' })).embeds[0].data;
-  assert.match(kart.fields.find((a) => a.name.includes('Twitch')).value, /\[Örnek\]\(https:\/\/www\.twitch\.tv\/ornek\) → <@&twitch-hayran>/);
-  assert.match(kart.description, /\*\*Etiketlenecek rol:\*\* <@&genel>/);
+  // Kart: kendi rolü olan yayıncı oklu gösterilir; çıkarma listesinde ikisi de ayrı seçenek
+  const kart = await kartAc('yayin', { sunucu });
+  assert.match(kart.embeds[0].data.fields.find((a) => a.name.includes('Twitch')).value, /\[Örnek\]\(https:\/\/www\.twitch\.tv\/ornek\) → <@&twitch-hayran>/);
+  assert.match(kart.embeds[0].data.description, /\*\*Etiketlenecek rol:\*\* <@&genel>/);
+  assert.deepEqual(bilesen(kart, 'ay:yayin:cikar:0').options.map((o) => o.value), ['kick:k1', 'twitch:t1']);
 
-  // Öneriler: takip edilenler, değer platform:kimlik
-  const oneri = etkilesim({ sunucu, odak: 'ÖRN' });
-  await komut('yayin').autocomplete(oneri);
-  assert.deepEqual(son(oneri).oneriler.map((o) => o.value), ['kick:k1', 'twitch:t1']);
-
-  // Çıkarma: platform belirsizse sorulur; platformla çıkarılınca abonelik eşitlenir
+  // Listeden seçilen tek kayıt çıkarılır; abonelik eşitlenir
   const esitle = mock.method(yayin, 'esitle', async () => {});
   try {
-    assert.match((await calistir('yayin', { sunucu, alt: 'cikar', secenekler: { yayinci: 'ornek' } })).content, /birden fazla platformda var/);
-    assert.equal((await calistir('yayin', { sunucu, alt: 'cikar', secenekler: { yayinci: 'https://kick.com/ornek', platform: 'kick' } })).content, '✅ **Örnek** (Kick) takipten çıkarıldı.');
+    const cikar = await kartta('yayin', 'cikar:0', { sunucu, degerler: ['kick:k1'] });
+    assert.equal(cikar.content, '✅ **Örnek** (Kick) takipten çıkarıldı.');
+    assert.deepEqual(bilesen(cikar, 'ay:yayin:cikar:0').options.map((o) => o.value), ['twitch:t1'], 'liste güncellenir');
     assert.deepEqual(esitle.mock.calls.map((c) => c.arguments), [['kick']]);
-    assert.deepEqual(yayin.liste(sunucu).map((y) => y.platform), ['twitch']);
+    assert.match((await kartta('yayin', 'cikar:0', { sunucu, degerler: ['kick:k1'] })).content, /listede yok/);
   } finally {
     esitle.mock.restore();
   }
 });
 
-test('/yayin ayar test: deneme bildirimi kimseyi etiketlemez; uzun liste kısaltılır', async () => {
-  const deneme = async (kanallar) => (await calistir('yayin', { sunucu: 'yayin-4', alt: 'ayar', secenekler: { test: true }, kanallar })).content;
-  assert.match(await deneme({}), /önce bir kanal seç/);
+test('/yayin: deneme bildirimi kimseyi etiketlemez; uzun liste kısaltılır ve sayfalara bölünür', async () => {
+  const deneme = async (kanallar) => (await kartta('yayin', 'deneme', { sunucu: 'yayin-4', kanallar })).content;
+  assert.match(await deneme({}), /önce yukarıdan bir kanal seç/);
+  assert.equal(bilesen(await kartAc('yayin', { sunucu: 'yayin-4' }), 'ay:yayin:deneme'), undefined, 'kanal yokken düğme yok');
   depo.ayarKaydet('yayin-4', 'yayinKanali', 'bildirim');
+  assert.equal(bilesen(await kartAc('yayin', { sunucu: 'yayin-4' }), 'ay:yayin:deneme').label, 'Deneme bildirimi');
   assert.match(await deneme({}), /Bildirim kanalı bulunamadı/);
   const kanal = sahteKanal('bildirim');
   depo.ayarKaydet('yayin-4', 'yayinRol', 'herkes-rolu');
@@ -844,15 +911,64 @@ test('/yayin ayar test: deneme bildirimi kimseyi etiketlemez; uzun liste kısalt
       { platform: 'youtube', id: 'UC1', giris: 'tuzak', ad: 'x](https://kotu.example) [y' },
     ],
   });
-  const kart = (await calistir('yayin', { sunucu: 'yayin-4', alt: 'ayar' })).embeds[0].data;
+  const cevap = await kartAc('yayin', { sunucu: 'yayin-4' });
+  const kart = cevap.embeds[0].data;
   const twitch = kart.fields[0];
   assert.equal(twitch.name, '🟣 Twitch · 50');
   assert.ok(twitch.value.length <= 1024, `${twitch.value.length} karakter`);
   assert.match(twitch.value, / · \+\d+ daha$/);
   assert.match(twitch.value, /\[\\\*Yayıncı 0\\\*\]\(https:\/\/www\.twitch\.tv\/yayinci_0\)/);
-  assert.equal(kart.footer.text, '51 yayıncı takip ediliyor · Değiştirmek için: /yayin ayar');
+  assert.equal(kart.footer.text, '51 yayıncı takip ediliyor · Her şeyi aşağıdan değiştirebilirsin');
   const youtube = kart.fields.find((a) => a.name.includes('YouTube'));
   assert.equal(youtube.value, '⚠️ Bağlantı kurulmamış\n[x]\\(https://kotu.example) [y](https://www.youtube.com/channel/UC1)');
+
+  // 51 kayıt: çıkarma listesi 25'erli üç sayfa; sayfa düğmeleriyle gezilir
+  assert.equal(cevap.components.length, 5);
+  const ilk = bilesen(cevap, 'ay:yayin:cikar:0');
+  assert.equal(ilk.options.length, 25);
+  assert.match(ilk.placeholder, /sayfa 1\/3/);
+  assert.equal(bilesen(cevap, 'ay:yayin:sayfa:-1').disabled, true);
+  const son = await kartta('yayin', 'sayfa:2', { sunucu: 'yayin-4' });
+  assert.deepEqual(bilesen(son, 'ay:yayin:cikar:2').options.map((o) => o.value), ['youtube:UC1']);
+  assert.equal(bilesen(son, 'ay:yayin:sayfa:3').disabled, true);
+  assert.equal(son.content, null, 'sayfa değiştirmek mesaj yazmaz');
+});
+
+test('YouTube: okunamayan kanal her dakika sorulmaz; hata bir kez yazılır, düzelince söylenir', async () => {
+  const youtube = src('yayin/youtube');
+  youtube.baslat({ bildir: async () => {}, takipEdilenler: () => ['UCbozuk'] }); // Anahtar yok: zamanlayıcı kurulmaz
+  let durum = 404;
+  const istekler = [];
+  const kayit = [];
+  const fetchAsil = global.fetch;
+  const [hataAsil, logAsil] = [console.error, console.log];
+  global.fetch = async (adres) => (istekler.push(adres), { ok: durum === 200, status: durum, text: async () => '' });
+  console.error = (...m) => kayit.push(m.join(' '));
+  console.log = (...m) => kayit.push(m.join(' '));
+  mock.timers.enable({ apis: ['Date'], now: 1_000_000 });
+  try {
+    await youtube.kontrolEt();
+    await youtube.kontrolEt(); // Hemen ardından: kanala sorulmaz
+    assert.equal(istekler.length, 1);
+    mock.timers.tick(60_000);
+    await youtube.kontrolEt(); // Bir dakika sonra yeniden denenir; aynı hata yeniden yazılmaz
+    assert.equal(istekler.length, 2);
+    mock.timers.tick(60_000);
+    await youtube.kontrolEt(); // Aralık iki katına çıktı (2 dakika)
+    assert.equal(istekler.length, 2);
+    mock.timers.tick(60_000);
+    durum = 200;
+    await youtube.kontrolEt();
+    assert.equal(istekler.length, 3);
+    assert.deepEqual(kayit, [
+      'YouTube kanalı okunamadı (UCbozuk): YouTube akışı HTTP 404. Kanala daha seyrek bakılacak.',
+      'YouTube kanalı yeniden okunabiliyor (UCbozuk)',
+    ]);
+  } finally {
+    mock.timers.reset();
+    global.fetch = fetchAsil;
+    [console.error, console.log] = [hataAsil, logAsil];
+  }
 });
 
 // Sahte ekleme: kaynağı gerçekten listeye yazar
@@ -868,83 +984,63 @@ function haberEkleSahtesi(uygulama) {
   });
 }
 
-test('/haber ekle: aynı sunucuda üst üste ekleme reddedilir; cevap verilemese de sıra kilitli kalmaz', async () => {
-  const haberKomutu = komut('haber');
+test('/haber ekle formu: aynı sunucuda üst üste ekleme reddedilir; hata sırayı kilitli bırakmaz', async () => {
   // Her ekleme, test bitir[] içindeki çözücüsünü çağırana kadar sürer
   const bitir = [];
   const ekle = haberEkleSahtesi(() => new Promise((coz) => bitir.push(coz)));
+  const formla = (sunucu, adres, ek = {}) => kartta('haber', 'ekle-form', { sunucu, form: { adres }, ...ek });
   try {
-    const ilk = etkilesim({ sunucu: 'haber-1', alt: 'ekle', secenekler: { adres: 'ornek.com' } });
-    const suren = haberKomutu.execute(ilk);
+    const suren = formla('haber-1', 'ornek.com');
     await turBekle();
-    const ikinci = etkilesim({ sunucu: 'haber-1', alt: 'ekle', secenekler: { adres: 'baska.com' } });
-    await haberKomutu.execute(ikinci);
-    assert.match(son(ikinci).content, /^⏳ Bu sunucuda şu an başka bir kaynak ekleniyor/);
+    assert.match((await formla('haber-1', 'baska.com')).content, /^⏳ Bu sunucuda şu an başka bir kaynak ekleniyor/);
     // Başka sunucu beklemez
-    const baska = etkilesim({ sunucu: 'haber-2', alt: 'ekle', secenekler: { adres: 'baska.com' } });
-    const baskaSuren = haberKomutu.execute(baska);
+    const baskaSuren = formla('haber-2', 'baska.com');
     await turBekle();
     assert.equal(bitir.length, 2);
     bitir[0]({ besleme: { adres: 'https://kotu.example/rss', ad: '[Örnek](https://kotu.example)' } });
     bitir[1]({ hata: 'Bu adreste bir haber beslemesi (RSS) bulamadım.' });
-    await Promise.all([suren, baskaSuren]);
+    const [ilk, baska] = await Promise.all([suren, baskaSuren]);
     // Kaynağın adı siteden gelir: cevapta gizli bağlantıya dönüşmez
-    assert.equal(son(ilk).content, '✅ **[Örnek]\\(https://kotu.example)** takibe alındı. Bundan sonra yayınlanan haberler duyurulacak.\nℹ️ Bildirimlerin gelmesi için `/haber ayar kanal:` ile bir kanal seç.');
-    assert.equal(son(baska).content, '❌ Bu adreste bir haber beslemesi (RSS) bulamadım.');
+    assert.equal(ilk.content, '✅ **[Örnek]\\(https://kotu.example)** takibe alındı. Bundan sonra yayınlanan haberler duyurulacak.\nℹ️ Bildirimlerin gelmesi için yukarıdaki menüden bir kanal seç.');
+    assert.equal(baska.content, '❌ Bu adreste bir haber beslemesi (RSS) bulamadım.');
 
     // Beklenmeyen hata genel bir mesajla söylenir, sıra serbest kalır
     ekle.mock.mockImplementation(async () => Promise.reject(new Error('EAI_AGAIN')));
-    const hatali = etkilesim({ sunucu: 'haber-1', alt: 'ekle', secenekler: { adres: 'ornek.com' } });
-    await hatasiz(() => haberKomutu.execute(hatali));
-    assert.equal(son(hatali).content, '❌ Kaynak eklenirken bir hata oluştu.');
-
-    // Discord etkileşimi zaman aşımına uğrarsa (Unknown interaction) cevap ertelenemez;
-    // sunucu, bot yeniden başlayana kadar kaynak ekleyemez hale gelmemeli
-    const gec = etkilesim({ sunucu: 'haber-3', alt: 'ekle', secenekler: { adres: 'ornek.com' }, ertele: async () => Promise.reject(new Error('Unknown interaction')) });
-    await assert.rejects(haberKomutu.execute(gec), /Unknown interaction/); // index.js bunu kayda yazar
+    assert.equal((await hatasiz(() => formla('haber-1', 'ornek.com'))).content, '❌ Kaynak eklenirken bir hata oluştu.');
     ekle.mock.mockImplementation(async () => ({ besleme: { adres: 'https://ornek.com/rss', ad: 'Örnek' } }));
-    const sonra = etkilesim({ sunucu: 'haber-3', alt: 'ekle', secenekler: { adres: 'ornek.com' } });
-    await haberKomutu.execute(sonra);
-    assert.match(son(sonra).content, /^✅ \*\*Örnek\*\* takibe alındı/);
+    assert.match((await formla('haber-1', 'ornek.com')).content, /^✅ \*\*Örnek\*\* takibe alındı/);
   } finally {
     ekle.mock.restore();
   }
 });
 
-test('/haber: kaynak başına rol; ekle ile verilir, ayar ile değişir, kartta gösterilir', async () => {
+test('/haber: kaynak başına rol formda verilir; listedeyse yalnızca rolü güncellenir; kartta gösterilir', async () => {
   const sunucu = 'haber-rol';
   const ekle = haberEkleSahtesi(async (adres) => ({ besleme: { adres: `https://${adres}/rss`, ad: adres } }));
+  const formla = (adres, { form, ...ek } = {}) => kartta('haber', 'ekle-form', { sunucu, form: { adres, ...form }, ...ek });
   try {
-    const red = await calistir('haber', { sunucu, alt: 'ekle', secenekler: { adres: 'oyun.test', rol: rol('gizli') } });
-    assert.match(red.content, /etiketleme yetkin yok/);
+    assert.match((await formla('oyun.test', { form: { rol: rol('gizli') } })).content, /etiketleme yetkin yok/);
     assert.equal(ekle.mock.callCount(), 0, 'reddedilecek ekleme için site indirilmez');
 
-    const oyun = await calistir('haber', { sunucu, alt: 'ekle', secenekler: { adres: 'oyun.test', rol: rol('oyun-haber', { mentionable: true }) }, kanal: sahteKanal('haberler') });
-    assert.equal(oyun.content, '✅ **oyun.test** takibe alındı. Bundan sonra yayınlanan haberler duyurulacak.\nBu kaynağın haberlerinde <@&oyun-haber> etiketlenecek.\nℹ️ Henüz bildirim kanalı seçilmemişti; bildirimler bu kanala (<#haberler>) gelecek. Değiştirmek için `/haber ayar kanal:`.');
+    const oyun = await formla('oyun.test', { form: { rol: rol('oyun-haber', { mentionable: true }) }, kanal: sahteKanal('haberler') });
+    assert.equal(oyun.content, '✅ **oyun.test** takibe alındı. Bundan sonra yayınlanan haberler duyurulacak.\nBu kaynağın haberlerinde <@&oyun-haber> etiketlenecek.\nℹ️ Henüz bildirim kanalı seçilmemişti; bildirimler bu kanala (<#haberler>) gelecek. Değiştirmek için yukarıdaki kanal menüsünü kullan.');
     assert.equal(ayar(sunucu).haberKanali, 'haberler');
-    await calistir('haber', { sunucu, alt: 'ekle', secenekler: { adres: 'tekno.test' } });
+    await formla('tekno.test');
   } finally {
     ekle.mock.restore();
   }
   assert.deepEqual(haber.liste(sunucu).map((k) => k.rol), ['oyun-haber', undefined]);
 
-  const ayarla = async (secenekler) => (await calistir('haber', { sunucu, alt: 'ayar', secenekler })).content;
-  assert.equal(await ayarla({ kaynak: 'tekno', rol: rol('tekno-haber', { mentionable: true }) }), '✅ **tekno.test** haberlerinde <@&tekno-haber> etiketlenecek.');
-  assert.match(await ayarla({ kaynak: 'tekno' }), /^❌ Kaynağa ne yapılacağını seç/);
-  assert.match(await ayarla({ kaynak: 'tekno', kanal: sahteKanal('x') }), /yalnızca o kaynağın rolü/);
-  assert.match(await ayarla({ kaynak: 'yok', rol: rol('r', { mentionable: true }) }), /Listede böyle bir kaynak yok/);
-  assert.match(await ayarla({ kaynak: 'tekno', rol: rol('gizli') }), /etiketleme yetkin yok/);
-  assert.equal(haber.liste(sunucu)[1].rol, 'tekno-haber');
-
-  const kart = (await calistir('haber', { sunucu, alt: 'ayar' })).embeds[0].data.fields[0].value;
+  // Listedeki kaynağı yeniden eklemek yalnızca rolünü günceller
+  const zaten = haberEkleSahtesi(async (adres) => ({ hata: `**${adres}** zaten listede.`, zaten: `https://${adres}/rss` }));
+  try {
+    assert.equal((await formla('tekno.test', { form: { rol: rol('tekno-haber', { mentionable: true }) } })).content, '✅ **tekno.test** zaten listedeydi; haberlerinde <@&tekno-haber> etiketlenecek.');
+    assert.match((await formla('tekno.test')).content, /^❌ \*\*tekno\.test\*\* zaten listede\. Rolünü değiştirmek için/);
+  } finally {
+    zaten.mock.restore();
+  }
+  const kart = (await kartAc('haber', { sunucu })).embeds[0].data.fields[0].value;
   assert.equal(kart, '**1.** [oyun.test](https://oyun.test) → <@&oyun-haber>\n**2.** [tekno.test](https://tekno.test) → <@&tekno-haber>');
-  // Öneriden gelen tam adresle de bulunur
-  assert.equal(await ayarla({ kaynak: 'https://oyun.test/rss', kaldir: 'rol' }), '✅ **oyun.test** artık genel haber rolünü kullanacak.');
-  assert.equal(haber.liste(sunucu)[0].rol, undefined);
-
-  const oneri = etkilesim({ sunucu, odak: 'tek' });
-  await komut('haber').autocomplete(oneri);
-  assert.deepEqual(son(oneri).oneriler, [{ name: '2. tekno.test', value: 'https://tekno.test/rss' }]);
 });
 
 test('haber bildirimi: kendi rolü olan kaynak onu, olmayan genel rolü etiketler', async () => {
@@ -978,47 +1074,50 @@ test('haber bildirimi: kendi rolü olan kaynak onu, olmayan genel rolü etiketle
   depo.yaz('haber', {});
 });
 
-test('/haber cikar ve ayar: sıra numarası ya da adla çıkarılır; kart sınırı ve kaynakları gösterir', async () => {
+test('/haber: kart sınırı ve kaynakları gösterir; listeden seçilen kaynak çıkarılır (uzun adres sıra numarasıyla)', async () => {
+  const uzun = `https://uzun.example/${'a'.repeat(120)}`;
   depo.yaz('haber', {
     'haber-4': [
       { adres: 'https://ornek.com/rss', ad: 'Örnek Haber' },
       { adres: 'https://teknoloji.com/feed', ad: 'Teknoloji *Gündem*' },
-      { adres: 'https://spor.com/rss.xml', ad: 'Spor' },
+      { adres: uzun, ad: 'Uzun' },
       { adres: 'https://kotu.example/rss', ad: 'x](https://kotu.example/tuzak) [Tuzak' },
     ],
   });
-  const kart = async () => (await calistir('haber', { sunucu: 'haber-4', alt: 'ayar' })).embeds[0].data;
-  const cikar = async (kaynak) => (await calistir('haber', { sunucu: 'haber-4', alt: 'cikar', secenekler: { kaynak } })).content;
-  const liste = (await kart()).fields[0];
+  const cevap = await kartAc('haber', { sunucu: 'haber-4' });
+  const liste = cevap.embeds[0].data.fields[0];
   assert.equal(liste.name, `Kaynaklar · 4/${haber.SUNUCU_BASI_SINIR}`);
   assert.match(liste.value, /^\*\*1\.\*\* \[Örnek Haber\]\(https:\/\/ornek\.com\)/);
   assert.match(liste.value, /\[Teknoloji \\\*Gündem\\\*\]\(https:\/\/teknoloji\.com\)/);
   // Ad, etiketi erken kapatıp kendi adresine giden bir bağlantı kuramaz
   assert.ok(!liste.value.includes('](https://kotu.example/tuzak)'), liste.value);
   assert.match(liste.value, /\[x\]\\\(https:\/\/kotu\.example\/tuzak\) \[Tuzak\]\(https:\/\/kotu\.example\)$/);
-  assert.match(await cikar('4'), /^✅ \*\*x\]\\\(https/);
+  assert.equal(cevap.embeds[0].data.footer.text, 'Kaynaklar 10 dakikada bir kontrol edilir · Her şeyi aşağıdan değiştirebilirsin');
 
-  assert.match(await cikar('9'), /Listede böyle bir kaynak yok/);
-  assert.equal(await cikar('3'), '✅ **Spor** takipten çıkarıldı.');
-  assert.equal(await cikar('GÜNDEM'), '✅ **Teknoloji \\*Gündem\\*** takipten çıkarıldı.');
-  assert.deepEqual(haber.liste('haber-4').map((k) => k.ad), ['Örnek Haber']);
-  assert.equal((await kart()).footer.text, 'Kaynaklar 10 dakikada bir kontrol edilir · Değiştirmek için: /haber ayar');
+  const secenekler = bilesen(cevap, 'ay:haber:cikar:0').options;
+  assert.deepEqual(secenekler.map((o) => o.value), ['https://ornek.com/rss', 'https://teknoloji.com/feed', '3', 'https://kotu.example/rss']);
+  const cikar = async (deger) => (await kartta('haber', 'cikar:0', { sunucu: 'haber-4', degerler: [deger] })).content;
+  assert.equal(await cikar('3'), '✅ **Uzun** takipten çıkarıldı.');
+  assert.equal(await cikar('https://teknoloji.com/feed'), '✅ **Teknoloji \\*Gündem\\*** takipten çıkarıldı.');
+  assert.match(await cikar('https://yok.example/rss'), /listede yok/);
+  assert.deepEqual(haber.liste('haber-4').map((k) => k.ad), ['Örnek Haber', 'x](https://kotu.example/tuzak) [Tuzak']);
 });
 
-test('/instagram: bağlantı kurulmamışsa komut yüklenmez, ekleme reddedilir, kart uyarır', async () => {
+test('Instagram: bağlantı kurulmamışsa bölüm menüde görünmez, ekleme reddedilir, kart uyarır', async () => {
   assert.equal(instagram.hazir(), false);
-  assert.equal(komut('instagram').etkin(), false, 'Discord\'a yüklenmez');
+  assert.equal(ayarlarPaneli.BOLUMLER.find((b) => b.id === 'instagram').gorunur(), false, 'menüde görünmez');
+  assert.match((await kartta('nav', '', { sunucu: 'insta-1', degerler: ['instagram'] })).content, /açamazsın/);
 
-  const e = await calistir('instagram', { sunucu: 'insta-1', alt: 'ekle', secenekler: { hesap: 'ornek' } });
+  const e = await kartta('instagram', 'ekle-form', { sunucu: 'insta-1', form: { hesap: 'ornek' } });
   assert.match(e.content, /^❌ Instagram bağlantısı henüz kurulmamış/);
   assert.deepEqual(instagram.liste('insta-1'), []);
 
-  const kart = (await calistir('instagram', { sunucu: 'insta-1', alt: 'ayar' })).embeds[0].data;
+  const kart = (await kartAc('instagram', { sunucu: 'insta-1' })).embeds[0].data;
   assert.match(kart.description, /^⚠️ Instagram bağlantısı kurulmamış/);
   assert.match(kart.fields[0].value, /^Henüz hesap eklenmemiş/);
 });
 
-test('/instagram: hesap başına rol, çıkarma ve deneme bildirimi', async () => {
+test('/instagram: hesap başına rol, listeden çıkarma ve deneme bildirimi', async () => {
   const sunucu = 'insta-2';
   const ekle = mock.method(instagram, 'ekle', async (sunucuId) => {
     const hepsi = depo.oku('instagram', {});
@@ -1026,13 +1125,13 @@ test('/instagram: hesap başına rol, çıkarma ve deneme bildirimi', async () =
     depo.yaz('instagram', hepsi);
     return { hesap: { ad: 'Örnek Hesap', giris: 'ornek' } };
   });
+  const formla = (form) => kartta('instagram', 'ekle-form', { sunucu, form: { hesap: 'ornek', ...form } });
   try {
-    const e = await calistir('instagram', { sunucu, alt: 'ekle', secenekler: { hesap: 'ornek', rol: rol('takipci', { mentionable: true }) } });
+    const e = await formla({ rol: rol('takipci', { mentionable: true }) });
     assert.match(e.content, /^✅ \*\*Örnek Hesap\*\* \(@ornek\) takibe alındı\. .*\nBu hesabın gönderilerinde <@&takipci> etiketlenecek\./);
     assert.equal(instagram.liste(sunucu)[0].rol, 'takipci');
     ekle.mock.mockImplementation(async () => Promise.reject(new Error('ECONNRESET')));
-    const hata = await hatasiz(() => calistir('instagram', { sunucu, alt: 'ekle', secenekler: { hesap: 'ornek' } }));
-    assert.match(hata.content, /^❌ Eklenemedi: Instagram'a ulaşılamadı/);
+    assert.match((await hatasiz(() => formla({}))).content, /^❌ Eklenemedi: Instagram'a ulaşılamadı/);
   } finally {
     ekle.mock.restore();
   }
@@ -1041,91 +1140,160 @@ test('/instagram: hesap başına rol, çıkarma ve deneme bildirimi', async () =
   hepsi[sunucu].push({ giris: 'tuzak', ad: 'x](https://kotu.example) [y' });
   depo.yaz('instagram', hepsi);
   // Profil adı serbest metin: kartta etiketi kapatıp başka adrese bağlantı kuramaz
-  const kart = (await calistir('instagram', { sunucu, alt: 'ayar' })).embeds[0].data;
-  assert.equal(kart.fields[0].value, '[Örnek Hesap](https://www.instagram.com/ornek/) → <@&takipci> · [x]\\(https://kotu.example) [y](https://www.instagram.com/tuzak/)');
+  const kart = await kartAc('instagram', { sunucu });
+  assert.equal(kart.embeds[0].data.fields[0].value, '[Örnek Hesap](https://www.instagram.com/ornek/) → <@&takipci> · [x]\\(https://kotu.example) [y](https://www.instagram.com/tuzak/)');
+  assert.deepEqual(bilesen(kart, 'ay:instagram:cikar:0').options.map((o) => o.value), ['ornek', 'tuzak']);
 
-  const ayarla = async (secenekler, kanallar) => (await calistir('instagram', { sunucu, alt: 'ayar', secenekler, kanallar })).content;
-  assert.equal(await ayarla({ hesap: 'https://www.instagram.com/ornek/', kaldir: 'rol' }), '✅ **Örnek Hesap** (@ornek) artık genel Instagram rolünü kullanacak.');
-  assert.match(await ayarla({ hesap: 'ornek', test: true }), /yalnızca o hesabın rolü/);
+  // Listedeki hesabı yeniden eklemek yalnızca rolünü günceller
+  const zaten = mock.method(instagram, 'ekle', async () => ({ hata: '**@ornek** zaten listede.', zaten: 'ornek' }));
+  try {
+    assert.equal((await formla({ rol: rol('yeni-rol', { mentionable: true }) })).content, '✅ **Örnek Hesap** (@ornek) zaten listedeydi; gönderilerinde <@&yeni-rol> etiketlenecek.');
+  } finally {
+    zaten.mock.restore();
+  }
+  assert.equal(instagram.liste(sunucu)[0].rol, 'yeni-rol');
 
-  const cikar = async (h) => (await calistir('instagram', { sunucu, alt: 'cikar', secenekler: { hesap: h } })).content;
-  assert.match(await cikar('baska'), /Listede böyle bir hesap yok/);
-  assert.equal(await cikar('ornek'), '✅ **Örnek Hesap** (@ornek) takipten çıkarıldı.');
+  assert.equal((await kartta('instagram', 'cikar:0', { sunucu, degerler: ['ornek'] })).content, '✅ **Örnek Hesap** (@ornek) takipten çıkarıldı.');
+  assert.match((await kartta('instagram', 'cikar:0', { sunucu, degerler: ['ornek'] })).content, /listede yok/);
 
   const kanal = sahteKanal('insta');
   depo.ayarKaydet(sunucu, 'instagramKanali', 'insta');
   depo.ayarKaydet(sunucu, 'instagramRol', 'takipci');
-  assert.match(await ayarla({ test: true }, { insta: kanal }), /✅ <#insta> kanalına deneme bildirimi gönderildi/);
+  assert.match((await kartta('instagram', 'deneme', { sunucu, kanallar: { insta: kanal } })).content, /✅ <#insta> kanalına deneme bildirimi gönderildi/);
   assert.deepEqual(kanal.gonderilen[0].allowedMentions, { parse: [] }, 'deneme bildirimi seçili rolü etiketlemez');
 });
 
-// --- /koruma, /uyari, /seviye ayar alt komutları ---
-test('/koruma filtre: yalnızca tür seçilirse ayarları gösterir; durum verilmezse açık/kapalı değişmez', async () => {
+// --- /ayarlar → Koruma, Uyarı kuralları, Seviye ---
+test('/ayarlar → Koruma: filtreler düğmeyle açılıp kapanır; susturma süreleri formla değişir', async () => {
   const koruma = src('koruma');
-  const filtre = async (secenekler) => calistir('koruma', { sunucu: 'koruma-1', alt: 'filtre', secenekler, botIzinleri: [P.ManageMessages, P.ModerateMembers] });
-  const goster = await filtre({ tur: 'spam' });
-  assert.equal(goster.embeds[0].data.title, '🛡️ Otomatik koruma');
+  const sunucu = 'koruma-1';
+  const bas = (islem, ek = {}) => kartta('koruma', islem, { sunucu, botIzinleri: [P.ManageMessages, P.ModerateMembers], intents: [GatewayIntentBits.MessageContent], ...ek });
+  assert.deepEqual(bilesenleri(kartAc('koruma', { sunucu })).slice(0, 4), [
+    ['ay:koruma:spam', 'Spam: Kapalı'],
+    ['ay:koruma:kufur', 'Küfür: Kapalı'],
+    ['ay:koruma:gorsel', 'Görsel: Kapalı'],
+    ['ay:koruma:baglanti', 'Bağlantı: Kapalı'],
+  ]);
 
-  assert.match((await filtre({ tur: 'spam', durum: 'acik' })).content, /^✅ Spam koruması açık/);
-  assert.equal(koruma.ayarCoz(ayar('koruma-1')).spam, true);
-  // Açık filtrenin yalnızca süresi değişir
-  assert.match((await filtre({ tur: 'spam', 'susturma-dakika': 5 })).content, /^✅ Spam koruması açık.*5 dakika susturulur/);
-  assert.equal(koruma.ayarCoz(ayar('koruma-1')).spam, true);
-  // Kapalı filtrenin süresi değişince "kapatıldı" denmez
-  assert.equal((await filtre({ tur: 'kufur', 'susturma-dakika': 10 })).content, '✅ Ayar kaydedildi. Küfür filtresi şu an kapalı; açmak için `durum:Açık` ekle.');
-  assert.equal(koruma.ayarCoz(ayar('koruma-1')).kufurDakika, 10);
-  assert.equal((await filtre({ tur: 'spam', durum: 'kapali' })).content, '✅ Spam koruması kapatıldı.');
+  const acik = await bas('spam');
+  assert.match(acik.content, /^✅ Spam koruması açık\..* ve üye 1 saat susturulur\./);
+  assert.doesNotMatch(acik.content, /izinleri ver/);
+  assert.equal(koruma.ayarCoz(ayar(sunucu)).spam, true);
+  assert.equal(bilesen(acik, 'ay:koruma:spam').label, 'Spam: Açık', 'düğme güncellenir');
+  assert.equal((await bas('spam')).content, '✅ Spam koruması kapatıldı.');
+  // Bot izinleri eksikse açılır ama söylenir
+  assert.match((await bas('spam', { botIzinleri: [] })).content, /bana şu izinleri ver: Mesajları Yönet, Üyelere Zaman Aşımı Uygula/);
 
-  // Türüne ait olmayan seçenek reddedilir
-  assert.match((await filtre({ tur: 'spam', kapsam: 'hepsi' })).content, /`kapsam` yalnızca görsel/);
-  assert.match((await filtre({ tur: 'gorsel', kisaltici: true })).content, /`kisaltici` yalnızca bağlantı/);
+  // Küfür ve bağlantı mesaj içeriğini okuyabilmeli; görsel ayrıca yapay zekâ ister
+  assert.match((await bas('kufur', { intents: [] })).content, /Message Content Intent/);
+  assert.equal(koruma.ayarCoz(ayar(sunucu)).kufur, false);
+  assert.match((await bas('gorsel')).content, /yapay zekâ kurulu değil/);
+  assert.match((await bas('baglanti')).content, /^✅ Bağlantı denetimi açık/);
+
+  // Süreler formu mevcut değerlerle dolu açılır; geçersiz değer reddedilir, diğerleri kaydedilir
+  const form = (await bas('sureler')).form;
+  assert.equal(form.custom_id, 'ay:koruma:sureler-form');
+  assert.deepEqual(form.components.map((c) => [c.component.custom_id, c.component.value]), [['spam', '60'], ['kufur', '0'], ['gorsel', '1440'], ['baglanti', '60']]);
+  const kayit = await bas('sureler-form', { form: { spam: '5', kufur: '10', gorsel: 'abc', baglanti: '0' } });
+  assert.equal(kayit.content, '❌ Görsel denetimi: 0 ile 40320 arasında bir sayı yaz.');
+  const a = koruma.ayarCoz(ayar(sunucu));
+  assert.deepEqual([a.spamDakika, a.kufurDakika, a.gorselDakika, a.baglantiDakika], [5, 10, 1440, 0]);
+  assert.match(kayit.embeds[0].data.fields.find((f) => f.name === 'Bağlantı denetimi').value, /Yalnızca silme/);
+
+  assert.match((await bas('kapsam')).content, /bütün resimlere/);
+  assert.equal(koruma.ayarCoz(ayar(sunucu)).gorselKapsam, 'hepsi');
+  assert.match((await bas('kisaltici')).content, /da silinecek/);
+  assert.equal(koruma.ayarCoz(ayar(sunucu)).kisaltici, true);
 });
 
-test('/koruma kelime: varsayılan işlem ekleme; çıkar ile kaldırılır', async () => {
-  const kelime = async (secenekler) => (await calistir('koruma', { sunucu: 'koruma-2', alt: 'kelime', secenekler })).content;
-  assert.match(await kelime({ kelime: 'Deneme' }), /^✅ \|\|deneme\|\| eklendi/);
-  assert.match(await kelime({ kelime: 'deneme' }), /zaten listede/);
-  assert.equal(await kelime({ kelime: 'deneme', islem: 'cikar' }), '✅ ||deneme|| çıkarıldı.');
-  assert.match(await kelime({ kelime: 'deneme', islem: 'cikar' }), /özel listede yok/);
+test('/ayarlar → Koruma: özel kelimeler ve alan listeleri formla değişir', async () => {
+  const koruma = src('koruma');
+  const sunucu = 'koruma-2';
+  const bas = (islem, form) => kartta('koruma', islem, { sunucu, form });
+  // Kısa ve tekrar eden kelimeler atlanır
+  assert.equal((await bas('kelimeler-form', { ekle: 'Deneme, ikinci deneme x' })).content, '✅ 2 kelime eklendi.');
+  assert.deepEqual(koruma.ayarCoz(ayar(sunucu)).kelimeler, ['deneme', 'ikinci']);
+  assert.equal((await bas('kelimeler-form', { ekle: 'deneme', cikar: 'İkinci' })).content, '✅ 1 kelime çıkarıldı.');
+  assert.deepEqual(koruma.ayarCoz(ayar(sunucu)).kelimeler, ['deneme']);
+  assert.match((await bas('kelimeler-form', {})).content, /Değişen bir şey olmadı/);
+
+  const alan = await bas('alanlar-form', { engel: 'kotu.site https://sahte.link/x', izin: 'iyi.com' });
+  assert.match(alan.content, /^✅ Alan listeleri kaydedildi\.\nBağlantı denetimi şu an kapalı/);
+  let ayarlar = koruma.ayarCoz(ayar(sunucu));
+  assert.deepEqual([ayarlar.alanEngel, ayarlar.alanIzin], [['kotu.site', 'sahte.link'], ['iyi.com']]);
+  // Bir alan iki listede birden durmaz; geçersiz alan söylenir
+  assert.match((await bas('alanlar-form', { izin: 'kotu.site', engel: 'gecersiz!' })).content, /Geçersiz alan adı, eklenmedi: `gecersiz!`/);
+  ayarlar = koruma.ayarCoz(ayar(sunucu));
+  assert.deepEqual([ayarlar.alanEngel, ayarlar.alanIzin], [['sahte.link'], ['iyi.com', 'kotu.site']]);
+  await bas('alanlar-form', { cikar: 'iyi.com, sahte.link' });
+  ayarlar = koruma.ayarCoz(ayar(sunucu));
+  assert.deepEqual([ayarlar.alanEngel, ayarlar.alanIzin], [[], ['kotu.site']]);
 });
 
-test('/uyari sil ve kural: tek uyarı ya da hepsi; kural seçeneksiz listelenir, kaldır ile silinir', async () => {
+test('moderasyon kartından uyarı silme; /ayarlar → Uyarı kuralları: kural formla eklenir, listeden kaldırılır', async () => {
   const uyari = src('uyari');
+  const moderasyon = src('moderasyon');
   const sunucu = 'uyari-ayar';
   for (let i = 0; i < 3; i++) uyari.ekle(sunucu, 'h', { id: String(i), sebep: `s${i}`, yetkiliId: 'mod', zaman: 1 });
-  const uyariKomutu = (alt, secenekler, izinler = [P.ModerateMembers, P.ManageGuild]) =>
-    calistir('uyari', { sunucu, alt, secenekler: { kullanici: kullanici('h'), ...secenekler }, izinler }).then((c) => c.content);
+  const kartSil = async (customId, values = []) => {
+    const e = etkilesim({ sunucu, izinler: [P.ModerateMembers] });
+    e.guild.members.fetch = async (id) => ({ id, user: kullanici(id) });
+    Object.assign(e, {
+      customId,
+      values,
+      isButton: () => !values.length,
+      isModalSubmit: () => false,
+      isFromMessage: () => true,
+      deferUpdate: async () => {},
+    });
+    await moderasyon.etkilesim(e);
+    return e.cevaplar.at(-1).content;
+  };
 
-  assert.match(await uyariKomutu('sil', {}), /^❌ Hangi uyarı silinsin\?/);
-  assert.match(await uyariKomutu('sil', { numara: 1, hepsi: true }), /ikisi birden olmaz/);
-  assert.match(await uyariKomutu('sil', { numara: 2 }), /2\. uyarısı silindi/);
+  assert.match(await kartSil('md:uyari-sil:h', ['2']), /2\. uyarısı silindi/);
   assert.deepEqual(uyari.uyarilar(sunucu, 'h').map((u) => u.sebep), ['s0', 's2']);
-  assert.match(await uyariKomutu('sil', { hepsi: true }), /2 uyarısı silindi/);
+  assert.match(await kartSil('md:uyari-temizle:h'), /2 uyarısı silindi/);
   assert.equal(uyari.uyarilar(sunucu, 'h').length, 0);
 
-  assert.match(await uyariKomutu('kural', {}), /Henüz kural yok/);
-  assert.match(await uyariKomutu('kural', { esik: 3 }), /hem `esik`.*hem `islem`/);
-  assert.match(await uyariKomutu('kural', { esik: 3, islem: 'sustur' }), /^✅ Kural kaydedildi: 3 uyarı → sustur/);
-  // Kural listesi yalnızca görmek için Sunucuyu Yönet istemez
-  assert.match(await uyariKomutu('kural', {}, [P.ModerateMembers]), /3 uyarı → sustur/);
-  assert.match(await uyariKomutu('kural', { esik: 3, islem: 'kaldir' }, [P.ModerateMembers]), /Sunucuyu Yönet/);
-  assert.equal(await uyariKomutu('kural', { esik: 3, islem: 'kaldir' }), '✅ 3 uyarı kuralı kaldırıldı.');
+  const bas = (islem, ek = {}) => kartta('uyari', islem, { sunucu, izinler: [P.ManageGuild, P.ModerateMembers], ...ek });
+  assert.match(kartAc('uyari', { sunucu }).embeds[0].data.description, /Henüz kural yok/);
+  assert.equal(bilesen(kartAc('uyari', { sunucu }), 'ay:uyari:sil'), undefined, 'kural yokken kaldırma listesi yok');
+  assert.equal((await bas('ekle')).form.custom_id, 'ay:uyari:ekle-form');
+  assert.match((await bas('ekle-form', { form: { esik: '0', islem: 'sustur' } })).content, /Eşik 1 ile 20/);
+  assert.match((await bas('ekle-form', { form: { esik: '3' } })).content, /Ne yapılacağını seç/);
+  // Kural yetki aşmaya yaramaz
+  assert.match((await bas('ekle-form', { form: { esik: '3', islem: 'yasakla' } })).content, /Yasaklama kuralı ekleyebilmek için/);
+  const kayit = await bas('ekle-form', { form: { esik: '3', islem: 'sustur', dakika: '1440' } });
+  assert.equal(kayit.content, '✅ Kural kaydedildi: 3 uyarı → susturma (1 gün).\n⚠️ Bunun çalışması için bana Üyelere Zaman Aşımı Uygula iznini ver.');
+  assert.deepEqual(bilesen(kayit, 'ay:uyari:sil').options.map((o) => o.value), ['3']);
+  // Süre boşsa 60 dakika; aynı eşik yenisiyle değişir
+  await bas('ekle-form', { form: { esik: '3', islem: 'sustur' } });
+  assert.deepEqual(uyari.kurallar(sunucu), [{ esik: 3, islem: 'sustur', dakika: 60 }]);
+  assert.equal((await bas('sil', { degerler: ['3'] })).content, '✅ 3 uyarı kuralı kaldırıldı.');
   assert.deepEqual(uyari.kurallar(sunucu), []);
 });
 
-test('/seviye ayar ve odul: seçeneksiz ayarları gösterir; yalnızca kanal verilirse sistem açılmaz; rolsüz ödül kaldırılır', async () => {
-  const sunucu = 'seviye-ayar';
-  const seviyeKomutu = (alt, secenekler) => calistir('seviye', { sunucu, alt, secenekler });
-  const goster = await seviyeKomutu('ayar', {});
-  assert.match(goster.embeds[0].data.description, /\*\*Durum:\*\* ⚫ Kapalı/);
+test('/ayarlar → Seviye: aç/kapat, duyuru kanalı, ödül ekle ve kaldır, XP sıfırla', async () => {
+  const sunucu = 'seviye-panel';
+  const bas = (islem, ek = {}) => kartta('seviye', islem, { sunucu, ...ek });
+  assert.match(kartAc('seviye', { sunucu }).embeds[0].data.description, /\*\*Durum:\*\* ⚫ Kapalı/);
 
-  assert.equal((await seviyeKomutu('ayar', { kanal: sahteKanal('seviye') })).content, '✅ Duyuru kanalı <#seviye> olarak kaydedildi. Seviye sistemi şu an kapalı; açmak için `durum:Açık` ekle.');
-  assert.deepEqual([ayar(sunucu).seviyeAcik, ayar(sunucu).seviyeKanali], [false, 'seviye']);
-  assert.match((await seviyeKomutu('ayar', { durum: 'acik' })).content, /^✅ Seviye sistemi açık/);
+  assert.equal((await bas('kanal', { secilenKanal: sahteKanal('seviye') })).content, '✅ Seviye atlayanlar <#seviye> kanalında duyurulacak.');
+  assert.deepEqual([ayar(sunucu).seviyeAcik, ayar(sunucu).seviyeKanali], [undefined, 'seviye'], 'kanal seçmek sistemi açmaz');
+  assert.equal((await bas('durum')).content, '✅ Seviye sistemi açık. Üyeler mesaj yazdıkça XP kazanır.\nSeviye atlayanlar <#seviye> kanalında duyurulur.');
+  assert.equal(ayar(sunucu).seviyeAcik, true);
 
-  depo.ayarKaydet(sunucu, 'seviyeOdulleri', [{ seviye: 5, rolId: 'aktif' }]);
-  assert.match((await seviyeKomutu('ayar', {})).embeds[0].data.description, /5\. seviye → <@&aktif>/);
-  assert.match((await seviyeKomutu('odul', { seviye: 7 })).content, /7\. seviye için bir ödül yok/);
-  assert.match((await seviyeKomutu('odul', { seviye: 5 })).content, /5\. seviye ödülü kaldırıldı/);
+  const odulRolu = rol('aktif', { managed: false, position: 3, permissions: izinli(), name: 'Aktif' });
+  assert.match((await bas('odul-form', { form: { seviye: '5', rol: odulRolu } })).content, /sen de veremiyorsun/);
+  assert.match((await bas('odul-form', { form: { seviye: '500', rol: odulRolu } })).content, /1 ile 200/);
+  const odul = await bas('odul-form', { form: { seviye: '5', rol: odulRolu }, izinler: [P.ManageGuild, P.ManageRoles], botIzinleri: [P.ManageRoles] });
+  assert.match(odul.content, /^✅ 5\. seviyeye ulaşanlara <@&aktif> rolü verilecek\./);
+  assert.match(odul.embeds[0].data.description, /5\. seviye → <@&aktif>/);
+  assert.deepEqual(bilesen(odul, 'ay:seviye:odul-sil').options.map((o) => o.value), ['5']);
+  assert.equal((await bas('odul-sil', { degerler: ['5'] })).content, '✅ 5. seviye ödülü kaldırıldı. Rolü almış olanlardan geri alınmaz.');
   assert.deepEqual(ayar(sunucu).seviyeOdulleri, []);
+
+  assert.match((await bas('sifirla-form', { form: { uye: kullanici('yok') } })).content, /henüz XP kazanmamış/);
+  assert.equal((await bas('kanal', { secilenKanal: null })).content, '✅ Seviye atlayanlar artık mesajı yazdıkları kanalda duyurulur.');
+  assert.match((await bas('durum')).content, /^✅ Seviye sistemi kapatıldı/);
 });

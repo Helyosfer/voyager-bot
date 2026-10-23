@@ -1,4 +1,4 @@
-// Sunucu kurulumu (/sunucukur) ve kurulan sunucudaki akışlar: üyelik onayı, ilgi ve bildirim
+// Sunucu kurulumu (/ayarlar → Kurulum → Hazır sunucu şablonu) ve kurulan sunucudaki akışlar: üyelik onayı, ilgi ve bildirim
 // rolleri, destek talepleri. Şablonlar (roller, kategoriler, kanallar, izinler) sablonlar.js'te.
 const {
   ActionRowBuilder,
@@ -66,7 +66,7 @@ function planla(guild, sablonAdi = 'topluluk') {
 // Planı uygular. ilerleme(metin) varsa her kategoriden sonra çağrılır.
 async function kur(guild, plan, yapan, ilerleme = async () => {}) {
   const sablon = SABLONLAR[plan.sablon];
-  const sebep = `Voyager /sunucukur (${yapan})`;
+  const sebep = `Voyager sunucu kurulumu (${yapan})`;
   const ben = guild.members.me;
   const sonuc = { olusturulan: 0, baglanan: [], acilan: [], uyarilar: [], hata: null };
   const roller = {};
@@ -91,7 +91,7 @@ async function kur(guild, plan, yapan, ilerleme = async () => {}) {
         rol.mevcut ??
         (await guild.roles.create({
           name: rol.ad,
-          color: rol.renk,
+          colors: { primaryColor: rol.renk },
           hoist: Boolean(rol.ayri),
           // Bildirim rolleri etiketlenebilir: bot ve yöneticiler duyurularda kullanır
           mentionable: Boolean(rol.bildirim),
@@ -285,13 +285,18 @@ const MESAJLAR = {
 // ---------------------------------------------------------------------------
 // Akışlar: düğme, menü ve form etkileşimleri (customId "tp:" ile başlar)
 // ---------------------------------------------------------------------------
-const gizli = (interaction, content) => interaction.reply({ content, flags: MessageFlags.Ephemeral });
+// Rol işlemleri Discord'un 3 saniyelik cevap süresini aşabilir; o yüzden önce ertelenir (beklet)
+// ve cevap sonradan yazılır
+const gizli = (interaction, content) =>
+  interaction.deferred ? interaction.editReply({ content }) : interaction.reply({ content, flags: MessageFlags.Ephemeral });
+const beklet = (interaction) => interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
 async function uyeOl(interaction, t) {
   const { member, guild } = interaction;
   const uye = guild.roles.cache.get(t.roller.uye);
   if (!uye) return gizli(interaction, '❌ Üye rolü bulunamadı. Bir yöneticiye haber ver.');
   if (member.roles.cache.has(uye.id)) return gizli(interaction, 'Üye rolün zaten var. Hoş geldin!');
+  await beklet(interaction);
   try {
     await member.roles.add(uye, 'Üyelik onayı');
     if (member.roles.cache.has(t.roller.yeni)) await member.roles.remove(t.roller.yeni, 'Üyelik onayı tamamlandı');
@@ -309,6 +314,7 @@ async function rolSec(interaction, t) {
   }
   const secilen = new Set(interaction.values);
   const verilen = [];
+  await beklet(interaction);
   try {
     for (const rol of ilgiRolleri(kurulumSablonu(t))) {
       const id = t.roller[rol.k];
@@ -508,7 +514,7 @@ async function etkilesim(interaction) {
   const islem = ISLEMLER[interaction.customId];
   if (!islem || !interaction.inCachedGuild()) return;
   const t = ayarlariGetir(interaction.guildId).topluluk;
-  if (!t) return gizli(interaction, '❌ Bu sunucuda kurulum bilgisi bulunamadı. Bir yönetici `/sunucukur` komutunu çalıştırmalı.');
+  if (!t) return gizli(interaction, '❌ Bu sunucuda kurulum bilgisi bulunamadı. Bir yönetici `/ayarlar` → Kurulum → Hazır sunucu şablonu ile kurmalı.');
   return islem(interaction, t);
 }
 

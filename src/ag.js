@@ -5,12 +5,18 @@
 // sıradakine geçer. Bağlantı gecikmesi bazen 250 ms'yi aşan bir sunucuda IPv4 denemeleri yarıda
 // kesilir; IPv6 çalışmıyorsa sıra oraya gelince istek takılır ve 10 sn sonra "fetch failed" ile
 // düşer. Denemeye daha uzun süre tanınınca yavaş da olsa cevap veren IPv4 adresi kullanılır.
+const dns = require('node:dns');
 const net = require('node:net');
+const { Agent, setGlobalDispatcher } = require('undici');
 
-const DENEME_SURESI = 2_000;
+const DENEME_SURESI = 1_200;
 
 function agAyarla() {
+  dns.setDefaultResultOrder('ipv4first');
   net.setDefaultAutoSelectFamilyAttemptTimeout(DENEME_SURESI);
+  // Undici varsayılan olarak 4 sn sonra HTTPS bağlantılarını kapatır; etkileşimlerde her seferinde
+  // sıfırdan TCP+TLS el sıkışması yapmamak için bağlantılar 60 sn açık tutulur.
+  setGlobalDispatcher(new Agent({ keepAliveTimeout: 60_000, keepAliveMaxTimeout: 600_000 }));
 }
 
 // fetch her bağlantı hatasında yalnızca "fetch failed" der; asıl sebep hata.cause içindedir

@@ -10,24 +10,24 @@ const {
 } = require('discord.js');
 const REHBER = require('../yardim-rehberi');
 const { GOREVLER, BASLANGIC } = require('../yardim-gorevler');
+const seviye = require('../seviye');
 
 const RENK = 0x5865f2;
 const ACIK_KALMA = 10 * 60 * 1000; // Menüler bu süre boyunca çalışır
 
 // Yardım bölümleri. Bir komut hiçbir bölümde yoksa "Diğer" bölümüne düşer.
 const BOLUMLER = [
-  { id: 'genel', simge: '🧭', ad: 'Genel', ozet: 'Herkesin kullanabildiği komutlar', komutlar: ['sor', 'ozetle', 'hatirlat', 'yardim'] },
-  { id: 'moderasyon', simge: '🛡️', ad: 'Moderasyon', ozet: 'Uyarma, susturma, atma, yasaklama, mesaj temizleme', komutlar: ['uyari', 'sustur', 'kick', 'ban', 'unban', 'temizle'] },
-  { id: 'guvenlik', simge: '🚨', ad: 'Güvenlik', ozet: 'Spam, küfür ve dolandırıcılık filtresi; acil durum kilidi', komutlar: ['koruma', 'kilit'] },
-  { id: 'bildirim', simge: '📣', ad: 'Bildirimler', ozet: 'Oyun fırsatları, canlı yayınlar, haberler', komutlar: ['oyun', 'yayin', 'haber', 'instagram'] },
-  { id: 'topluluk', simge: '🎉', ad: 'Topluluk', ozet: 'Seviyeler, çekilişler, rol menüleri', komutlar: ['seviye', 'cekilis', 'rolmenu'] },
-  { id: 'sunucu', simge: '⚙️', ad: 'Sunucu ayarları', ozet: 'Günlük, hoş geldin, otomatik rol, hazır kurulum', komutlar: ['ayarla', 'sunucukur'] },
+  { id: 'genel', simge: '🧭', ad: 'Genel', ozet: 'Herkesin kullanabildiği komutlar', komutlar: ['sor', 'yardim'] },
+  { id: 'moderasyon', simge: '🛡️', ad: 'Moderasyon', ozet: 'Üyeye sağ tıkla moderasyon kartı, mesaj temizleme ve yasaklar', komutlar: ['mod'] },
+  { id: 'topluluk', simge: '🎉', ad: 'Topluluk', ozet: 'Çekilişler', komutlar: ['cekilis'] },
+  { id: 'sunucu', simge: '⚙️', ad: 'Ayarlar', ozet: 'Bildirimler, koruma, günlük, seviye, acil kilit, kurulum: hepsi /ayarlar', komutlar: ['ayarlar'] },
 ];
 const DIGER = { id: 'diger', simge: '📦', ad: 'Diğer', ozet: 'Diğer komutlar', komutlar: [] };
 // Bölüm menüsünün başındaki sayfalar
 const OZEL_SAYFALAR = [
   { id: 'ana', simge: '🏠', ad: 'Ana sayfa', ozet: 'Yardımın başı' },
   { id: 'baslangic', simge: '🚀', ad: 'Başlangıç', ozet: 'İlk adımlar' },
+  { id: 'seviye', simge: '📈', ad: 'Seviye ve sıralama', ozet: 'Seviyen, sıran ve sunucudaki en aktif 10 üye' },
   { id: 'gorevler', simge: '📖', ad: 'Nasıl yapılır?', ozet: 'Adım adım rehberler: bildirim kur, korumayı aç…' },
 ];
 
@@ -142,10 +142,12 @@ function anaSayfa(interaction, bolumler, gorevler) {
         'Aşağıdaki menüden seç:',
         '',
         '🚀 **Başlangıç** · ilk adımlar',
+        '📈 **Seviye ve sıralama** · seviyen, sıran ve ilk 10',
         gorevler.length ? `📖 **Nasıl yapılır?** · ${gorevler.length} adım adım rehber` : null,
         ...bolumler.map((b) => `${b.simge} **${b.ad}** · ${b.ozet}`),
         '',
-        'Bir komuta doğrudan bak: `/yardim komut:ban` · alt komut için `/yardim komut:oyun ayar`',
+        '**Sağ tık menüleri:** bir mesaja sağ tıkla → *Uygulamalar* → **Hatırlat** ya da **Buradan özetle**; bir üyeye sağ tıkla → **Moderasyon**.',
+        'Bir komuta doğrudan bak: `/yardim komut:mod` · alt komut için `/yardim komut:mod temizle`',
       ]
         .filter((s) => s !== null)
         .join('\n'),
@@ -159,7 +161,7 @@ function baslangicSayfasi(interaction, bag) {
   const yonetici = yoneticiMi(interaction);
   const adimlar = yonetici ? BASLANGIC.yonetici : BASLANGIC.uye;
   return new EmbedBuilder()
-    .setTitle(yonetici ? '🚀 Başlangıç · Sunucuna Voyager\'ı kur' : '🚀 Başlangıç')
+    .setTitle(yonetici ? "🚀 Başlangıç · Sunucuna Voyager'ı kur" : '🚀 Başlangıç')
     .setColor(RENK)
     .setDescription(adimlar.map((a, i) => `**${i + 1}.** ${baglantila(a, bag)}`).join('\n\n'))
     .setFooter({ text: 'Bir komuta dokununca yazı kutusuna gelir; Discord gereken bilgileri adım adım sorar.' });
@@ -269,7 +271,7 @@ const altMenusu = (komut, secili) =>
     altKomutlar(komut).map((a) => ({ label: `/${komut.name} ${a.tamAd}`, description: kisalt(a.description, 100), value: a.tamAd, default: a.tamAd === secili })),
   );
 
-// durum: { sayfa: 'ana' | 'baslangic' | 'gorevler' | bölüm kimliği, gorev, komut, alt }
+// durum: { sayfa: 'ana' | 'baslangic' | 'seviye' | 'gorevler' | bölüm kimliği, gorev, komut, alt }
 function sayfa(interaction, bolumler, kimlik, durum) {
   const bag = baglayici(kimlik);
   const gorevler = gorevleriHazirla(bolumler, interaction.memberPermissions);
@@ -285,9 +287,10 @@ function sayfa(interaction, bolumler, kimlik, durum) {
   else if (gorev) embed = gorevSayfasi(gorev, bag);
   else if (durum.sayfa === 'gorevler' && gorevler.length) embed = gorevlerSayfasi(gorevler);
   else if (durum.sayfa === 'baslangic') embed = baslangicSayfasi(interaction, bag);
+  else if (durum.sayfa === 'seviye') embed = seviye.seviyeSayfasi(interaction);
   else embed = anaSayfa(interaction, bolumler, gorevler);
 
-  const secili = bolum ? bolum.id : ['baslangic', 'gorevler'].includes(durum.sayfa) && (durum.sayfa !== 'gorevler' || gorevler.length) ? durum.sayfa : 'ana';
+  const secili = bolum ? bolum.id : ['baslangic', 'seviye', 'gorevler'].includes(durum.sayfa) && (durum.sayfa !== 'gorevler' || gorevler.length) ? durum.sayfa : 'ana';
   const satirlar = [bolumMenusu(bolumler, gorevler, secili)];
   if (secili === 'gorevler') satirlar.push(gorevMenusu(gorevler, gorev?.id));
   if (bolum) satirlar.push(komutMenusu(bolum, komut?.name));
@@ -295,7 +298,7 @@ function sayfa(interaction, bolumler, kimlik, durum) {
   return { embeds: [embed], components: satirlar };
 }
 
-// "/Ban", "ban" ya da "oyun ayar" yazılabilir; cevaba geri yazıldığı için yalnızca komut adında olabilecek harfler kalır
+// "/Mod", "mod" ya da "mod temizle" yazılabilir; cevaba geri yazıldığı için yalnızca komut adında olabilecek harfler kalır
 const komutAdi = (metin) =>
   kucuk(metin ?? '')
     .trim()
@@ -318,8 +321,8 @@ module.exports = {
 
   data: new SlashCommandBuilder()
     .setName('yardim')
-    .setDescription('Komutları, adım adım rehberleri ve başlangıç adımlarını gösterir')
-    .addStringOption((o) => o.setName('komut').setDescription('Ayrıntısını görmek istediğin komut ya da alt komut (ör. ban, oyun ayar)').setAutocomplete(true)),
+    .setDescription('Komutları, seviyeni, adım adım rehberleri ve başlangıç adımlarını gösterir')
+    .addStringOption((o) => o.setName('komut').setDescription('Ayrıntısını görmek istediğin komut ya da alt komut (ör. mod, mod temizle)').setAutocomplete(true)),
 
   // komut seçeneğine yazarken, üyenin kullanabildiği komutlar ve alt komutlar önerilir; adı yazılanla başlayanlar önce
   async autocomplete(interaction) {

@@ -18,7 +18,8 @@ const src = (dosya) => require(path.join(__dirname, '..', 'src', dosya));
 const depo = src('depo');
 const { ROL, SABLONLAR, POLITIKALAR, ERISIMLER, rolleri } = src('sablonlar');
 const topluluk = src('topluluk');
-const sunucukur = src('commands/sunucukur');
+const sunucukur = src('ayarlar/kurulum');
+const ayarlarPaneli = src('ayarlar');
 
 // Botun bağlayabildiği ayarlar (kanal ve rol)
 const KANAL_AYARLARI = ['logKanali', 'hosgeldinKanali', 'oyunKanali', 'yayinKanali', 'haberKanali'];
@@ -210,7 +211,12 @@ function rolSecimi(guild, values, uyeRolleri = []) {
     values,
     inCachedGuild: () => true,
     member: { roles: { cache: { has: (id) => roller.has(id) }, add: async (id) => roller.add(id), remove: async (id) => roller.delete(id) } },
+    deferred: false,
+    deferReply: async function () {
+      this.deferred = true;
+    },
     reply: async (m) => cevaplar.push(m),
+    editReply: async (m) => cevaplar.push(m),
   };
 }
 
@@ -250,11 +256,39 @@ test('eski kurulum (şablon adı yok) topluluk şablonu sayılır', async () => 
   assert.ok(e.roller.has(t.roller.muzik) && e.roller.has(t.roller.film));
 });
 
-test('/sunucukur: şablon verilmezse açıklamalı liste ve menü gösterilir; komut şablon seçeneği taşır', () => {
-  const veri = sunucukur.data.toJSON();
-  const secenek = veri.options.find((o) => o.name === 'sablon');
-  assert.deepEqual(secenek.choices.map((c) => c.value), Object.keys(SABLONLAR));
-  assert.equal(secenek.required, false);
+test('/ayarlar → Kurulum: şablon listesi, önizleme ve kurulum kartın içinde ilerler', async () => {
+  const guild = kurulumSunucusu('panel-kurulum');
+  const bas = async (customId, values = []) => {
+    const cevaplar = [];
+    await ayarlarPaneli.etkilesim({
+      customId,
+      guild,
+      guildId: guild.id,
+      user: { id: 'y', tag: 'y#0' },
+      values,
+      memberPermissions: new PermissionsBitField(PermissionsBitField.All),
+      isButton: () => !values.length,
+      isModalSubmit: () => false,
+      isFromMessage: () => true,
+      reply: async (m) => cevaplar.push(m),
+      deferUpdate: async () => {},
+      editReply: async (m) => cevaplar.push(m),
+    });
+    return cevaplar.at(-1);
+  };
+  const bilesen = (m, id) => m.components.flatMap((s) => s.toJSON().components).find((b) => b.custom_id === id);
+  const listeKarti = await bas('ay:kurulum:sablon');
+  assert.deepEqual(bilesen(listeKarti, 'ay:kurulum:sablon-sec').options.map((o) => o.value), Object.keys(SABLONLAR));
+  const onizleme = await bas('ay:kurulum:sablon-sec', ['basit']);
+  assert.match(onizleme.embeds[0].data.title, /Sunucu kurulumu · .*Basit/);
+  assert.match(bilesen(onizleme, 'ay:kurulum:kur:basit').label, /^Kur \(\d+ öğe\)$/);
+  assert.equal(guild.channels.cache.size, 0, 'onaylamadan hiçbir şey kurulmaz');
+  const sonuc = await bas('ay:kurulum:kur:basit');
+  assert.equal(sonuc.embeds[0].data.title, '✅ Kurulum tamamlandı');
+  assert.ok(guild.channels.cache.size > 0);
+  // Her şey zaten varsa önizlemeye geçilmez
+  assert.match((await bas('ay:kurulum:sablon-sec', ['basit'])).content, /zaten var/);
+
   const liste = sunucukur.sablonListesi().toJSON();
   assert.equal(liste.fields.length, Object.keys(SABLONLAR).length);
   assert.match(liste.fields.find((f) => f.name.includes('Yayıncı')).value, /onaysız/);

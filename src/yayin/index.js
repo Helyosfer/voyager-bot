@@ -1,5 +1,5 @@
 // Canlı yayın bildirimleri: takip edilen yayıncılar yayına geçince seçilen kanala haber verir.
-// Ayarlar /yayin komutuyla yapılır. Twitch ve Kick haberi kendileri gönderir (webhook),
+// Ayarlar /ayarlar → Yayın bildirimleri bölümünden yapılır. Twitch ve Kick haberi kendileri gönderir (webhook),
 // bu yüzden bot küçük bir HTTP sunucusu açar; YouTube düzenli aralıklarla kontrol edilir.
 const http = require('node:http');
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, escapeMarkdown } = require('discord.js');
@@ -47,7 +47,8 @@ async function ekle(sunucuId, platform, girdi) {
 
   const hepsi = oku('yayincilar', {});
   const kayitlar = (hepsi[sunucuId] ??= []);
-  if (kayitlar.some((y) => y.platform === platform && y.id === yayinci.id)) return { hata: `**${yayinci.ad}** zaten listede.` };
+  // zaten: komut, listedeki yayıncının rolünü güncelleyebilsin
+  if (kayitlar.some((y) => y.platform === platform && y.id === yayinci.id)) return { hata: `**${yayinci.ad}** zaten listede.`, zaten: yayinci };
   if (kayitlar.length >= SUNUCU_BASI_SINIR) return { hata: `Bir sunucu en fazla ${SUNUCU_BASI_SINIR} yayıncı takip edebilir.` };
   const takipte = takipEdilenler(platform);
   if (!takipte.includes(yayinci.id) && takipte.length >= PLATFORM_BASI_SINIR) {

@@ -19,6 +19,9 @@ const rolmenu = require('./rolmenu');
 const cekilis = require('./cekilis');
 const seviye = require('./seviye');
 const sohbet = require('./sohbet');
+const ayarlar = require('./ayarlar');
+const moderasyon = require('./moderasyon');
+const ozet = require('./ozet');
 const { otoRolVer, komutYetkisiVar, hataMetni } = require('./yardimci');
 
 // Yakalanmamış bir hata botu kapatır; systemd birkaç saniyede yeniden başlatır. Bu davranış
@@ -67,6 +70,10 @@ for (const dosya of fs.readdirSync(komutKlasoru).filter((d) => d.endsWith('.js')
   const komut = require(path.join(komutKlasoru, dosya));
   client.komutlar.set(komut.data.name, komut);
 }
+// Sağ tık menüsü komutları (üyeye sağ tık → Moderasyon; mesaja sağ tık → Hatırlat, Buradan özetle)
+const SAG_TIK = new Map(
+  [moderasyon.sagTikKomutu, hatirlatici.sagTikKomutu, ozet.sagTikKomutu].map((k) => [k.data.name, k]),
+);
 
 client.once(Events.ClientReady, (c) => {
   console.log(`Bot hazır: ${c.user.tag} · ${c.guilds.cache.size} sunucuda`);
@@ -77,6 +84,10 @@ client.once(Events.ClientReady, (c) => {
   yayin.baslat(client);
   instagram.baslat(client);
   haber.baslat(client);
+  // Discord API HTTPS bağlantısını sıcak tut: düğme ve komut etkileşimleri sıfırdan TCP+TLS el sıkışması beklemesin
+  const sicakTut = () => client.rest.get('/gateway').catch(() => {});
+  sicakTut();
+  setInterval(sicakTut, 40_000).unref();
   if (yapayzeka.hazir()) {
     const { ayar } = yapayzeka;
     const kapsam = yapayzeka.izinListesi().size ? `yalnızca ${yapayzeka.izinListesi().size} sunucuda (GEMINI_SUNUCULAR)` : 'her sunucuda';
@@ -94,11 +105,16 @@ client.on(Events.GuildDelete, (sunucu) => console.log(`Sunucudan çıkarıldı: 
 // Dinleyici olmazsa bağlantı hatası botu çökertir
 client.on(Events.Error, (hata) => console.error('Discord bağlantı hatası:', hata));
 
-// Kalıcı düğmelerin önekleri. /sunucukur akışları (üyelik onayı, ilgi rolleri, destek), rol menüleri, çekilişler
+// Düğme ve formların önekleri. Şablonla kurulan akışlar, rol menüleri, çekilişler, /ayarlar paneli,
+// moderasyon kartı, hatırlatıcı formu ve önceki sürümlerin ayar kartları
 const KALICI = new Map([
   ['tp:', topluluk.etkilesim],
   ['rm:', rolmenu.etkilesim],
   ['ck:', cekilis.etkilesim],
+  ['ay:', ayarlar.etkilesim],
+  ['ba:', ayarlar.eskiKart],
+  ['md:', moderasyon.etkilesim],
+  ['ht:', hatirlatici.etkilesim],
 ]);
 
 client.on(Events.InteractionCreate, async (interaction) => {
@@ -130,8 +146,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
     await komut?.autocomplete?.(interaction).catch((hata) => console.error(`/${interaction.commandName} önerileri:`, hataMetni(hata)));
     return;
   }
-  if (!interaction.isChatInputCommand()) return;
-  const komut = client.komutlar.get(interaction.commandName);
+  const komut = interaction.isContextMenuCommand()
+    ? SAG_TIK.get(interaction.commandName)
+    : interaction.isChatInputCommand()
+      ? client.komutlar.get(interaction.commandName)
+      : null;
   if (!komut) return;
 
   // Geri alınması zor komutlarda (kesinYetki) gereken yetkiyi bot da denetler; ayrıntı yardimci.js'te

@@ -43,13 +43,38 @@ async function kanalVideolari(kanalId) {
   return idler.slice(0, KANAL_BASI_VIDEO);
 }
 
+// Okunamayan kanallar: aynı hata her dakika kayda yazılmasın ve kanal boşuna sorulmasın diye
+// kanala giderek seyrekleşen aralıklarla (en fazla SORUNLU_EN_UZUN'da bir) bakılır. Hata yalnızca
+// değiştiğinde yazılır; kanal yeniden okununca bu da yazılır.
+const SORUNLU_EN_UZUN = 30 * 60_000;
+const sorunlular = new Map(); // kanalId → { hata, aralik, sonraki }
+
+async function kanalOku(kanalId) {
+  const sorun = sorunlular.get(kanalId);
+  if (sorun && Date.now() < sorun.sonraki) return [];
+  try {
+    const idler = await kanalVideolari(kanalId);
+    if (sorun) {
+      sorunlular.delete(kanalId);
+      console.log(`YouTube kanalı yeniden okunabiliyor (${kanalId})`);
+    }
+    return idler;
+  } catch (hata) {
+    const metin = agHatasi(hata);
+    if (metin !== sorun?.hata) console.error(`YouTube kanalı okunamadı (${kanalId}): ${metin}. Kanala daha seyrek bakılacak.`);
+    const aralik = Math.min((sorun?.aralik ?? KONTROL_ARALIGI / 2) * 2, SORUNLU_EN_UZUN);
+    sorunlular.set(kanalId, { hata: metin, aralik, sonraki: Date.now() + aralik });
+    return [];
+  }
+}
+
 async function kontrolEt() {
   const adaylar = new Set();
-  for (const kanalId of takipEdilenler()) {
-    const idler = await kanalVideolari(kanalId).catch((hata) => {
-      console.error(`YouTube kanalı okunamadı (${kanalId}):`, agHatasi(hata));
-      return [];
-    });
+  const takipte = takipEdilenler();
+  // Takipten çıkarılan kanalların kaydı kalmasın
+  for (const kanalId of sorunlular.keys()) if (!takipte.includes(kanalId)) sorunlular.delete(kanalId);
+  for (const kanalId of takipte) {
+    const idler = await kanalOku(kanalId);
     for (const id of idler) if (!bitenler.has(id)) adaylar.add(id);
   }
 

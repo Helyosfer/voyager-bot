@@ -1,5 +1,5 @@
-// Bütün komutların yapısı, moderasyon komutları (/ban, /kick, /sustur, /unban, /temizle) ve
-// hatırlatıcıların testleri. Çalıştırmak için: npm test
+// Bütün komutların yapısı, sağ tık menüleri, moderasyon kartı ve /mod komutu,
+// hatırlatıcılar ve /yardim sayfalarının testleri. Çalıştırmak için: npm test
 //
 // guvenlik.test.js gibi: bot başlatılmaz, Discord'a bağlanılmaz. Komutlar sahte (elle yazılmış)
 // Discord nesneleriyle çalıştırılır. Veri geçici bir klasöre yazılır; hiçbir test ağa çıkmaz.
@@ -11,14 +11,17 @@ const path = require('node:path');
 
 const VERI = fs.mkdtempSync(path.join(os.tmpdir(), 'voyager-komut-'));
 process.env.VERI_KLASORU = VERI;
-// /sor ve /ozetle de yüklensin
+// /sor ve sağ tık özetleme de yüklensin
 process.env.GEMINI_API_KEY = 'test-anahtari';
 process.env.GEMINI_MODEL = 'test-modeli';
 after(() => fs.rmSync(VERI, { recursive: true, force: true }));
 
-const { ApplicationCommandOptionType: T, DiscordAPIError, PermissionFlagsBits: P, PermissionsBitField } = require('discord.js');
+const { ApplicationCommandOptionType: T, ApplicationCommandType, Collection, DiscordAPIError, MessageFlags, PermissionFlagsBits: P, PermissionsBitField } = require('discord.js');
 const src = (dosya) => require(path.join(__dirname, '..', 'src', dosya));
 const depo = src('depo');
+const moderasyon = src('moderasyon');
+const hatirlatici = src('hatirlatici');
+const ozet = src('ozet');
 
 const KOMUT_KLASORU = path.join(__dirname, '..', 'src', 'commands');
 const komutlar = fs
@@ -39,93 +42,118 @@ function karakterSayisi(veri) {
   );
 }
 
-test('komutlar: hepsi yüklenir, adlar tekil, Discord sınırlarına sığar, yalnızca sunucuda çalışır', () => {
-  assert.ok(komutlar.length >= 20, `${komutlar.length} komut bulundu`);
+test('komutlar: 5 genel slash komutu + 1 sahip komutu + 3 sağ tık menüsü; adlar tekil, Discord sınırlarına sığar', () => {
+  const genelSlash = komutlar.filter(({ komut: k }) => !k.sahipKomutu).map(({ komut: k }) => k.data.name).sort();
+  assert.deepEqual(genelSlash, ['ayarlar', 'cekilis', 'mod', 'sor', 'yardim']);
   const adlar = new Set();
-  for (const { dosya, komut } of komutlar) {
-    assert.equal(typeof komut.execute, 'function', `${dosya}: execute yok`);
-    const veri = komut.data.toJSON();
+  for (const { dosya, komut: k } of komutlar) {
+    assert.equal(typeof k.execute, 'function', `${dosya}: execute yok`);
+    const veri = k.data.toJSON();
     assert.equal(`${veri.name}.js`, dosya, 'komut adı dosya adıyla aynı');
     assert.ok(!adlar.has(veri.name), `/${veri.name} iki kez tanımlı`);
     adlar.add(veri.name);
     assert.ok(karakterSayisi(veri) <= 4000, `/${veri.name}: ${karakterSayisi(veri)} karakter`);
-    // Komutlar sunucu üyelerine, kanallarına ve rollerine eriştiği için özel mesajda çalışamaz.
-    // /yardim sunucuya dokunmaz, her yerde çalışabilir.
     if (veri.name !== 'yardim') assert.deepEqual(veri.contexts, [0], `/${veri.name} yalnızca sunucuda kullanılabilmeli`);
   }
-  // 100'den fazla genel komut Discord'a yüklenemez
-  assert.ok(adlar.size <= 100);
+  // Sağ tık menüleri: Moderasyon (üye), Hatırlat (mesaj), Buradan özetle (mesaj)
+  const sagTiklar = [moderasyon.sagTikKomutu, hatirlatici.sagTikKomutu, ozet.sagTikKomutu];
+  assert.deepEqual(
+    sagTiklar.map((k) => [k.data.name, k.data.type]),
+    [
+      ['Moderasyon', ApplicationCommandType.User],
+      ['Hatırlat', ApplicationCommandType.Message],
+      ['Buradan özetle', ApplicationCommandType.Message],
+    ],
+  );
+  for (const k of sagTiklar) {
+    const veri = k.data.toJSON();
+    assert.deepEqual(veri.contexts, [0], `${veri.name} yalnızca sunucuda kullanılabilmeli`);
+  }
 });
 
 test('komutlar: yönetim komutları Discord tarafında yetki ister', () => {
   const gereken = {
-    ban: P.BanMembers,
-    unban: P.BanMembers,
-    kick: P.KickMembers,
-    sustur: P.ModerateMembers,
-    temizle: P.ManageMessages,
-    uyari: P.ModerateMembers,
+    mod: P.ModerateMembers,
+    cekilis: P.ManageGuild,
+    ayarlar: P.ManageGuild,
   };
-  const veri = Object.fromEntries(komutlar.map(({ komut }) => [komut.data.name, komut.data.toJSON()]));
+  const veri = Object.fromEntries(komutlar.map(({ komut: k }) => [k.data.name, k.data.toJSON()]));
   for (const [ad, izin] of Object.entries(gereken)) {
     assert.equal(veri[ad].default_member_permissions, String(izin), `/${ad}`);
   }
-  // Herkese açık komutlar bilerek yetkisiz: listede olmayan yeni bir komut yetkisiz eklenirse test bunu söyler
+  assert.equal(moderasyon.sagTikKomutu.data.toJSON().default_member_permissions, String(P.ModerateMembers));
+  // Herkese açık komutlar bilerek yetkisiz: yalnızca /sor ve /yardim
   const herkeseAcik = Object.values(veri).filter((v) => !v.default_member_permissions).map((v) => v.name).sort();
-  assert.deepEqual(herkeseAcik, ['hatirlat', 'ozetle', 'seviye', 'sor', 'yardim']);
+  assert.deepEqual(herkeseAcik, ['sor', 'yardim']);
 });
 
 test('/yardim: bölümlerdeki her ad gerçek bir komut; sahibe özel olmayan her komut bir bölümde', () => {
-  const yardim = komutlar.find(({ komut }) => komut.data.name === 'yardim').komut;
-  const { Collection } = require('discord.js');
-  const hepsi = new Collection(komutlar.map(({ komut }) => [komut.data.name, komut]));
+  const yardim = komutlar.find(({ komut: k }) => k.data.name === 'yardim').komut;
+  const hepsi = new Collection(komutlar.map(({ komut: k }) => [k.data.name, k]));
   const etkilesim = { client: { komutlar: hepsi }, memberPermissions: new PermissionsBitField(PermissionsBitField.All) };
   const bolumler = yardim.bolumleriHazirla(etkilesim);
   const diger = bolumler.find((b) => b.id === 'diger');
   assert.equal(diger, undefined, `bölümü olmayan komutlar: ${diger?.komutlar.map((k) => k.name).join(', ')}`);
   const listelenen = bolumler.flatMap((b) => b.komutlar.map((k) => k.name));
-  const beklenen = komutlar.filter(({ komut }) => !komut.sahipKomutu && komut.etkin?.() !== false).map(({ komut }) => komut.data.name);
+  const beklenen = komutlar.filter(({ komut: k }) => !k.sahipKomutu && k.etkin?.() !== false).map(({ komut: k }) => k.data.name);
   assert.deepEqual([...listelenen].sort(), [...beklenen].sort());
   for (const ad of yardim.BOLUMLER.flatMap((b) => b.komutlar)) assert.ok(hepsi.has(ad), `/yardim'daki /${ad} diye bir komut yok`);
 
   // Yetkisi olmayan üye yönetim komutlarını görmez
   const uye = yardim.bolumleriHazirla({ client: { komutlar: hepsi }, memberPermissions: new PermissionsBitField() });
-  assert.deepEqual(uye.map((b) => b.id), ['genel', 'topluluk']);
+  assert.deepEqual(uye.map((b) => b.id), ['genel']);
 });
 
-// --- Moderasyon komutları ---
+// --- Moderasyon (sağ tık kartı ve /mod) ---
 const bilinmeyenUye = () => new DiscordAPIError({ code: 10007, message: 'Unknown Member' }, 10007, 404, 'GET', '/guilds/g/members/x', {});
 const sira = (konum) => ({ position: konum, comparePositionTo: (diger) => konum - diger.position });
 
 // Sahte sunucu üyesi. konum: en yüksek rolünün sırası
-function sahteUye(id, { konum = 1, yonetilebilir = true, susturulabilir = true } = {}) {
+function sahteUye(id, { konum = 1, yonetilebilir = true, susturulabilir = true, susturmaSonu = null } = {}) {
   const islemler = [];
   return {
     id,
-    user: { id, tag: `${id}#0`, toString: () => `<@${id}>` },
+    user: { id, tag: `${id}#0`, bot: false, send: async () => {}, toString: () => `<@${id}>` },
     roles: { highest: sira(konum) },
     manageable: yonetilebilir,
     moderatable: susturulabilir,
+    kickable: yonetilebilir,
+    bannable: yonetilebilir,
+    communicationDisabledUntilTimestamp: susturmaSonu,
     islemler,
     kick: async (sebep) => islemler.push(['at', sebep]),
     timeout: async (ms, sebep) => islemler.push(['sustur', ms, sebep]),
   };
 }
 
-// Komut etkileşimi sahtesi. Gönderilen cevaplar cevaplar[]'a, sunucu işlemleri islemler[]'e,
-// günlük kanalına gidenler gunluk[]'e düşer.
-function etkilesim({ sunucu = 'g', secenekler = {}, kim = 'mod', konum = 5, uyeler = {}, yasaklilar = [], uyeHatasi = null, silinecek = 0 }) {
+// Komut ya da kart etkileşimi sahtesi. Gönderilen cevaplar cevaplar[]'a, kanal duyuruları duyurular[]'a,
+// sunucu işlemleri islemler[]'e, günlük kanalına gidenler gunluk[]'e düşer.
+function etkilesim({
+  sunucu = 'g',
+  alt = null,
+  secenekler = {},
+  kim = 'mod',
+  konum = 5,
+  izinler = [P.ModerateMembers, P.KickMembers, P.BanMembers, P.ManageMessages],
+  uyeler = {},
+  yasaklilar = [],
+  uyeHatasi = null,
+  silinecek = 0,
+} = {}) {
   const cevaplar = [];
+  const duyurular = [];
   const islemler = [];
   const gunluk = [];
   const gunlukKanali = { isTextBased: () => true, send: async (m) => gunluk.push(m) };
   const kanal = {
     id: 'kanal',
     toString: () => '<#kanal>',
+    send: async (m) => duyurular.push(m),
     bulkDelete: async (adet, eskileriAtla) => (islemler.push(['temizle', adet, eskileriAtla]), { size: Math.min(adet, silinecek) }),
   };
   const guild = {
     id: sunucu,
+    name: 'Deneme',
     ownerId: 'sahip',
     members: {
       fetch: async (id) => {
@@ -139,31 +167,63 @@ function etkilesim({ sunucu = 'g', secenekler = {}, kim = 'mod', konum = 5, uyel
     channels: { fetch: async (id) => (id === 'gunluk' ? gunlukKanali : null) },
   };
   return {
+    id: `e-${Math.random()}`,
     cevaplar,
+    duyurular,
     islemler,
     gunluk,
     guild,
     guildId: sunucu,
     channel: kanal,
     channelId: kanal.id,
-    client: { user: { id: 'bot' } },
+    client: { user: { id: 'bot' }, users: { fetch: async (id) => ({ id, tag: `${id}#0`, toString: () => `<@${id}>` }) } },
     user: { id: kim, tag: `${kim}#0`, toString: () => `<@${kim}>` },
     member: { roles: { highest: sira(konum) } },
+    memberPermissions: new PermissionsBitField(izinler),
     options: {
+      getSubcommand: () => alt,
       getUser: (ad) => secenekler[ad] ?? null,
       getString: (ad) => secenekler[ad] ?? null,
       getInteger: (ad) => secenekler[ad] ?? null,
     },
     reply: async (m) => cevaplar.push(typeof m === 'string' ? { content: m } : m),
     deferReply: async () => {},
+    deferUpdate: async () => {},
     editReply: async (m) => cevaplar.push(typeof m === 'string' ? { content: m } : m),
+    showModal: async (m) => cevaplar.push({ form: m.toJSON() }),
   };
 }
+
+// Moderasyon kartındaki bir düğmeye basar ya da form gönderir
+async function modKartta(islem, hedefId, { alanlar = null, values = [], ...ayarlar } = {}) {
+  const e = etkilesim(ayarlar);
+  Object.assign(e, {
+    customId: `md:${islem}:${hedefId}`,
+    values,
+    isButton: () => !alanlar && !values.length,
+    isModalSubmit: () => Boolean(alanlar),
+    isFromMessage: () => true,
+    fields: alanlar && { getTextInputValue: (id) => alanlar[id] ?? '' },
+  });
+  await moderasyon.etkilesim(e);
+  return e;
+}
+
 const komut = (ad) => komutlar.find(({ komut: k }) => k.data.name === ad).komut;
 const kullanici = (id) => ({ id, tag: `${id}#0`, toString: () => `<@${id}>` });
 depo.ayarKaydet('g', 'logKanali', 'gunluk');
 
-test('/ban, /kick, /sustur: kendine, bota, sahibe, eşit ya da üst role ve botun üstündekine işlem yapılmaz', async () => {
+test('moderasyon: sağ tık ve /mod uye kartı açar; kendine, bota, sahibe, eşit/üst role ve botun üstündekine işlem yapılmaz', async () => {
+  const uye = sahteUye('alt', { susturmaSonu: Date.now() + 60_000 });
+  const sagTik = etkilesim({ uyeler: { alt: uye } });
+  sagTik.targetUser = kullanici('alt');
+  await moderasyon.sagTikKomutu.execute(sagTik);
+  const kart = sagTik.cevaplar[0];
+  assert.equal(kart.flags, MessageFlags.Ephemeral);
+  assert.match(kart.embeds[0].data.title, /alt#0/);
+  const dugmeler = kart.components[0].toJSON().components.map((d) => d.custom_id);
+  assert.deepEqual(dugmeler, ['md:uyar:alt', 'md:sustur:alt', 'md:sustur-ac:alt', 'md:at:alt', 'md:yasakla:alt']);
+
   const durumlar = [
     ['mod', {}, /Kendine/],
     ['bot', {}, /Bana/],
@@ -172,55 +232,58 @@ test('/ban, /kick, /sustur: kendine, bota, sahibe, eşit ya da üst role ve botu
     ['ust', { konum: 9 }, /aynı veya daha yüksek/],
     ['botun-ustu', { konum: 2, yonetilebilir: false }, /Bot rolünü/],
   ];
-  for (const ad of ['ban', 'kick', 'sustur']) {
+  for (const islem of ['uyar', 'sustur', 'at', 'yasakla']) {
     for (const [hedef, ozellik, beklenen] of durumlar) {
-      const uye = sahteUye(hedef, ozellik);
-      const e = etkilesim({ secenekler: { kullanici: kullanici(hedef), dakika: 10 }, uyeler: { [hedef]: uye } });
-      await komut(ad).execute(e);
-      assert.match(e.cevaplar[0].content, beklenen, `/${ad} → ${hedef}`);
-      assert.deepEqual([...e.islemler, ...uye.islemler], [], `/${ad} → ${hedef}: işlem yapılmamalı`);
+      const hUye = sahteUye(hedef, ozellik);
+      const e = await modKartta(islem, hedef, { uyeler: { [hedef]: hUye } });
+      assert.match(e.cevaplar[0].content, beklenen, `${islem} → ${hedef}`);
+      assert.deepEqual([...e.islemler, ...hUye.islemler], [], `${islem} → ${hedef}: işlem yapılmamalı`);
     }
   }
 });
 
-test('/ban: üye bilgisi alınamazsa (geçici Discord hatası) rol denetimi atlanıp yasaklanmaz', async () => {
+test('/mod yasakla: üye bilgisi alınamazsa (geçici Discord hatası) rol denetimi atlanıp yasaklanmaz', async () => {
   const e = etkilesim({
+    alt: 'yasakla',
     secenekler: { kullanici: kullanici('ust') },
     uyeHatasi: new DiscordAPIError({ code: 0, message: 'Internal Server Error' }, 0, 500, 'GET', '/guilds/g/members/ust', {}),
   });
-  await assert.rejects(komut('ban').execute(e)); // index.js kullanıcıya "Komut çalışırken bir hata oluştu" der
+  await assert.rejects(komut('mod').execute(e));
   assert.deepEqual(e.islemler, []);
 });
 
-test('/ban: sunucuda olmayan kullanıcı kimlikle yasaklanır; sebep yetkiliyle kayda ve günlüğe geçer', async () => {
-  const e = etkilesim({ secenekler: { kullanici: kullanici('yabanci'), sebep: 'reklam' } });
-  await komut('ban').execute(e);
+test('/mod yasakla ve karttan yasaklama: sunucuda olmayan kullanıcı kimlikle yasaklanır; sebep yetkiliyle kayda ve günlüğe geçer', async () => {
+  const e = etkilesim({ alt: 'yasakla', secenekler: { kullanici: kullanici('yabanci'), sebep: 'reklam' } });
+  await komut('mod').execute(e);
   assert.deepEqual(e.islemler, [['yasakla', 'yabanci', 'mod#0: reklam']]);
   assert.match(e.cevaplar.at(-1).content, /yabanci#0\*\* yasaklandı\. Sebep: reklam/);
   const alanlar = e.gunluk[0].embeds[0].data.fields;
   assert.deepEqual(alanlar.map((a) => a.name), ['Kullanıcı', 'Yetkili', 'Sebep']);
   assert.deepEqual(e.gunluk[0].allowedMentions, { parse: [] }, 'günlükteki etiketler bildirim göndermez');
+
+  // Kart üzerinden yasaklama: önce düğme formu açar, form gönderilince yasaklar ve kanala duyurur
+  const dugme = await modKartta('yasakla', 'yabanci2');
+  assert.equal(dugme.cevaplar[0].form.custom_id, 'md:yasakla-form:yabanci2');
+  const form = await modKartta('yasakla-form', 'yabanci2', { alanlar: { sebep: 'dolandırıcılık' } });
+  assert.deepEqual(form.islemler, [['yasakla', 'yabanci2', 'mod#0: dolandırıcılık']]);
+  assert.match(form.duyurular[0].content, /yasaklandı/);
 });
 
-test('/kick ve /sustur: sunucuda olmayan üyeye işlem yapılmaz; alttaki üyeye yapılır', async () => {
-  for (const ad of ['kick', 'sustur']) {
-    const yok = etkilesim({ secenekler: { kullanici: kullanici('yok'), dakika: 5 } });
-    await komut(ad).execute(yok);
+test('moderasyon kartı: sunucuda olmayan üyeye atma ve susturma yapılmaz; alttaki üyeye yapılır', async () => {
+  for (const islem of ['at', 'sustur']) {
+    const yok = await modKartta(islem, 'yok');
     assert.match(yok.cevaplar[0].content, /sunucuda değil/);
   }
   const uye = sahteUye('alt');
-  const at = etkilesim({ secenekler: { kullanici: kullanici('alt') }, uyeler: { alt: uye } });
-  await komut('kick').execute(at);
+  const at = await modKartta('at-form', 'alt', { uyeler: { alt: uye }, alanlar: { sebep: '' } });
   assert.deepEqual(uye.islemler, [['at', 'mod#0: Sebep belirtilmedi']]);
   assert.match(at.gunluk[0].embeds[0].data.title, /atıldı/);
 });
 
-test('/sustur: dakika süreye çevrilir, 0 susturmayı kaldırır; susturulamayan üyeye dokunulmaz', async () => {
+test('moderasyon kartı susturma: dakika süreye çevrilir, sustur-ac kaldırır; susturulamayan üyeye dokunulmaz', async () => {
   const uye = sahteUye('alt');
-  const sustur = etkilesim({ secenekler: { kullanici: kullanici('alt'), dakika: 15, sebep: 'spam' }, uyeler: { alt: uye } });
-  await komut('sustur').execute(sustur);
-  const kaldir = etkilesim({ secenekler: { kullanici: kullanici('alt'), dakika: 0 }, uyeler: { alt: uye } });
-  await komut('sustur').execute(kaldir);
+  const sustur = await modKartta('sustur-form', 'alt', { uyeler: { alt: uye }, alanlar: { dakika: '15', sebep: 'spam' } });
+  const kaldir = await modKartta('sustur-ac', 'alt', { uyeler: { alt: uye } });
   assert.deepEqual(uye.islemler, [
     ['sustur', 15 * 60_000, 'mod#0: spam'],
     ['sustur', null, 'mod#0: Sebep belirtilmedi'],
@@ -230,33 +293,30 @@ test('/sustur: dakika süreye çevrilir, 0 susturmayı kaldırır; susturulamaya
   assert.equal(kaldir.gunluk[0].embeds[0].data.title, 'Susturma kaldırıldı');
 
   const yonetici = sahteUye('yonetici', { susturulabilir: false });
-  const e = etkilesim({ secenekler: { kullanici: kullanici('yonetici'), dakika: 5 }, uyeler: { yonetici } });
-  await komut('sustur').execute(e);
+  const e = await modKartta('sustur', 'yonetici', { uyeler: { yonetici } });
   assert.match(e.cevaplar[0].content, /susturamıyorum/);
   assert.deepEqual(yonetici.islemler, []);
 });
 
-test('/unban: yalnızca yasaklı kullanıcının yasağı kaldırılır', async () => {
-  const degil = etkilesim({ secenekler: { kullanici: kullanici('temiz') } });
-  await komut('unban').execute(degil);
+test('/mod yasak-kaldir: yalnızca yasaklı kullanıcının yasağı kaldırılır', async () => {
+  const degil = etkilesim({ alt: 'yasak-kaldir', secenekler: { kullanici: kullanici('temiz') } });
+  await komut('mod').execute(degil);
   assert.match(degil.cevaplar[0].content, /yasaklı değil/);
   assert.deepEqual(degil.islemler, []);
 
-  const e = etkilesim({ secenekler: { kullanici: kullanici('eski'), sebep: 'af' }, yasaklilar: ['eski'] });
-  await komut('unban').execute(e);
+  const e = etkilesim({ alt: 'yasak-kaldir', secenekler: { kullanici: kullanici('eski'), sebep: 'af' }, yasaklilar: ['eski'] });
+  await komut('mod').execute(e);
   assert.deepEqual(e.islemler, [['yasak-kaldir', 'eski', 'mod#0: af']]);
 });
 
-test('/temizle: 14 günden eski mesajlar atlanır, silinen sayı söylenir, günlükte "toplu silme" ayrıca çıkmaz', async () => {
+test('/mod temizle: 14 günden eski mesajlar atlanır, silinen sayı söylenir, günlükte "toplu silme" ayrıca çıkmaz', async () => {
   const gunlukModulu = src('gunluk');
-  const e = etkilesim({ secenekler: { adet: 50 }, silinecek: 12 });
-  // temizlemeBildir'in 10 saniyelik zamanlayıcısı testi bekletmesin
+  const e = etkilesim({ alt: 'temizle', secenekler: { adet: 50 }, silinecek: 12 });
   mock.timers.enable({ apis: ['setTimeout'] });
   try {
-    await komut('temizle').execute(e);
+    await komut('mod').execute(e);
     assert.deepEqual(e.islemler, [['temizle', 50, true]]);
     assert.match(e.cevaplar.at(-1).content, /12 mesaj silindi/);
-    // Botun kendi temizliği günlüğe ikinci kez "toplu mesaj silindi" diye düşmez; 10 saniye sonra başkasınınki düşer
     const kanal = { id: 'kanal', guild: e.guild, toString: () => '<#kanal>' };
     await gunlukModulu.olaylar.topluSilindi(new Map(), kanal);
     assert.equal(e.gunluk.length, 1);
@@ -269,12 +329,10 @@ test('/temizle: 14 günden eski mesajlar atlanır, silinen sayı söylenir, gün
   assert.deepEqual(e.gunluk[0].embeds[0].data.fields.map((a) => a.value), ['<@mod>', '<#kanal>', '12 mesaj']);
 });
 
-// --- Hatırlatıcılar ---
-const hatirlatici = src('hatirlatici');
+// --- Hatırlatıcılar (mesaja sağ tık → Hatırlat) ---
 const bekleyenler = () => depo.oku('hatirlaticilar', []);
 const turBekle = () => new Promise((coz) => setImmediate(coz));
 
-// Sahte istemci: kanaldaki üye izinleri ve gönderilen mesajlar
 function hatirlaticiIstemcisi({ yazabilir = true, susturulmus = false, gonderimHatasi = null } = {}) {
   const gonderilen = [];
   const kanal = {
@@ -294,18 +352,30 @@ function hatirlaticiIstemcisi({ yazabilir = true, susturulmus = false, gonderimH
 async function hatirlat(istemci, { kisi = 'k', mesaj = 'çay demle', dakika = 5 } = {}) {
   const e = {
     id: `h-${Math.random()}`,
+    customId: 'ht:form:kanal',
+    isModalSubmit: () => true,
     client: istemci.client,
     user: { id: kisi },
     channelId: 'kanal',
-    options: { getInteger: () => dakika, getString: () => mesaj },
+    fields: { getTextInputValue: (id) => (id === 'dakika' ? String(dakika) : mesaj) },
     cevaplar: [],
     reply: async (m) => e.cevaplar.push(m),
   };
-  await komut('hatirlat').execute(e);
+  await hatirlatici.etkilesim(e);
   return e;
 }
 
-test('/hatirlat: süre dolunca yalnızca kuran kişi etiketlenir, kayıt silinir; kişi başı sınır uygulanır', async () => {
+test('sağ tık → Hatırlat: mesaj metniyle formu açar; süre dolunca yalnızca kuran kişi etiketlenir, kişi başı sınır uygulanır', async () => {
+  // Sağ tık komutu tıklanan mesajın metnini formda hazır doldurur
+  let acilanForm;
+  await hatirlatici.sagTikKomutu.execute({
+    channelId: 'kanal',
+    targetMessage: { cleanContent: 'Toplantı notlarını gönder' },
+    showModal: async (m) => (acilanForm = m.toJSON()),
+  });
+  assert.equal(acilanForm.custom_id, 'ht:form:kanal');
+  assert.equal(acilanForm.components[1].component.value, 'Toplantı notlarını gönder');
+
   mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1_000_000 });
   try {
     const istemci = hatirlaticiIstemcisi();
@@ -327,7 +397,6 @@ test('/hatirlat: süre dolunca yalnızca kuran kişi etiketlenir, kayıt silinir
     const fazla = await hatirlat(istemci, { kisi: 'ali' });
     assert.match(fazla.cevaplar[0].content, /en fazla 5 hatırlatıcın/);
     assert.equal(bekleyenler().length, hatirlatici.KISI_BASI_SINIR);
-    // Başkasının sınırı ayrı sayılır
     assert.match((await hatirlat(istemci, { kisi: 'veli' })).cevaplar[0].content, /hatırlatacağım/);
 
     mock.timers.tick(5 * 60_000);
@@ -338,7 +407,7 @@ test('/hatirlat: süre dolunca yalnızca kuran kişi etiketlenir, kayıt silinir
   }
 });
 
-test('/hatirlat: kuran kişi artık kanala yazamıyorsa ya da susturulmuşsa mesaj gönderilmez', async () => {
+test('hatırlatıcı: kuran kişi artık kanala yazamıyorsa ya da susturulmuşsa mesaj gönderilmez', async () => {
   mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1_000_000 });
   try {
     for (const durum of [{ yazabilir: false }, { susturulmus: true }]) {
@@ -354,14 +423,13 @@ test('/hatirlat: kuran kişi artık kanala yazamıyorsa ya da susturulmuşsa mes
   }
 });
 
-test('/hatirlat: geçici hata dakikada bir yeniden denenir; Discord reddederse denenmez', async () => {
+test('hatırlatıcı: geçici hata dakikada bir yeniden denenir; Discord reddederse denenmez', async () => {
   const asilHata = console.error;
   const hatalar = [];
   console.error = (...a) => hatalar.push(a.join(' '));
   mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 1_000_000 });
   try {
     let deneme = 0;
-    // İlk iki deneme hata verir, üçüncüsü gider
     const gecici = hatirlaticiIstemcisi({ gonderimHatasi: () => (deneme++ < 2 ? new Error('ECONNRESET') : null) });
     await hatirlat(gecici, { kisi: 'gecici' });
     mock.timers.tick(5 * 60_000);
@@ -398,7 +466,7 @@ test('hatırlatıcılar bot yeniden başlayınca kaldığı yerden kurulur; sür
       { id: 'gelecek', kullaniciId: 'b', kanalId: 'kanal', zaman: Date.now() + 60_000, mesaj: 'sonra' },
     ]);
     hatirlatici.hepsiniYukle(istemci.client);
-    mock.timers.tick(1); // setTimeout en az 1 ms bekler
+    mock.timers.tick(1);
     for (let i = 0; i < 5; i++) await turBekle();
     assert.deepEqual(istemci.gonderilen.map((m) => m.content), ['⏰ <@a> hatırlatma: kaçırılan']);
     mock.timers.tick(60_000);
@@ -410,16 +478,14 @@ test('hatırlatıcılar bot yeniden başlayınca kaldığı yerden kurulur; sür
   }
 });
 
-// --- /yardim komut sayfaları ---
+// --- /yardim komut sayfaları ve seviye sayfası ---
 const { EventEmitter } = require('node:events');
 const yardimKomutu = () => komut('yardim');
 const REHBER = src('yardim-rehberi');
-const { Collection: KomutListesi } = require('discord.js');
-const butunKomutlar = () => new KomutListesi(komutlar.map(({ komut: k }) => [k.data.name, k]));
+const butunKomutlar = () => new Collection(komutlar.map(({ komut: k }) => [k.data.name, k]));
 const tumYetkiler = () => new PermissionsBitField(PermissionsBitField.All);
 const veriAl = (ad) => komut(ad).data.toJSON();
 
-// Discord'a yazıldığı haliyle "/komut alt secenek:değer secenek:değer" örneğini parçalar
 function ornegiAyir(ornek) {
   const eslesme = /^\/(\S+)(?: ([a-z0-9-]+)(?=\s|$))?/.exec(ornek);
   const parcalar = [...ornek.matchAll(/(?:^|\s)([a-z0-9-]+):/g)];
@@ -464,7 +530,6 @@ test('/yardim rehberi: her komutun anlatımı ve örneği var; örneklerdeki alt
   }
 });
 
-// Gömülü mesajın Discord'un saydığı toplam uzunluğu (sınır 6000)
 const gomuluUzunluk = (e) =>
   (e.title?.length ?? 0) +
   (e.description?.length ?? 0) +
@@ -473,7 +538,6 @@ const gomuluUzunluk = (e) =>
 
 test('/yardim komut sayfaları Discord sınırlarına kısaltılmadan sığar; yetki, seçenek ve örnekler yazar', () => {
   const yardim = yardimKomutu();
-  // En uzun hal: her komut tıklanabilir bağlantıyla yazılır
   const kimlik = new Map(komutlar.map(({ komut: k }) => [k.data.name, '123456789012345678']));
   const sigar = (e, ad) => {
     assert.ok(gomuluUzunluk(e) <= 6000, `/${ad}: ${gomuluUzunluk(e)} karakter`);
@@ -483,53 +547,36 @@ test('/yardim komut sayfaları Discord sınırlarına kısaltılmadan sığar; y
   for (const { komut: k } of komutlar) {
     const veri = k.data.toJSON();
     sigar(yardim.komutSayfasi(veri, kimlik).toJSON(), veri.name);
-    // Her alt komutun kendi sayfası
     for (const alt of (veri.options ?? []).filter((o) => o.type === T.Subcommand)) {
       sigar(yardim.altKomutSayfasi(veri, alt.name, kimlik).toJSON(), `${veri.name} ${alt.name}`);
     }
   }
 
-  const ban = yardim.komutSayfasi(veriAl('ban'), kimlik).toJSON();
-  const alan = (ad) => ban.fields.find((f) => f.name.includes(ad))?.value;
-  assert.equal(alan('Kim kullanabilir'), '**Üyeleri Yasakla** yetkisi olanlar');
-  assert.ok(alan('Seçenekler').includes('› `kullanici` **(zorunlu)**: Yasaklanacak kullanıcı *(kullanıcı)*'));
-  assert.ok(alan('Seçenekler').includes('› `sebep`: Yasaklama sebebi'));
-  assert.ok(ban.description.includes('</ban:123456789012345678>'));
-  assert.ok(alan('Örnekler').includes('`/ban kullanici:@Ali'));
-
   // Komut sayfası alt komutları birer satırla listeler; seçenekler alt komut sayfasında
-  const koruma = yardim.komutSayfasi(veriAl('koruma'), new Map()).toJSON();
-  const altlar = koruma.fields.find((f) => f.name === '▸ Alt komutlar').value;
-  assert.ok(altlar.startsWith('`/koruma filtre` · '), 'komut yüklü değilse düz yazı');
+  const mod = yardim.komutSayfasi(veriAl('mod'), new Map()).toJSON();
+  const altlar = mod.fields.find((f) => f.name === '▸ Alt komutlar').value;
+  assert.ok(altlar.startsWith('`/mod uye` · '), 'komut yüklü değilse düz yazı');
   assert.equal(altlar.split('\n').length, 4);
-  const filtreSayfasi = yardim.altKomutSayfasi(veriAl('koruma'), 'filtre', new Map()).toJSON();
-  assert.equal(filtreSayfasi.title, '/koruma filtre');
-  const filtre = filtreSayfasi.fields.find((f) => f.name === '⚙️ Seçenekler').value;
-  assert.match(filtre, /`tur` \*\*\(zorunlu\)\*\*.*Spam/);
-  assert.match(filtre, /`durum`: .*Açık \/ Kapalı/);
-  assert.ok(filtre.includes('0-40320'));
-  // Alt komut sayfası yalnızca o alt komutun örneklerini ve kendi notlarını gösterir
-  const ornekler = filtreSayfasi.fields.find((f) => f.name === '💡 Örnekler').value.split('\n');
-  assert.ok(ornekler.length >= 3 && ornekler.every((o) => o.startsWith('`/koruma filtre ')));
-  assert.match(filtreSayfasi.fields.find((f) => f.name === '📌 Bilmen gerekenler').value, /susturma-dakika:0/);
-  // Yönetici yetkisi "bütün yetkiler" diye açılmaz
-  assert.equal(yardim.komutSayfasi(veriAl('kilit'), kimlik).toJSON().fields[0].value, '**Yönetici** yetkisi olanlar');
-  // Seçeneği olmayan komut (şu an böyle bir komut yok; sayfa yine de doğru yazmalı)
-  const seceneksiz = { name: 'deneme', description: 'Deneme komutu', options: [] };
-  assert.match(yardim.komutSayfasi(seceneksiz, kimlik).toJSON().fields.find((f) => f.name.includes('Seçenekler')).value, /Seçeneği yok/);
+  const temizleSayfasi = yardim.altKomutSayfasi(veriAl('mod'), 'temizle', new Map()).toJSON();
+  assert.equal(temizleSayfasi.title, '/mod temizle');
+  assert.match(temizleSayfasi.fields.find((f) => f.name === '⚙️ Seçenekler').value, /`adet` \*\*\(zorunlu\)\*\*/);
+  assert.equal(yardim.komutSayfasi(veriAl('sunucular'), kimlik).toJSON().fields[0].value, '**Yönetici** yetkisi olanlar');
+  assert.match(yardim.komutSayfasi(veriAl('ayarlar'), kimlik).toJSON().fields.find((f) => f.name.includes('Seçenekler')).value, /Seçeneği yok/);
 });
 
-// /yardim etkileşimi sahtesi: cevaplar ve menü seçimleri için toplayıcı
-function yardimEtkilesimi({ izinler = tumYetkiler(), komut: istenen = null } = {}) {
+function yardimEtkilesimi({ izinler = tumYetkiler(), komut: istenen = null, sunucu = 'yardim-g', kim = 'uye' } = {}) {
   const cevaplar = [];
   const toplayici = new EventEmitter();
   return {
     cevaplar,
     toplayici,
+    guildId: sunucu,
+    guild: { id: sunucu, name: 'Deneme' },
+    user: { id: kim, username: kim },
     client: {
       komutlar: butunKomutlar(),
       user: { username: 'Voyager', displayAvatarURL: () => 'https://cdn.discordapp.com/avatar.png' },
-      application: { commands: { fetch: async () => new KomutListesi([['1', { name: 'ban', id: '1' }]]) } },
+      application: { commands: { fetch: async () => new Collection([['1', { name: 'mod', id: '1' }]]) } },
     },
     memberPermissions: izinler,
     options: { getString: () => istenen },
@@ -547,43 +594,48 @@ async function secimYap(e, customId, deger) {
 const menuler = (m) => m.components.map((r) => r.toJSON().components[0]);
 const baslik = (m) => m.embeds[0].toJSON().title;
 
-test('/yardim: bölüm seçince komut menüsü çıkar, komut seçince ayrıntı sayfası açılır; doğrudan açılabilir', async () => {
+test('/yardim: bölüm seçince komut menüsü çıkar, komut seçince ayrıntı sayfası açılır; seviye sayfası çalışır', async () => {
   const yardim = yardimKomutu();
   const e = yardimEtkilesimi();
   await yardim.execute(e);
   assert.equal(menuler(e.cevaplar[0]).length, 1, 'ana sayfada yalnızca bölüm menüsü');
-  assert.ok(e.cevaplar[0].embeds[0].toJSON().description.includes('/yardim komut:ban'));
+  assert.ok(e.cevaplar[0].embeds[0].toJSON().description.includes('/yardim komut:mod'));
+
+  // Seviye ve sıralama sayfası: kapalıyken bilgi verir, açıkken üyenin seviyesini ve ilk 10'u gösterir
+  const kapaliSeviye = await secimYap(e, 'yardim-bolum', 'seviye');
+  assert.match(kapaliSeviye.embeds[0].toJSON().description, /kapalı/);
+  depo.ayarKaydet('yardim-g', 'seviyeAcik', true);
+  const acikSeviye = await secimYap(e, 'yardim-bolum', 'seviye');
+  assert.match(baslik(acikSeviye), /Seviye ve sıralama/);
+  assert.deepEqual(acikSeviye.embeds[0].toJSON().fields.map((f) => f.name), ['Seviyen', 'Sıran', 'Toplam XP', 'Sonraki seviye', '🏆 İlk 10']);
 
   const bolum = await secimYap(e, 'yardim-bolum', 'moderasyon');
   const [bolumMenusu, komutMenusu] = menuler(bolum);
   assert.equal(bolumMenusu.options.find((o) => o.default).value, 'moderasyon');
-  assert.deepEqual(komutMenusu.options.map((o) => o.value), ['uyari', 'sustur', 'kick', 'ban', 'unban', 'temizle']);
+  assert.deepEqual(komutMenusu.options.map((o) => o.value), ['mod']);
 
-  const sayfa = await secimYap(e, 'yardim-komut', 'ban');
-  assert.equal(baslik(sayfa), '/ban');
-  assert.ok(sayfa.embeds[0].toJSON().description.includes('</ban:1>'), 'yüklü komut tıklanabilir');
-  assert.equal(menuler(sayfa)[1].options.find((o) => o.default).value, 'ban');
+  const sayfa = await secimYap(e, 'yardim-komut', 'mod');
+  assert.equal(baslik(sayfa), '/mod');
+  assert.equal(menuler(sayfa)[1].options.find((o) => o.default).value, 'mod');
   assert.equal(sayfa.content, null);
 
-  // Başka bölüme geçince komut seçimi sıfırlanır; bilinmeyen değer ana sayfaya döner
   assert.equal(baslik(await secimYap(e, 'yardim-bolum', 'genel')), '🧭 Genel');
   assert.equal(menuler(await secimYap(e, 'yardim-bolum', 'uydurma')).length, 1);
 
-  const dogrudan = yardimEtkilesimi({ komut: '/Ban' });
+  const dogrudan = yardimEtkilesimi({ komut: '/Mod' });
   await yardim.execute(dogrudan);
-  assert.equal(baslik(dogrudan.cevaplar[0]), '/ban');
+  assert.equal(baslik(dogrudan.cevaplar[0]), '/mod');
   assert.equal(dogrudan.cevaplar[0].content, undefined);
 });
 
 test('/yardim: yetkisi olmayan yönetim komutunun sayfasını açamaz; yazdığı ad cevapta biçimlendirme yapamaz', async () => {
   const yardim = yardimKomutu();
-  const uye = yardimEtkilesimi({ izinler: new PermissionsBitField(), komut: 'ban' });
+  const uye = yardimEtkilesimi({ izinler: new PermissionsBitField(), komut: 'mod' });
   await yardim.execute(uye);
-  assert.ok(uye.cevaplar[0].content.includes('`/ban` diye kullanabileceğin bir komut yok'));
-  assert.notEqual(baslik(uye.cevaplar[0]), '/ban');
-  // Menüden de seçilemez: bölümünde olmayan komut istenirse bölüm sayfası kalır
+  assert.ok(uye.cevaplar[0].content.includes('`/mod` diye kullanabileceğin bir komut yok'));
+  assert.notEqual(baslik(uye.cevaplar[0]), '/mod');
   await secimYap(uye, 'yardim-bolum', 'genel');
-  assert.equal(baslik(await secimYap(uye, 'yardim-komut', 'ban')), '🧭 Genel');
+  assert.equal(baslik(await secimYap(uye, 'yardim-komut', 'mod')), '🧭 Genel');
 
   const garip = yardimEtkilesimi({ komut: '`@everyone` **x**' });
   await yardim.execute(garip);
@@ -602,18 +654,14 @@ test('/yardim komut önerileri: kullanabildiği komutlardan, adı yazılanla ba�
     });
     return cevap;
   };
-  const ba = await oner('ba');
-  assert.equal(ba[0].value, 'ban');
-  assert.ok(ba.every((s) => s.name.length <= 100));
+  const mo = await oner('mo');
+  assert.equal(mo[0].value, 'mod');
+  assert.ok(mo.every((s) => s.name.length <= 100));
   assert.ok((await oner('')).length <= 25);
-  assert.ok((await oner('/BAN')).some((s) => s.value === 'ban'));
-  // Açıklamada geçen kelimeyle de bulunur
+  assert.ok((await oner('/MOD')).some((s) => s.value === 'mod'));
   assert.ok((await oner('çekiliş')).some((s) => s.value === 'cekilis'));
-  // Yetkisi olmayan yönetim komutlarını görmez
-  assert.ok(!(await oner('ba', new PermissionsBitField())).some((s) => s.value === 'ban'));
-  // Alt komutlar da önerilir
-  assert.deepEqual((await oner('oyun a')).map((s) => s.value), ['oyun ayar']);
-  assert.ok((await oner('seviye')).some((s) => s.value === 'seviye odul'));
+  assert.ok(!(await oner('mo', new PermissionsBitField())).some((s) => s.value === 'mod'));
+  assert.deepEqual((await oner('mod t')).map((s) => s.value), ['mod temizle']);
 });
 
 const GOREVLER = src('yardim-gorevler');
@@ -654,7 +702,6 @@ test('/yardim rehberleri: üye yalnızca kullanabildiği komutları anlatan rehb
   const uyeRehberleri = hazirla(new PermissionsBitField());
   assert.deepEqual(uyeRehberleri.map((g) => g.id), ['sor', 'hatirlat', 'ozetle', 'seviye']);
   assert.equal(hazirla(tumYetkiler()).length, GOREVLER.GOREVLER.length);
-  // Moderatör uyarı verebilir ama kural kuramaz: uyarı sistemi rehberi ona gösterilmez
   assert.ok(!hazirla(new PermissionsBitField([P.ModerateMembers])).some((g) => g.id === 'uyari'));
 
   const e = yardimEtkilesimi();
@@ -667,7 +714,7 @@ test('/yardim rehberleri: üye yalnızca kullanabildiği komutları anlatan rehb
   const sayfa = haber.embeds[0].toJSON();
   assert.equal(sayfa.title, '📰 Haberleri konusuna göre etiketle');
   assert.match(sayfa.description, /^\*\*1\.\*\* /);
-  assert.ok(sayfa.description.includes('`/haber ekle`'), 'komut yüklü değilse düz yazı');
+  assert.ok(sayfa.description.includes('`/ayarlar`'), 'komut yüklü değilse düz yazı');
   assert.ok(!sayfa.description.includes('{'), 'yer tutucular çevrilir');
   assert.equal(menuler(haber)[1].options.find((o) => o.default).value, 'haber');
 });
@@ -678,35 +725,33 @@ test('/yardim başlangıç: yöneticiye kurulum, üyeye kullanım adımları', a
   await yardim.execute(yonetici);
   const kurulum = (await secimYap(yonetici, 'yardim-bolum', 'baslangic')).embeds[0].toJSON();
   assert.match(kurulum.title, /Sunucuna Voyager'ı kur/);
-  assert.ok(kurulum.description.includes('`/sunucukur`'));
+  assert.ok(kurulum.description.includes('`/ayarlar`'));
 
   const uye = yardimEtkilesimi({ izinler: new PermissionsBitField() });
   await yardim.execute(uye);
   const baslangic = (await secimYap(uye, 'yardim-bolum', 'baslangic')).embeds[0].toJSON();
   assert.equal(baslangic.title, '🚀 Başlangıç');
-  assert.ok(baslangic.description.includes('`/sor`') && !baslangic.description.includes('sunucukur'));
+  assert.ok(baslangic.description.includes('`/sor`') && !baslangic.description.includes('/ayarlar'));
 });
 
-test('/yardim alt komut sayfaları: komut seçince üçüncü menü çıkar; /yardim komut:oyun ayar doğrudan açar', async () => {
+test('/yardim alt komut sayfaları: komut seçince üçüncü menü çıkar; /yardim komut:mod temizle doğrudan açar', async () => {
   const yardim = yardimKomutu();
   const e = yardimEtkilesimi();
   await yardim.execute(e);
-  await secimYap(e, 'yardim-bolum', 'bildirim');
-  const oyun = await secimYap(e, 'yardim-komut', 'oyun');
-  assert.equal(menuler(oyun).length, 3);
-  assert.deepEqual(menuler(oyun)[2].options.map((o) => o.value), ['ayar', 'simdi']);
-  const ayar = await secimYap(e, 'yardim-alt', 'ayar');
-  assert.equal(baslik(ayar), '/oyun ayar');
-  assert.equal(menuler(ayar)[2].options.find((o) => o.default).value, 'ayar');
-  // Alt komutu olmayan komutta üçüncü menü yok
   await secimYap(e, 'yardim-bolum', 'moderasyon');
-  assert.equal(menuler(await secimYap(e, 'yardim-komut', 'ban')).length, 2);
+  const mod = await secimYap(e, 'yardim-komut', 'mod');
+  assert.equal(menuler(mod).length, 3);
+  assert.deepEqual(menuler(mod)[2].options.map((o) => o.value), ['uye', 'temizle', 'yasakla', 'yasak-kaldir']);
+  const temizle = await secimYap(e, 'yardim-alt', 'temizle');
+  assert.equal(baslik(temizle), '/mod temizle');
+  assert.equal(menuler(temizle)[2].options.find((o) => o.default).value, 'temizle');
+  await secimYap(e, 'yardim-bolum', 'sunucu');
+  assert.equal(menuler(await secimYap(e, 'yardim-komut', 'ayarlar')).length, 2);
 
-  const dogrudan = yardimEtkilesimi({ komut: '/Oyun AYAR' });
+  const dogrudan = yardimEtkilesimi({ komut: '/Mod Temizle' });
   await yardim.execute(dogrudan);
-  assert.equal(baslik(dogrudan.cevaplar[0]), '/oyun ayar');
-  // Olmayan alt komut istenirse komutun genel sayfası açılır
-  const yanlis = yardimEtkilesimi({ komut: 'oyun kanal' });
+  assert.equal(baslik(dogrudan.cevaplar[0]), '/mod temizle');
+  const yanlis = yardimEtkilesimi({ komut: 'mod kanal' });
   await yardim.execute(yanlis);
-  assert.equal(baslik(yanlis.cevaplar[0]), '/oyun');
+  assert.equal(baslik(yanlis.cevaplar[0]), '/mod');
 });

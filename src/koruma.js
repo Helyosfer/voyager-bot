@@ -1,7 +1,7 @@
 // Otomatik koruma: spam (özellikle ele geçirilmiş hesapların her kanala aynı
 // şeyi atması), ağır küfür filtresi, zararlı bağlantı denetimi (baglanti.js) ve
 // dolandırıcılık görseli denetimi (gorsel.js).
-// Sunucu başına /koruma ile açılır; hepsi varsayılan olarak kapalıdır.
+// Sunucu başına /ayarlar → Koruma ile açılır; hepsi varsayılan olarak kapalıdır.
 const { EmbedBuilder, Events, GatewayIntentBits, PermissionFlagsBits } = require('discord.js');
 const { ayarlariGetir } = require('./depo');
 const { gunlukGonder, temizlemeBildir } = require('./gunluk');
@@ -40,7 +40,7 @@ function ayarCoz(ayar) {
 // Yalnızca ağır küfürler. Kalıplar kelimenin BAŞINDAN eşleşir ve bilerek dardır:
 // "sıkıntı", "klasik", "götür", "yara", "pic", "got" gibi masum kelimeler ve
 // Türkçe karaktersiz yazımları ("sikinti", "canimi sikiyor") yakalanmamalı.
-// "amk", "aq" gibi kısaltmalar listede yok; isteyen sunucu /koruma kelime ile ekler.
+// "amk", "aq" gibi kısaltmalar listede yok; isteyen sunucu /ayarlar → Koruma → Özel kelimeler ile ekler.
 const AGIR_KUFURLER = [
   /^s(?:ik|k)t[iı]?r/, // siktir, sktr
   /^sik(?:er|ey|ec|em$|icem|ti[gğ]|ik$|ikler)/,
@@ -113,7 +113,7 @@ function kufurBul(metin, ekKelimeler = []) {
   return null;
 }
 
-// /koruma kelime için: kelimeyi filtrenin karşılaştırdığı biçime çevirir
+// Özel kelimeler için: kelimeyi filtrenin karşılaştırdığı biçime çevirir
 const kelimeBicimi = (girdi) => kelimeler(girdi).map(sadelestir).join('');
 
 // --- Ortak ---
@@ -243,7 +243,7 @@ async function baglantiUygula(mesaj, bulgu, ayar) {
   const embed = new EmbedBuilder()
     .setTitle('🛡️ Zararlı bağlantı')
     .setColor(0xed4245)
-    .setDescription('Bu hesap ele geçirilmiş olabilir. Yanlış alarmsa alanı `/koruma alan` ile izin listesine ekle.')
+    .setDescription('Bu hesap ele geçirilmiş olabilir. Yanlış alarmsa alanı `/ayarlar` → Koruma → Alanlar ile izin listesine ekle.')
     .addFields(
       { name: 'Kullanıcı', value: `${mesaj.author} (${mesaj.author.tag})` },
       { name: 'Kanal', value: `${mesaj.channel}` },
