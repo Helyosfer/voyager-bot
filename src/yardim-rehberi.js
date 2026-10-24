@@ -137,7 +137,7 @@ module.exports = {
       'Acil durum kilidi: bir saldırı ya da baskın anında `/kilit kapat` bütün kanalları tek komutla kilitler. Sunucu sahibi dışında kimse yazamaz, tepki ekleyemez, konu açamaz ve sesli kanala giremez. Her kanalın izinleri saklanır; `/kilit ac` hepsini kilitten önceki haline birebir döndürür.',
     ornekler: ['/kilit kapat', '/kilit ac'],
     notlar: [
-      'Saldırı anında hız önemli olduğu için onay sorulmaz.',
+      'Saldırı anında hız önemli olduğu için komutla yazınca onay sorulmaz. `/yardim` panelindeki 🔒 Kilitle düğmesi yanlışlıkla basılmasın diye bir kez onay ister.',
       'Kilitliyken sunucuya eklenen botlar kendiliğinden atılır; yetki varsa sesli kanaldakiler çıkarılır.',
       'Administrator izni olan roller Discord kuralı gereği kilitten etkilenmez.',
       'Bot bir izni ancak kendisinde de varsa kilitleyebilir; eksik kalanlar cevapta listelenir.',
@@ -388,7 +388,7 @@ const ALTLAR = {
     hosgeldin: { anlatim: 'Seçeneksiz yazarsan ayarları gösterir. `kanal` hoş geldin mesajlarının kanalını, `oto-rol` yeni gelenlere verilecek rolü seçer.' },
   },
   kilit: {
-    kapat: { anlatim: 'Bütün kanalları hemen kilitler; onay sormaz. Her kanalın izinleri saklanır.' },
+    kapat: { anlatim: 'Bütün kanalları hemen kilitler; komutla yazınca onay sormaz (paneldeki düğme bir kez sorar). Her kanalın izinleri saklanır.' },
     ac: { anlatim: 'Kilitlenen kanalları kilitten önceki izinlerine birebir döndürür. Açılamayan kanal kalırsa komutu yeniden çalıştır.' },
   },
 };
