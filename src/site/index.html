@@ -307,6 +307,8 @@
     color: var(--muted);
   }
   .grup code { font-size: 0.86rem; }
+  /* Komutun alt komutları: açıklamanın altında, soluk */
+  .grup .alt { display: block; margin-top: 3px; font: 0.78rem var(--mono); color: #5f5f66; }
 
   .son { text-align: center; }
   .son h2 { background: var(--silver); -webkit-background-clip: text; background-clip: text; color: transparent; padding-bottom: 0.1em; }
@@ -598,60 +600,60 @@
     <div class="container">
       <p class="kicker reveal"><span class="num">05</span>Komutlar</p>
       <h2 class="reveal">Öğrenmesi<br><span class="dim">beş dakika.</span></h2>
-      <p class="lead reveal">Discord'da <code>/</code> yazdığında bütün komutlar karşına çıkar. Yetki gerektiren komutları yalnızca o yetkiye sahip olanlar görür. Tam liste için <code>/yardim</code> yaz.</p>
+      <p class="lead reveal">Discord'da <code>/</code> yazdığında bütün komutlar karşına çıkar. Yetki gerektiren komutları yalnızca o yetkiye sahip olanlar görür. Soluk yazılar komutun alt komutlarıdır; hepsini ve nasıl kullanılacağını <code>/yardim</code> anlatır.</p>
 
       <div class="gruplar">
         <div class="grup reveal">
-          <h3>Herkes</h3>
+          <h3>Genel</h3>
           <ul>
-            <li><code>/yardim</code><span>Komutları ve ne işe yaradıklarını listeler</span></li>
-            <li><code>/sor</code><span>Yapay zekâya soru sorar</span></li>
+            <li><code>/sor</code><span>Yapay zekâya soru sorar; cevaba "Yanıtla" dersen konuşma sürer</span></li>
             <li><code>/ozetle</code><span>Kanaldaki son mesajları yapay zekâyla özetler</span></li>
             <li><code>/hatirlat</code><span>Verdiğin süre dolunca seni etiketler</span></li>
+            <li><code>/yardim</code><span>Komutları, adım adım rehberleri ve başlangıç adımlarını gösterir</span></li>
           </ul>
         </div>
         <div class="grup reveal">
           <h3>Moderasyon</h3>
           <ul>
+            <li><code>/uyari</code><span>Kalıcı uyarı verir; uyarı sayısına göre otomatik susturur, atar ya da yasaklar<span class="alt">ver · liste · sil · kural</span></span></li>
+            <li><code>/sustur</code><span>Üyeyi belirlediğin süre kadar susturur</span></li>
+            <li><code>/kick</code><span>Üyeyi sunucudan atar (tekrar katılabilir)</span></li>
             <li><code>/ban</code><span>Kullanıcıyı sunucudan yasaklar</span></li>
             <li><code>/unban</code><span>Yasağı kaldırır</span></li>
-            <li><code>/kick</code><span>Üyeyi sunucudan atar (tekrar katılabilir)</span></li>
-            <li><code>/sustur</code><span>Üyeyi belirlediğin süre kadar susturur</span></li>
             <li><code>/temizle</code><span>Kanaldaki son mesajları topluca siler</span></li>
-            <li><code>/uyari</code><span>Uyarı verir; uyarı sayısına göre otomatik ceza uygular</span></li>
           </ul>
         </div>
         <div class="grup reveal">
-          <h3>Kurulum</h3>
+          <h3>Güvenlik</h3>
           <ul>
-            <li><code>/sunucukur</code><span>Topluluk sunucusunu kurar</span></li>
-            <li><code>/ayarla</code><span>Günlük kanalını, hoş geldin kanalını ve otomatik rolü ayarlar</span></li>
-          </ul>
-        </div>
-        <div class="grup reveal">
-          <h3>Topluluk</h3>
-          <ul>
-            <li><code>/seviye</code><span>Mesaj yazdıkça seviye atlatır, sıralamayı ve ödül rollerini gösterir</span></li>
-            <li><code>/cekilis</code><span>Düğmeyle katılınan çekiliş başlatır, kazananı kendisi seçer</span></li>
-            <li><code>/rolmenu</code><span>Üyelerin düğmeyle rol alıp bıraktığı menü kurar</span></li>
-          </ul>
-        </div>
-        <div class="grup reveal">
-          <h3>Koruma</h3>
-          <ul>
-            <li><code>/koruma</code><span>Spam, küfür ve dolandırıcılık görsellerine karşı korur</span></li>
-            <li><code>/kilit</code><span>Saldırı anında bütün kanalları kilitler, sonra eski izinleri geri getirir</span></li>
+            <li><code>/koruma</code><span>Spam, küfür, zararlı bağlantı ve dolandırıcılık görseli denetimi<span class="alt">filtre · kelime · alan · goster</span></span></li>
+            <li><code>/kilit</code><span>Saldırı anında bütün kanalları kilitler, sonra eski izinleri geri getirir<span class="alt">kapat · ac</span></span></li>
           </ul>
         </div>
         <div class="grup reveal">
           <h3>Bildirimler</h3>
           <ul>
-            <li><code>/yayin</code><span>Twitch, Kick ve YouTube yayınlarını duyurur</span></li>
-            <li><code>/oyun</code><span>Bedava oyunları ve indirimleri duyurur</span></li>
-            <li><code>/haber</code><span>Haber sitelerindeki yeni haberleri duyurur; her konu kendi rolünü etiketleyebilir</span></li>
+            <li><code>/oyun</code><span>Bedava oyunları ve indirimleri duyurur (Steam, Epic, GOG)<span class="alt">ayar · simdi</span></span></li>
+            <li><code>/yayin</code><span>Twitch, Kick ve YouTube yayınlarını duyurur<span class="alt">ayar · ekle · cikar</span></span></li>
+            <li><code>/haber</code><span>Haber sitelerindeki yeni haberleri duyurur; her konu kendi rolünü etiketleyebilir<span class="alt">ayar · ekle · cikar</span></span></li>
             <!--instagram-->
-            <li><code>/instagram</code><span>Instagram hesaplarının yeni gönderilerini duyurur</span></li>
+            <li><code>/instagram</code><span>Instagram hesaplarının yeni gönderilerini duyurur<span class="alt">ayar · ekle · cikar</span></span></li>
             <!--/instagram-->
+          </ul>
+        </div>
+        <div class="grup reveal">
+          <h3>Topluluk</h3>
+          <ul>
+            <li><code>/seviye</code><span>Mesaj yazdıkça seviye atlatır; sıralamayı ve ödül rollerini gösterir<span class="alt">goster · siralama · ayar · odul · sifirla</span></span></li>
+            <li><code>/cekilis</code><span>Düğmeyle katılınan çekiliş başlatır, kazananı kendisi seçer<span class="alt">baslat · bitir · yeniden · iptal</span></span></li>
+            <li><code>/rolmenu</code><span>Üyelerin düğmeyle rol alıp bıraktığı menü kurar</span></li>
+          </ul>
+        </div>
+        <div class="grup reveal">
+          <h3>Sunucu ayarları</h3>
+          <ul>
+            <li><code>/sunucukur</code><span>Hazır şablonla sunucuyu kurar: roller, kategoriler, kanallar ve izinler</span></li>
+            <li><code>/ayarla</code><span>Günlük kanalını, hoş geldin mesajını, otomatik rolü ve kanal özetlerini ayarlar<span class="alt">gunluk · hosgeldin · ozet · goster · sifirla</span></span></li>
           </ul>
         </div>
       </div>
