@@ -4,8 +4,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const instagram = require('./instagram');
 
-// Davet linki izinleri ve "bot" kapsamını açıkça taşır. Yalnızca client_id içeren kısa
-// link Developer Portal'daki varsayılan kurulum ayarlarına bağlıdır; orada "bot"
+// Davet bağlantısı izinleri ve "bot" kapsamını açıkça taşır. Yalnızca client_id içeren kısa
+// bağlantı Developer Portal'daki varsayılan kurulum ayarlarına bağlıdır; orada "bot"
 // kapsamı seçili değilse komutlar eklenir ama botun kendisi sunucuya girmez.
 // Sayfada tek davet var: bot bütün özellikleri için gereken izinlerle eklenir, kullanıcı izin seçmekle
 // uğraşmaz. Yönetici (Administrator) bilerek istenmez: bot yalnızca kullandığı izinleri alır.
@@ -19,7 +19,7 @@ const DAVET =
   'https://discord.com/oauth2/authorize' +
   `?client_id=${process.env.CLIENT_ID ?? ''}&scope=bot+applications.commands&permissions=${IZINLER}`;
 // Sayfadaki <!--instagram--> ... <!--/instagram--> arası, bağlantısı kurulmamışsa çıkarılır:
-// /instagram o durumda yüklenmez, sayfa da olmayan bir komutu tanıtmasın.
+// /instagram o durumda yüklenmez; sayfa da olmayan bir komutu tanıtmasın.
 const INSTAGRAM_KISMI = /[ \t]*<!--instagram-->[\s\S]*?<!--\/instagram-->\r?\n?/g;
 const SAYFA = fs
   .readFileSync(path.join(__dirname, 'site', 'index.html'), 'utf8')
@@ -43,7 +43,7 @@ const BASLIKLAR = {
   'Strict-Transport-Security': 'max-age=31536000',
 };
 
-// yol: sondaki / atılmış adres yolu ("" ana sayfadır)
+// yol: sondaki / işareti atılmış adres yolu ("" ana sayfadır)
 function sun(istek, yanit, yol) {
   const okuma = istek.method === 'GET' || istek.method === 'HEAD';
   if (okuma && yol === '/film.js') {

@@ -1,4 +1,4 @@
-// Bedava oyunları ve mağaza indirimlerini düzenli aralıklarla kontrol edip
+// Bedava oyunları ve mağaza indirimlerini düzenli aralıklarla kontrol eder,
 // sunucuların seçtiği kanala gönderir. Ayarlar /oyun komutuyla yapılır.
 //
 // Önemli fırsatlar (popüler ya da yeni çıkmış ve ilgi gören oyunlar) bulunduğu anda, resimli
@@ -11,7 +11,7 @@ const { agHatasi } = require('./ag');
 
 const KONTROL_ARALIGI = 15 * 60_000;
 const OZET_ARALIGI = 3 * 60 * 60_000; // Önemli olmayan fırsatlar en fazla bu sıklıkta toplu gönderilir
-// @everyone bir sunucuda en fazla bu sıklıkta atılır; arada gelen önemli fırsatlar rolü etiketler
+// Bir sunucuda en sık bu aralıkla @everyone atılır; arada gelen önemli fırsatlarda seçilen rol etiketlenir
 const EVERYONE_ARALIGI = 6 * 60 * 60_000;
 // Bir gönderimde en fazla bu kadar oyun için yeni inceleme yazılır (saklananlar sayılmaz)
 const YENI_INCELEME_SINIRI = 5;
@@ -19,7 +19,7 @@ const YENI_INCELEME_SINIRI = 5;
 const KART_SINIRI = 5;
 const BOLGE = 'TR'; // Fiyatların gösterileceği mağaza bölgesi
 const VARSAYILAN_YUZDE = 50;
-// GOG'dan, o an en çok ilgi gören indirimlerden kaç tanesi alınsın
+// GOG'da o an en çok ilgi gören indirimlerden kaç tanesi alınsın
 const GOG_INDIRIM_SAYISI = 15;
 // Steam'de en az bu kadar incelemesi olan oyun "popüler" sayılır ve resimli
 // büyük kartla duyurulur; diğerleri toplu listede gösterilir.
@@ -27,7 +27,7 @@ const POPULER_ESIK = 20_000;
 // Son YENI_SURE içinde çıkmış ve en az YENI_ESIK incelemesi olan oyun da önemli sayılır
 const YENI_ESIK = 2_000;
 const YENI_SURE = 180 * 24 * 60 * 60_000;
-// Bir oyunun inceleme sayısı bu kadar süre saklanır, sonra yeniden sorulur
+// Bir oyunun Steam'deki inceleme sayısı bu kadar süre saklanır, sonra yeniden sorulur
 const POPULERLIK_OMRU = 7 * 24 * 60 * 60_000;
 // Bir fırsat bu kadar süre sonra "görüldü" listesinden silinir
 const UNUTMA_SURESI = 90 * 24 * 60 * 60_000;
@@ -94,14 +94,14 @@ function httpAdresi(adres) {
 
 async function bedavalariGetir() {
   const veri = await jsonGetir('https://www.gamerpower.com/api/giveaways?type=game');
-  if (!Array.isArray(veri)) return []; // Aktif çekiliş yokken dizi yerine durum nesnesi döner
+  if (!Array.isArray(veri)) return []; // Etkin çekiliş yokken servis dizi yerine bir durum nesnesi döndürür
   return veri
     .filter((o) => o.status === 'Active')
     .map((o) => {
       const bitis = Date.parse(`${String(o.end_date).replace(' ', 'T')}Z`);
       return {
         anahtar: String(o.id),
-        // "Pony Island (Steam) Giveaway" -> "Pony Island"; mağaza zaten platformda yazıyor
+        // "Pony Island (Steam) Giveaway" → "Pony Island"; mağaza zaten platform alanında yazıyor
         ad: String(o.title).replace(/\s*(Key )?Giveaway$/i, '').replace(/\s*\([^)]*\)$/, ''),
         platformlar: String(o.platforms).split(',').map((p) => p.trim()),
         deger: o.worth && o.worth !== 'N/A' ? o.worth : null,
@@ -126,7 +126,7 @@ async function steamIndirimleri() {
   return (veri.specials?.items ?? [])
     .filter((o) => o.discounted)
     .map((o) => ({
-      // Aynı oyun ileride yeniden indirime girerse tekrar haber verilsin diye bitiş tarihi de anahtarda
+      // Aynı oyun ileride yeniden indirime girerse tekrar haber verilsin diye bitiş tarihi de anahtara katılır
       anahtar: `${o.id}:${o.discount_expiration ?? 0}`,
       ad: o.name,
       steamId: o.type === 0 ? o.id : null,
@@ -139,7 +139,7 @@ async function steamIndirimleri() {
     }));
 }
 
-// Epic'in arama servisi sunuculardan gelen istekleri engelliyor; bunun yerine
+// Epic'in arama servisi sunuculardan gelen istekleri engelliyor; bu yüzden
 // mağaza vitrininin verisi okunur ve içindeki indirimli teklifler toplanır.
 async function epicIndirimleri() {
   const veri = await jsonGetir(
@@ -194,7 +194,7 @@ async function gogIndirimleri() {
     .filter((o) => o.url);
 }
 
-// Kaynaklardan biri çalışmıyorsa diğerleri yine de işlensin; çalışmayan null döner.
+// Kaynaklardan biri çalışmasa da diğerleri işlensin; çalışmayan kaynak null döner.
 async function hepsiniGetir() {
   const guvenli = (ad, soz) =>
     soz.catch((hata) => {
@@ -221,7 +221,7 @@ function sec(ayar, veri) {
   for (const magaza of Object.keys(INDIRIM_MAGAZALARI)) {
     const istenen = ayar.indirim && INDIRIM_SECENEKLERI[ayar.indirimMagaza].magazalar.includes(magaza);
     const liste = veri.indirim[magaza];
-    // Tamamen bedava olanlar bedava oyun bildirimine ait
+    // Tamamen bedava olanlar bedava oyun bildiriminde duyurulur
     sonuc[indirimTuru(magaza)] = istenen && liste ? liste.filter((o) => o.yuzde >= ayar.yuzde && o.yuzde < 100) : null;
   }
   return sonuc;
@@ -237,12 +237,12 @@ const sade = (ad) =>
     .trim();
 
 // Oyunun Steam'deki inceleme sayısını (popülerlik ölçüsü) ve Steam kimliğini döndürür.
-// Sonuç data/populerlik.json içinde saklanır; Steam'de bulunamayan oyunun yorumu 0 sayılır.
+// Sonuç data/populerlik.json içinde saklanır; Steam'de bulunamayan oyunun inceleme sayısı 0 sayılır.
 async function populerlik(ad, steamId = null) {
   const anahtar = steamId ? `app:${steamId}` : sade(ad);
   if (!anahtar) return { steamId: null, yorum: 0 };
   const kayit = oku('populerlik', {})[anahtar];
-  // Tür bilgisi eklenmeden önce saklanan kayıtlar, önemli sayılabilecekse yenilenir
+  // Tür bilgisi eklenmeden önce saklanmış kayıtlar, oyun önemli sayılabilecekse yenilenir
   const eksik = kayit && kayit.yorum >= YENI_ESIK && !('tur' in kayit);
   if (kayit && !eksik && Date.now() - kayit.zaman < POPULERLIK_OMRU) return kayit;
 
@@ -279,7 +279,7 @@ async function populerlik(ad, steamId = null) {
     yaz('populerlik', onbellek);
     return sonuc;
   } catch (hata) {
-    // Ulaşılamazsa popüler değil say ama saklama; bir sonraki sefer yeniden denensin
+    // Ulaşılamazsa oyun popüler sayılmaz ama sonuç saklanmaz; bir dahaki sefere yeniden denensin
     console.error(`Popülerlik alınamadı (${ad}):`, agHatasi(hata));
     return { steamId, yorum: 0 };
   }
@@ -337,12 +337,12 @@ function indirimSatiri(oyun) {
     const t = oyun.teklifler[0];
     return `[${escapeMarkdown(oyun.ad)}](${t.url}) · ${INDIRIM_MAGAZALARI[t.magaza].ad} · ${metin(t)}`;
   }
-  // Aynı oyun birden fazla mağazada indirimdeyse tek satırda topla
+  // Aynı oyun birden fazla mağazada indirimdeyse tek satırda toplanır
   const teklifler = oyun.teklifler.map((t) => `[${INDIRIM_MAGAZALARI[t.magaza].ad}](${t.url}) ${metin(t)}`);
   return `**${escapeMarkdown(oyun.ad)}** · ${teklifler.join(' · ')}`;
 }
 
-// Satırları, açıklama sınırını (4096) aşmayacak şekilde bir veya daha fazla liste embed'ine böler
+// Satırları, açıklama sınırını (4096 karakter) aşmayacak şekilde bir ya da daha fazla liste kartına böler
 function listeEmbedleri(baslik, renk, satirlar, altBilgi) {
   const parcalar = [];
   for (const satir of satirlar) {
@@ -393,12 +393,12 @@ function indirimleriTopla(liste) {
   return [...oyunlar.values()];
 }
 
-// Önemli fırsatlar resimli büyük kartla (ve varsa incelemeyle), diğerleri toplu listede gösterilir.
+// Önemli fırsatlar resimli büyük kartla (varsa incelemesiyle), diğerleri toplu listede gösterilir.
 async function embedleriHazirla(onemli, diger) {
   let yeniInceleme = 0;
   const incelemeli = async (embed, steamId) => {
     if (!steamId || !inceleme.hazir()) return embed;
-    // Saklanan inceleme hemen gelir; yenisi yazılacaksa gönderim başına sınır uygulanır
+    // Saklanmış inceleme hemen kullanılır; yenisi yazılacaksa gönderim başına sınır uygulanır
     const saklanan = inceleme.saklanan(steamId);
     if (!saklanan && yeniInceleme >= YENI_INCELEME_SINIRI) return embed;
     if (!saklanan) yeniInceleme++;
@@ -406,7 +406,7 @@ async function embedleriHazirla(onemli, diger) {
     return sonuc ? inceleme.karta(embed, sonuc) : embed;
   };
 
-  // En popüler KART_SINIRI fırsat kartla; önemli ama sığmayanlar kartların altında kısa listede
+  // En popüler KART_SINIRI fırsat kartla gösterilir; önemli olup sığmayanlar kartların altında kısa bir listede
   const sirali = [
     ...[...(onemli.bedava ?? [])].sort((a, b) => b.yorum - a.yorum).map((o) => ({ kart: () => bedavaEmbed(o), satir: () => bedavaSatiri(o), steamId: o.steamId })),
     ...indirimleriTopla(onemli).sort((a, b) => b.yorum - a.yorum).map((oyun) => ({ kart: () => indirimKarti(oyun), satir: () => indirimSatiri(oyun), steamId: oyun.steamId })),
@@ -427,7 +427,7 @@ async function embedleriHazirla(onemli, diger) {
   };
 }
 
-// Embed'leri Discord sınırlarına göre mesajlara böler: mesaj başına en fazla 10 embed ve 6000 karakter
+// Kartları Discord sınırlarına göre mesajlara böler: mesaj başına en fazla 10 kart ve 6000 karakter
 function mesajlaraBol(embedler) {
   const mesajlar = [];
   let uzunluk = 0;
@@ -453,7 +453,7 @@ function zamanKaydet(sunucuId, ad) {
   yaz('firsat-zaman', hepsi);
 }
 
-// Önemli fırsatlarda kimin etiketleneceği: @everyone açıksa, bot kanalda atabiliyorsa ve son
+// Önemli fırsatlarda kimin etiketleneceği: @everyone açıksa, bot kanalda @everyone atabiliyorsa ve son
 // @everyone'dan bu yana EVERYONE_ARALIGI geçtiyse herkes; değilse seçilen rol.
 function etiketSec(guild, kanal, ayar, onemli) {
   if (onemli && ayar.everyone && Date.now() - (zamanlar(guild.id).everyone ?? 0) >= EVERYONE_ARALIGI) {
@@ -516,8 +516,8 @@ async function sunucuyuIsle(guild, veri) {
   for (const [tur, firsatlar] of Object.entries(uygun)) {
     if (!firsatlar) continue;
     if (!gorulen[tur]) {
-      // İlk kontrol: o an yayında olanları sessizce "görüldü" say, kanalı doldurma.
-      // Mevcut fırsatlar /oyun simdi ile istenebilir.
+      // İlk kontrol: o an yayında olanlar sessizce "görüldü" sayılır, kanal doldurulmaz.
+      // O anki fırsatlar /oyun simdi ile istenebilir.
       ilk[tur] = firsatlar;
     } else {
       yeni[tur] = firsatlar.filter((o) => !gorulen[tur][o.anahtar]);
@@ -534,7 +534,7 @@ async function sunucuyuIsle(guild, veri) {
     isaretle(guild.id, onemli);
   }
   // Diğerleri işaretlenmeden bekler; OZET_ARALIGI dolunca o an hâlâ geçerli olanlar toplu gönderilir.
-  // Arada süresi biten fırsat listeye girmez.
+  // Bu arada süresi dolan fırsat listeye girmez.
   if (say(diger) && Date.now() - (zamanlar(guild.id).ozet ?? 0) >= OZET_ARALIGI) {
     await gonder(guild, ayar, {}, diger);
     isaretle(guild.id, diger);
@@ -560,7 +560,7 @@ async function simdiGonder(guild) {
   const uygun = sec(ayar, veri);
   if (say(uygun)) {
     const { onemli, diger } = await ayir(uygun);
-    await gonder(guild, { ...ayar, everyone: false }, onemli, diger); // Elle istenen gönderim herkesi etiketlemez
+    await gonder(guild, { ...ayar, everyone: false }, onemli, diger); // Elle istenen gönderimde @everyone kullanılmaz
   }
   isaretle(guild.id, uygun);
   return { bedava: uygun.bedava?.length ?? 0, indirim: say(uygun) - (uygun.bedava?.length ?? 0) };
@@ -585,6 +585,6 @@ function baslat(client) {
 
 module.exports = {
   baslat, kontrolEt, simdiGonder, ayarCoz, MAGAZALAR, INDIRIM_SECENEKLERI, OZET_ARALIGI, EVERYONE_ARALIGI,
-  // Test için
+  // Yalnızca testler kullanır
   httpAdresi, sunucuyuIsle,
 };

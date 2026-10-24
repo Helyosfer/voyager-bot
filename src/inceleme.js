@@ -1,7 +1,7 @@
-// Oyun fırsatı kartlarına eklenen kısa yapay zekâ incelemesi: puan, spoilersiz konu, yorum ve
+// Oyun fırsatı kartlarına eklenen kısa yapay zekâ incelemesi: puan, spoiler vermeyen konu özeti, yorum ve
 // kimlere hitap ettiği. Yalnızca bilinen (popüler) ya da yeni çıkmış oyunlar için yazılır.
 //
-// Model, oyunu uydurmasın diye Steam mağaza sayfasındaki bilgilerle ve Steam kullanıcı/Metacritic
+// Model oyun hakkında bilgi uydurmasın diye Steam mağaza sayfasındaki bilgilerle ve Steam kullanıcı/Metacritic
 // puanlarıyla beslenir. Mağaza metnini yayıncı yazar; modele "veri" olarak verilir, içindeki
 // talimatlara uyulmaz. Modelin yazdıkları kanala gitmeden önce temizlenir ve kısaltılır.
 //
@@ -106,7 +106,7 @@ function istekMetni(b) {
 }
 
 const kisalt = (metin, sinir) => (metin.length > sinir ? `${metin.slice(0, sinir - 1)}…` : metin);
-// Modelin yazdığı alanı karta konabilir hale getirir; geçersizse null
+// Modelin yazdığı alanı karta konabilecek hale getirir; geçersizse null
 function alan(deger, sinir) {
   if (typeof deger !== 'string') return null;
   // Adresler tamamen çıkarılır: incelemede bağlantıya yer yok
@@ -135,7 +135,7 @@ function cevabiAyikla(metin) {
   return sonuc.puan !== null && sonuc.ozet && sonuc.yorum && sonuc.kimlere ? sonuc : null;
 }
 
-// Süresi dolmamış saklanan inceleme; yoksa null
+// Saklanmış ve süresi dolmamış inceleme; yoksa null
 function saklanan(steamId) {
   const kayit = oku('inceleme', {})[steamId];
   return kayit && Date.now() - kayit.zaman < OMUR ? kayit : null;
@@ -143,7 +143,7 @@ function saklanan(steamId) {
 
 const suruyor = new Map(); // Aynı oyun için aynı anda iki inceleme yazılmasın
 
-// Oyunun incelemesini döndürür (saklanmışsa saklanan). Yazılamazsa null; kart incelemesiz gider.
+// Oyunun incelemesini döndürür (saklanmışsa saklananı). Yazılamazsa null; kart incelemesiz gider.
 async function incele(steamId) {
   if (!hazir() || !steamId) return null;
   const kayit = saklanan(steamId);
@@ -174,7 +174,7 @@ async function incele(steamId) {
   return is;
 }
 
-// İncelemeyi bir fırsat kartına alan olarak ekler
+// İncelemeyi fırsat kartına bir alan olarak ekler
 function karta(embed, inceleme) {
   const kaynak = [inceleme.olumlu !== null && inceleme.olumlu !== undefined && `Steam %${inceleme.olumlu} olumlu`, inceleme.metacritic && `Metacritic ${inceleme.metacritic}/100`]
     .filter(Boolean)

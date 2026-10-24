@@ -1,4 +1,4 @@
-// Kick: yayın açıldığında Kick'in kendisi haber verir (resmi webhook servisi).
+// Kick: yayın açıldığında Kick'in kendisi haber verir (resmî webhook servisi).
 // Webhook adresi Kick geliştirici uygulamasının ayarlarına yazılır: YAYIN_ADRESI + /kick
 const crypto = require('node:crypto');
 const { apiIstemcisi, adAyikla, webhookAdresi } = require('./ortak');
@@ -22,12 +22,12 @@ async function bul(girdi) {
   if (!/^[a-z0-9_-]{1,25}$/.test(slug)) return null;
   const k = (await api(`/channels?slug=${slug}`)).data?.[0];
   if (!k) return null;
-  // Görünen ad kanal bilgisinde yok; alınamazsa adres adı kullanılır
+  // Görünen ad kanal bilgisinde yok; alınamazsa adresteki kullanıcı adı kullanılır
   const kullanici = await api(`/users?id=${k.broadcaster_user_id}`).then((y) => y.data?.[0]).catch(() => null);
   return { id: String(k.broadcaster_user_id), giris: k.slug, ad: kullanici?.name ?? k.slug };
 }
 
-// Kick'teki abonelikleri takip listesiyle aynı hale getirir.
+// Kick'teki abonelikleri takip listesine uygun hale getirir.
 async function esitle(idler) {
   const istenen = new Set(idler);
   const mevcut = new Set();
@@ -56,7 +56,7 @@ async function esitle(idler) {
 let acikAnahtar = null;
 let anahtarDenendi = 0;
 // Anahtar en sık bu aralıkla indirilir. Webhook adresine herkes istek atabilir; imzası
-// tutmayan her istek Kick'e yeni bir istek attıramasın.
+// tutmayan her istek, botun Kick'e yeni bir istek atmasına yol açmasın.
 const ANAHTAR_ARALIGI = 60_000;
 async function acikAnahtariAl(yenile = false) {
   if ((!acikAnahtar || yenile) && Date.now() - anahtarDenendi > ANAHTAR_ARALIGI) {
@@ -73,13 +73,13 @@ async function imzaGecerli(basliklar, govde) {
   const zaman = basliklar['kick-event-message-timestamp'];
   const imza = basliklar['kick-event-signature'];
   if (!kimlik || !zaman || !imza) return false;
-  // Eski bir mesajın yeniden gönderilmesine karşı: 10 dakikadan eski olanları reddet
+  // Eski bir mesajın yeniden gönderilmesine karşı: 10 dakikadan eski mesajlar reddedilir
   if (!(Math.abs(Date.now() - Date.parse(zaman)) <= 10 * 60_000)) return false;
   const dogrula = (anahtar) =>
     Boolean(anahtar) && crypto.createVerify('RSA-SHA256').update(`${kimlik}.${zaman}.`).update(govde).verify(anahtar, imza, 'base64');
   const eldeki = await acikAnahtariAl();
   if (dogrula(eldeki)) return true;
-  // Kick anahtarını değiştirmiş olabilir; tutmazsa güncel anahtarla dene
+  // Kick anahtarını değiştirmiş olabilir; imza tutmazsa güncel anahtarla yeniden denenir
   const guncel = await acikAnahtariAl(true);
   return guncel !== eldeki && dogrula(guncel);
 }

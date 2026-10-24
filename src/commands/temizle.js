@@ -16,7 +16,7 @@ module.exports = {
     const adet = interaction.options.getInteger('adet', true);
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
-    // true: Discord 14 günden eski mesajların toplu silinmesine izin vermez, onları atla
+    // true: Discord 14 günden eski mesajların toplu silinmesine izin vermez; onlar atlanır
     temizlemeBildir(interaction.channelId);
     const silinen = await interaction.channel.bulkDelete(adet, true);
     await interaction.editReply(`🧹 ${silinen.size} mesaj silindi.`);

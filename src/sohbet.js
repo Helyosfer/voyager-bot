@@ -1,4 +1,4 @@
-// /sor cevabını Discord'da "Yanıtla" ile cevaplayan kişi konuşmayı sürdürür: bot yanıt zincirini
+// /sor cevabına Discord'da "Yanıtla" ile yazan kişi konuşmayı sürdürür: bot yanıt zincirini
 // geriye doğru izleyip önceki soru ve cevapları modele bağlam olarak gönderir, cevabı da yanıt
 // olarak yazar. Bu cevap da yanıtlanabilir.
 //
@@ -16,11 +16,11 @@ const ZINCIR_SINIRI = 10;
 // Mesaj botun yazdığı bir /sor cevabı mı? Dipnotu model yazamaz (bkz. yapayzeka.basliklariKir).
 const sorCevabiMi = (mesaj, botId) => mesaj.author?.id === botId && (mesaj.content ?? '').split('\n').at(-1).startsWith(yapayzeka.DIPNOT);
 
-// Botun cevap mesajını parçalar: /sor'un ilk cevabının başında sorunun alıntısı durur, en altta dipnot.
+// Botun cevap mesajını parçalarına ayırır: /sor'un ilk cevabının başında sorunun alıntısı, en altta dipnot durur.
 // soru: alıntı varsa soru (konuşmanın başı), yoksa null
 function cevabiAyir(icerik) {
   const satirlar = icerik.split('\n');
-  satirlar.pop(); // dipnot
+  satirlar.pop(); // Dipnot atılır
   const alinti = /^> \*\*(.*)\*\*$/.exec(satirlar[0] ?? '');
   if (alinti) satirlar.shift();
   return { soru: alinti ? alinti[1] : null, cevap: satirlar.join('\n').trim() };
@@ -54,12 +54,12 @@ async function mesajGeldi(mesaj) {
   if (!mesaj.guild || mesaj.author?.bot || mesaj.webhookId || mesaj.system || !mesaj.reference?.messageId) return;
   if (!yapayzeka.hazir()) return;
   const botId = mesaj.client.user.id;
-  // Discord yanıtlanan mesajın yazarını mesajla birlikte verir: bota yazılmayan yanıtlar için istek atılmaz
+  // Discord yanıtlanan mesajın yazarını mesajla birlikte verir; böylece bota yazılmayan yanıtlar için istek atılmaz
   if (mesaj.mentions?.repliedUser?.id !== botId) return;
   // Otomatik korumanın silmek üzere yakaladığı mesaj cevaplanmaz
   if (koruma.yakalandi(mesaj)) return;
   const soru = (mesaj.content ?? '').trim();
-  if (!soru) return; // İçerik okunamıyor (izin yok) ya da yalnızca ek gönderilmiş
+  if (!soru) return; // İçerik okunamıyor (izin yok) ya da mesajda yalnızca ek var
   const kanal = mesaj.channel;
   if (!yazabilirMi(kanal, [PermissionFlagsBits.ReadMessageHistory, ...(kanal.isThread?.() ? [PermissionFlagsBits.SendMessagesInThreads] : [])])) return;
 
@@ -79,7 +79,7 @@ async function mesajGeldi(mesaj) {
 
 function baslat(client) {
   client.on(Events.MessageCreate, (mesaj) => {
-    // Bir tur sonra: otomatik koruma aynı olayda mesaj hakkındaki kararını o ana kadar vermiş olur (bkz. seviye.js)
+    // Bir tur sonra bakılır: otomatik koruma aynı olaydaki mesaj hakkında kararını o ana kadar vermiş olur (bkz. seviye.js)
     setImmediate(() => mesajGeldi(mesaj).catch((hata) => console.error('/sor yanıtı hatası:', hataMetni(hata))));
   });
 }

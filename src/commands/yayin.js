@@ -27,7 +27,7 @@ function kart(sunucuId) {
   const kayitlar = yayin.liste(sunucuId);
   const alanlar = Object.entries(yayin.PLATFORMLAR).map(([anahtar, p]) => {
     const yayincilar = kayitlar.filter((y) => y.platform === anahtar);
-    // Alan değeri 1024 karakterle sınırlı; sığmayanlar sayıyla belirtilir
+    // Bir alanın değeri en fazla 1024 karakter olabilir; sığmayanların yalnızca sayısı yazılır
     const sigan = [];
     let uzunluk = 0;
     for (const y of yayincilar) {

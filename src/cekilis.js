@@ -7,10 +7,10 @@ const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, MessageFlags
 const { oku, yaz } = require('./depo');
 const { beklemeSayaci, hataMetni } = require('./yardimci');
 
-const SUNUCU_BASI_SINIR = 10; // Aynı anda süren çekiliş
+const SUNUCU_BASI_SINIR = 10; // Bir sunucuda aynı anda sürebilecek en fazla çekiliş
 const KATILIMCI_SINIRI = 5000;
 const EN_UZUN = 14 * 24 * 60; // dakika. setTimeout en fazla ~24 gün bekleyebilir; bu sınır onun altında kalır
-const SAKLAMA = 7 * 24 * 60 * 60_000; // Biten çekiliş yeniden çekiliş için bu kadar saklanır
+const SAKLAMA = 7 * 24 * 60 * 60_000; // Biten çekiliş, kazanan yeniden seçilebilsin diye bu kadar süre saklanır
 const DUGME = 'ck:katil';
 const RENK = 0xeb459e;
 
@@ -84,7 +84,7 @@ async function duyur(kanal, c, kazananlar, yeniden = false) {
 async function bitir(client, id) {
   clearTimeout(zamanlayicilar.get(id));
   zamanlayicilar.delete(id);
-  // Süre dolması ile /cekilis bitir aynı anda gelirse yalnızca biri sonuçlansın: önce işaretlenir
+  // Süre dolarken aynı anda /cekilis bitir de gelirse yalnızca biri sonuçlansın: çekiliş önce işaretlenir
   let ilk = false;
   const kayit = guncelle(id, (c) => {
     ilk = !c.bitti;

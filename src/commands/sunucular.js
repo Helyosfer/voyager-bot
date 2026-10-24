@@ -10,7 +10,7 @@ const {
 async function sahipMi(interaction) {
   const uygulama = await interaction.client.application.fetch();
   const sahip = uygulama.owner;
-  // Uygulama bir takıma aitse takım üyeleri sahip sayılır
+  // Uygulama bir takıma aitse takımın üyeleri de sahip sayılır
   return sahip?.members ? sahip.members.has(interaction.user.id) : sahip?.id === interaction.user.id;
 }
 
@@ -49,13 +49,13 @@ module.exports = {
       return cevapla(`✅ Bot **${escapeMarkdown(sunucu.name)}** sunucusundan çıkarıldı.`);
     }
 
-    // liste: en eski eklenen en üstte
+    // Liste: en eski eklenen sunucu en üstte
     const sirali = [...sunucular.values()].sort((a, b) => a.joinedTimestamp - b.joinedTimestamp);
     const satirlar = [];
     let uzunluk = 0;
     for (const s of sirali) {
       const satir = `**${escapeMarkdown(s.name)}** · ${s.memberCount} üye · eklendi: <t:${Math.floor(s.joinedTimestamp / 1000)}:R>\n\`${s.id}\``;
-      if (uzunluk + satir.length > 3900) break; // Açıklama sınırı 4096
+      if (uzunluk + satir.length > 3900) break; // Kart açıklaması en fazla 4096 karakter olabilir
       satirlar.push(satir);
       uzunluk += satir.length + 2;
     }
