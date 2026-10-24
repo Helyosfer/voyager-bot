@@ -25,17 +25,15 @@ const SAYFA = fs
   .readFileSync(path.join(__dirname, 'site', 'index.html'), 'utf8')
   .replace(INSTAGRAM_KISMI, (kisim) => (instagram.hazir() ? kisim : ''))
   .replaceAll('{{DAVET}}', DAVET.replaceAll('&', '&amp;'));
-// Sayfanın kendi betikleri: adres → içerik
-const BETIKLER = new Map(
-  ['film.js', 'kaydir.js'].map((ad) => [`/${ad}`, fs.readFileSync(path.join(__dirname, 'site', ad), 'utf8')]),
-);
+const FILM_BETIGI = fs.readFileSync(path.join(__dirname, 'site', 'film.js'), 'utf8');
 
 const BASLIKLAR = {
   'Content-Type': 'text/html; charset=utf-8',
   'Cache-Control': 'no-cache',
-  // Yalnızca kendi betiklerini çalıştırır; dışarıdan yalnızca yazı tipini yükler. Arka plan filmi
+  // Yalnızca kendi betiğini çalıştırır; dışarıdan yalnızca yazı tipini yükler. Arka plan filmi
   // (/film.mp4, /film.jpg) aynı alan adından gelir; onları web sunucusu verir (README). film.js filmi
-  // fetch ile indirip bellekten (blob:) oynatır; connect-src ve media-src'deki blob: bunun için gerekli.
+  // fetch ile indirip bellekten (blob:) oynatır; connect-src ve media-src'deki blob: bunun için
+
   'Content-Security-Policy':
     "default-src 'none'; script-src 'self'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; media-src 'self' blob:; connect-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
   'X-Content-Type-Options': 'nosniff',
@@ -48,10 +46,10 @@ const BASLIKLAR = {
 // yol: sondaki / işareti atılmış adres yolu ("" ana sayfadır)
 function sun(istek, yanit, yol) {
   const okuma = istek.method === 'GET' || istek.method === 'HEAD';
-  if (okuma && BETIKLER.has(yol)) {
+  if (okuma && yol === '/film.js') {
     yanit
       .writeHead(200, { 'Content-Type': 'text/javascript; charset=utf-8', 'Cache-Control': 'no-cache', 'X-Content-Type-Options': 'nosniff' })
-      .end(istek.method === 'HEAD' ? undefined : BETIKLER.get(yol));
+      .end(istek.method === 'HEAD' ? undefined : FILM_BETIGI);
     return;
   }
   if (!okuma || (yol !== '' && yol !== '/index.html')) {
