@@ -59,7 +59,7 @@ Yetki denetimleri `src/yardimci.js` içinde, tek yerde durur. Yeni bir komutta a
 2. **Geri alınması zor mu?** Discord'un yetki denetimini sunucu yöneticileri Entegrasyonlar bölümünden gevşetebilir.
    Komut sunucunun yapısını değiştiriyorsa (kanalları kilitlemek, toplu kanal ya da rol oluşturmak, toplu silmek)
    komuta `kesinYetki: true` ekle: `index.js` bildirilen yetkiyi `komutYetkisiVar` ile kendisi de denetler.
-   Şu an `/kilit` ve `/sunucukur` böyle. `/yardim` panelinden çalıştırılan **her** komutta bu denetim yapılır
+   Şu an `/kilit`, `/sunucukur` ve `/sunucusil` böyle. `/yardim` panelinden çalıştırılan **her** komutta bu denetim yapılır
    (`src/komut-paneli.js` içindeki `calistirilabilir`); panelde Entegrasyonlar bölümündeki ek izinler geçmez.
 3. **Başka bir üyeye işlem yapıyor mu?** `mudahaleEngeli`'ni çağır: kendine, bota, sunucu sahibine ve eşit ya da
    yüksek roldeki üyeye işlem yapılmasını engeller.

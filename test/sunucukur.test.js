@@ -94,13 +94,22 @@ const sigar = (e, ad) => {
 };
 
 // Sahte sunucu: oluşturulan rol ve kanallar önbelleğe girer, kanallara gönderilenler tutulur
-function kurulumSunucusu(id, { intents = [GatewayIntentBits.MessageContent] } = {}) {
+// denetim: fetchAuditLogs'un döndüreceği girdiler ({ tur, targetId, reason }); null ise izin yokmuş gibi hata verir.
+// silinmeyen: silinmesi hata veren kimlikler (ör. topluluk sunucusunun kurallar kanalı)
+function kurulumSunucusu(id, { intents = [GatewayIntentBits.MessageContent], denetim = [], silinmeyen = new Set() } = {}) {
   let sayac = 0;
   const yeniId = () => `${id}-${++sayac}`;
   const roller = new Collection([[id, { id, name: '@everyone', position: 0 }]]);
   const kanallar = new Collection();
-  return {
+  const silinen = [];
+  const silici = (liste, oge) => async (sebep) => {
+    if (silinmeyen.has(oge.id)) throw new Error('Missing Access');
+    liste.delete(oge.id);
+    silinen.push({ id: oge.id, sebep });
+  };
+  const guild = {
     id,
+    silinen,
     client: { options: { intents: new IntentsBitField(intents) } },
     members: { me: { id: 'bot', permissions: new PermissionsBitField(PermissionsBitField.All), roles: { highest: { position: 1000 } } } },
     roles: {
@@ -108,6 +117,7 @@ function kurulumSunucusu(id, { intents = [GatewayIntentBits.MessageContent] } = 
       cache: roller,
       create: async (o) => {
         const rol = { id: yeniId(), name: o.name, mentionable: o.mentionable, hoist: o.hoist, permissions: o.permissions, position: roller.size, toString: () => `<@&${rol.id}>` };
+        rol.delete = silici(roller, rol);
         roller.set(rol.id, rol);
         return rol;
       },
@@ -117,11 +127,17 @@ function kurulumSunucusu(id, { intents = [GatewayIntentBits.MessageContent] } = 
       cache: kanallar,
       create: async (o) => {
         const kanal = { ...o, id: yeniId(), parentId: o.parent ?? null, gonderilen: [], send: async (m) => kanal.gonderilen.push(m), toString: () => `<#${kanal.id}>` };
+        kanal.delete = silici(kanallar, kanal);
         kanallar.set(kanal.id, kanal);
         return kanal;
       },
     },
+    fetchAuditLogs: async ({ type }) => {
+      if (!denetim) throw new Error('Missing Permissions');
+      return { entries: new Collection(denetim.filter((g) => g.tur === type).map((g, i) => [`${i}`, g])) };
+    },
   };
+  return guild;
 }
 const kanalBul = (guild, ad) => guild.channels.cache.find((k) => k.name === ad);
 const rolBul = (guild, ad) => guild.roles.cache.find((r) => r.name === ad);
@@ -260,4 +276,125 @@ test('/sunucukur: şablon verilmezse açıklamalı liste ve menü gösterilir; k
   assert.match(liste.fields.find((f) => f.name.includes('Yayıncı')).value, /onaysız/);
   assert.match(liste.fields.find((f) => f.name.includes('Topluluk')).value, /üyelik onayı, destek talepleri/);
   assert.equal(ChannelType.GuildCategory, 4);
+});
+
+// ---------------------------------------------------------------------------
+// /sunucusil
+// ---------------------------------------------------------------------------
+const sunucusil = src('commands/sunucusil');
+const { AuditLogEvent } = require('discord.js');
+
+// Sunucuya kurulumdan önce elle eklenmiş bir kanal ve rol koyar (kurulum aynı adı taşıyanları "mevcut" sayar)
+async function elleEkle(guild) {
+  const kanal = await guild.channels.create({ name: '💬・genel-sohbet', type: ChannelType.GuildText });
+  const rol = await guild.roles.create({ name: '🛡️ Moderatör' });
+  return { kanal, rol };
+}
+
+test('/sunucusil: yalnızca kurulumun oluşturduklarını siler; önceden olanlar ve elle eklenenler kalır', async () => {
+  const guild = kurulumSunucusu('sil-temel');
+  const elle = await elleEkle(guild);
+  const plan = topluluk.planla(guild, 'topluluk');
+  assert.ok(plan.kategoriler.some((k) => k.kanallar.some((c) => c.mevcut === elle.kanal)), 'elle açılan kanal kurulumda mevcut sayılır');
+  const kurulum = await topluluk.kur(guild, plan, 'y#0');
+  assert.equal(kurulum.hata, null);
+  // Kurulumdan sonra kendi eklediği kanal
+  const sonradan = await guild.channels.create({ name: 'benim-kanalim', type: ChannelType.GuildText });
+
+  const silinecek = await topluluk.silmePlani(guild);
+  assert.equal(silinecek.toplam, kurulum.olusturulan, 'kurulumun oluşturduğu her şey ve yalnızca onlar');
+  const idler = new Set([...silinecek.kanallar, ...silinecek.kategoriler, ...silinecek.roller].map((o) => o.id));
+  for (const korunan of [elle.kanal, elle.rol, sonradan]) assert.ok(!idler.has(korunan.id), `${korunan.name} silinmemeli`);
+  assert.equal(silinecek.denetimOkunamadi, false);
+  sigar(sunucusil.onizleme(silinecek, false).toJSON(), 'silme önizlemesi');
+
+  const sonuc = await topluluk.sil(guild, silinecek, 'y#0');
+  assert.equal(sonuc.silinen, kurulum.olusturulan);
+  assert.deepEqual(sonuc.hatalar, []);
+  for (const korunan of [elle.kanal, sonradan]) assert.ok(guild.channels.cache.has(korunan.id));
+  assert.ok(guild.roles.cache.has(elle.rol.id));
+  assert.equal(guild.channels.cache.size, 2, 'yalnızca elle açılan iki kanal kalır');
+  assert.equal(guild.roles.cache.size, 2, '@everyone ve elle açılan rol kalır');
+  assert.ok(guild.silinen.every((s) => s.sebep === 'Voyager /sunucusil (y#0)'));
+
+  // Silinenlere bağlı ayarlar temizlenir; kurulum kaydı kalmaz; açılan özellikler kalır
+  const ayar = depo.ayarlariGetir(guild.id);
+  for (const anahtar of ['logKanali', 'hosgeldinKanali', 'otoRol', 'topluluk', 'kurulanlar']) assert.equal(ayar[anahtar], undefined, anahtar);
+  assert.equal(ayar.korumaSpam, true, 'açılan koruma kapanmaz');
+  assert.ok(sonuc.temizlenen.includes('sunucu günlüğü') && sonuc.temizlenen.includes('otomatik rol'));
+  sigar(sunucusil.sonucKarti(sonuc).toJSON(), 'silme sonucu');
+
+  // Yeniden çalıştırınca silinecek bir şey kalmaz
+  assert.equal((await topluluk.silmePlani(guild)).toplam, 0);
+});
+
+test('/sunucusil: kurulum iki kez çalıştırılınca ikisinin oluşturdukları da bulunur; destek odaları da silinir', async () => {
+  const guild = kurulumSunucusu('sil-iki-kez');
+  const ilk = await topluluk.kur(guild, topluluk.planla(guild, 'basit'), 'y#0');
+  const ikinci = await topluluk.kur(guild, topluluk.planla(guild, 'destek'), 'y#0');
+  // Bir üyenin açtığı destek odası
+  const t = depo.ayarlariGetir(guild.id).topluluk;
+  const oda = await guild.channels.create({ name: 'talep-giris-1234', type: ChannelType.GuildText, parent: t.kategoriler.talepler, topic: 'sahip=111; konu=giriş' });
+  const plan = await topluluk.silmePlani(guild);
+  assert.equal(plan.toplam, ilk.olusturulan + ikinci.olusturulan + 1);
+  assert.ok(plan.kanallar.includes(oda));
+});
+
+test('/sunucusil: eski kurulum (kayıt yok) denetim kaydındaki /sunucukur gerekçesinden tanınır', async () => {
+  const denetim = [];
+  const guild = kurulumSunucusu('sil-eski', { denetim });
+  const elle = await elleEkle(guild);
+  const kurulum = await topluluk.kur(guild, topluluk.planla(guild, 'basit'), 'y#0');
+  const kayit = depo.ayarlariGetir(guild.id).kurulanlar;
+  depo.ayarKaydet(guild.id, 'kurulanlar', undefined); // Bu sürümden önceki kurulum
+  for (const id of kayit.kanallar) denetim.push({ tur: AuditLogEvent.ChannelCreate, targetId: id, reason: 'Voyager /sunucukur (y#0)' });
+  for (const id of kayit.roller) denetim.push({ tur: AuditLogEvent.RoleCreate, targetId: id, reason: 'Voyager /sunucukur (y#0)' });
+  // Botun başka bir gerekçeyle açtığı kanal (ör. /kilit, destek talebi değil) sayılmaz
+  denetim.push({ tur: AuditLogEvent.ChannelCreate, targetId: elle.kanal.id, reason: 'Başka bir iş' });
+
+  const plan = await topluluk.silmePlani(guild);
+  assert.equal(plan.toplam, kurulum.olusturulan);
+  assert.ok(!plan.kanallar.includes(elle.kanal));
+
+  // Denetim kaydı okunamıyorsa kayıttakiler yine bulunur ve uyarı verilir
+  const izinsiz = kurulumSunucusu('sil-izinsiz', { denetim: null });
+  const k2 = await topluluk.kur(izinsiz, topluluk.planla(izinsiz, 'basit'), 'y#0');
+  const p2 = await topluluk.silmePlani(izinsiz);
+  assert.equal(p2.toplam, k2.olusturulan);
+  assert.equal(p2.denetimOkunamadi, true);
+  assert.match(sunucusil.onizleme(p2, false).toJSON().fields.at(-1).value, /Denetim Kaydını Görüntüle/);
+});
+
+test('/sunucusil: botun üstündeki roller ve silinemeyen kanallar kayıtta kalır; komutun kanalı en son silinir', async () => {
+  const guild = kurulumSunucusu('sil-hata');
+  await topluluk.kur(guild, topluluk.planla(guild, 'basit'), 'y#0');
+  const kayit = depo.ayarlariGetir(guild.id).kurulanlar;
+  const ustteki = guild.roles.cache.get(kayit.roller[0]);
+  ustteki.position = 2000; // Bot rolünün üstüne taşınmış
+  const inatci = kayit.kanallar.find((id) => guild.channels.cache.get(id).type !== ChannelType.GuildCategory);
+  const komutKanali = kayit.kanallar.findLast((id) => id !== inatci && guild.channels.cache.get(id).type !== ChannelType.GuildCategory);
+  guild.channels.cache.get(inatci).delete = async () => {
+    throw new Error('Cannot delete a channel required for Community Servers');
+  };
+
+  const plan = await topluluk.silmePlani(guild);
+  assert.deepEqual(plan.dokunulamayan, [ustteki]);
+  assert.ok(!plan.roller.includes(ustteki));
+  assert.match(sunucusil.onizleme(plan, true).toJSON().description, /bu kanal da silinecek/);
+
+  const mesajlar = [];
+  const sonuc = await topluluk.sil(guild, plan, 'y#0', { ilerleme: async (m) => mesajlar.push(m), sonaBirak: komutKanali });
+  assert.equal(guild.silinen.at(-1).id, komutKanali, 'komutun yazıldığı kanal en son');
+  assert.match(mesajlar.at(-1), /^✅ \d+ öğe silindi, 1 öğe silinemedi\. Son olarak bu kanal/);
+  assert.equal(sonuc.hatalar.length, 1);
+  assert.match(sunucusil.sonucKarti(sonuc).toJSON().title, /Bir kısmı silinemedi/);
+  assert.deepEqual(depo.ayarlariGetir(guild.id).kurulanlar, { roller: [ustteki.id], kanallar: [inatci] });
+  assert.equal(topluluk.islemde.has(guild.id), false);
+});
+
+test('/sunucusil: Yönetici ister, seçeneği yok, panelde tehlikeli işlem olarak görünür', () => {
+  const veri = sunucusil.data.toJSON();
+  assert.equal(veri.default_member_permissions, String(PermissionsBitField.Flags.Administrator));
+  assert.equal(veri.options.length, 0);
+  assert.equal(src('yardim-islemler').sunucusil.tehlikeli, true);
 });

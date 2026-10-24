@@ -27,7 +27,7 @@ const BOLUMLER = [
   { id: 'guvenlik', simge: '🚨', ad: 'Güvenlik', ozet: 'Spam, küfür ve dolandırıcılık filtresi; acil durum kilidi', komutlar: ['koruma', 'kilit'] },
   { id: 'bildirim', simge: '📣', ad: 'Bildirimler', ozet: 'Oyun fırsatları, canlı yayınlar, haberler', komutlar: ['oyun', 'yayin', 'haber', 'instagram'] },
   { id: 'topluluk', simge: '🎉', ad: 'Topluluk', ozet: 'Seviyeler, çekilişler, rol menüleri', komutlar: ['seviye', 'cekilis', 'rolmenu'] },
-  { id: 'sunucu', simge: '⚙️', ad: 'Sunucu ayarları', ozet: 'Günlük, hoş geldin, otomatik rol, hazır kurulum', komutlar: ['ayarla', 'sunucukur'] },
+  { id: 'sunucu', simge: '⚙️', ad: 'Sunucu ayarları', ozet: 'Günlük, hoş geldin, otomatik rol, hazır kurulum', komutlar: ['ayarla', 'sunucukur', 'sunucusil'] },
 ];
 const DIGER = { id: 'diger', simge: '📦', ad: 'Diğer', ozet: 'Diğer komutlar', komutlar: [] };
 // Bölüm menüsünün başındaki sayfalar

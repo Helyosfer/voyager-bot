@@ -63,4 +63,5 @@ module.exports = {
   'ayarla goster': { simge: '📋', ad: 'Sunucu ayarlarını gör' },
   'ayarla sifirla': { simge: '♻️', ad: 'Bir ayarı sıfırla', tehlikeli: true },
   sunucukur: { simge: '🏗️', ad: 'Hazır sunucu kurulumu' },
+  sunucusil: { simge: '🧹', ad: 'Kurulumu sil', tehlikeli: true },
 };

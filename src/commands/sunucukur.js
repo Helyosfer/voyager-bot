@@ -27,7 +27,7 @@ const ONERILEN = [
 ];
 const SECIM_SURESI = 180_000;
 
-const kurulan = new Set(); // Kurulumu şu an süren sunucular
+const { islemde } = topluluk; // Kurulumu ya da silmesi şu an süren sunucular
 
 // Şablonların karşılaştırması: hangisi ne kurar
 function sablonListesi() {
@@ -186,15 +186,15 @@ module.exports = {
     }
 
     // Aynı anda iki kurulum yapılırsa her şey iki kez oluşturulur
-    if (kurulan.has(guild.id)) {
-      return secim.update({ content: '⏳ Bu sunucuda şu an başka bir kurulum sürüyor. Bitmesini bekle.', embeds: [], components: [] });
+    if (islemde.has(guild.id)) {
+      return secim.update({ content: '⏳ Bu sunucuda şu an başka bir kurulum ya da silme sürüyor. Bitmesini bekle.', embeds: [], components: [] });
     }
-    kurulan.add(guild.id);
+    islemde.add(guild.id);
     await secim.update({ content: '⏳ Kuruluyor…', embeds: [], components: [] });
     // Onay beklenirken sunucu değişmiş olabilir; plan sunucunun güncel haline göre yeniden çıkarılır
     const sonuc = await topluluk
       .kur(guild, topluluk.planla(guild, sablonAdi), interaction.user.tag, (metin) => secim.editReply({ content: metin }))
-      .finally(() => kurulan.delete(guild.id));
+      .finally(() => islemde.delete(guild.id));
     return secim.editReply({ content: '', embeds: [sonucKarti(sonuc, SABLONLAR[sablonAdi])] });
   },
 

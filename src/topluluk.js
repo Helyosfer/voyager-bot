@@ -2,6 +2,7 @@
 // rolleri, destek talepleri. Şablonlar (roller, kategoriler, kanallar, izinler) sablonlar.js'te.
 const {
   ActionRowBuilder,
+  AuditLogEvent,
   ButtonBuilder,
   ButtonStyle,
   ChannelType,
@@ -26,6 +27,21 @@ const ilgiRolleri = (sablon) => rolleri(sablon).filter((r) => r.ilgi);
 const kurulumSablonu = (t) => SABLONLAR[t?.sablon] ?? SABLONLAR.topluluk;
 const RENK = 0x5865f2;
 const turu = (kanal) => (kanal.ses ? ChannelType.GuildVoice : ChannelType.GuildText);
+// Kurulumun Discord'a yazdığı gerekçe. /sunucusil eski kurulumların oluşturduklarını denetim kaydında bununla tanır.
+const KURULUM_SEBEBI = 'Voyager /sunucukur';
+// Kurulumu ya da silmesi süren sunucular: ikisi aynı anda çalışırsa öğeler iki kez oluşur ya da yarım kalır
+const islemde = new Set();
+
+// Kurulumun oluşturduğu rol ve kanalların kimlikleri "kurulanlar" ayarında birikir. Sunucuda önceden
+// var olup kurulumun yalnızca kullandığı öğeler buraya girmez; /sunucusil yalnızca bunları siler.
+function kurulanlariEkle(sunucuId, yeni) {
+  if (!yeni.roller.length && !yeni.kanallar.length) return;
+  const eski = ayarlariGetir(sunucuId).kurulanlar ?? {};
+  ayarKaydet(sunucuId, 'kurulanlar', {
+    roller: [...new Set([...(eski.roller ?? []), ...yeni.roller])],
+    kanallar: [...new Set([...(eski.kanallar ?? []), ...yeni.kanallar])],
+  });
+}
 
 // Şablonu sunucunun şu anki haliyle karşılaştırır. Aynı adı taşıyan öğeler "mevcut" sayılır
 // ve onlara dokunulmaz. ayarlar: kurulumla açılacak varsayılanlar (zaten ayarlı olanlar ve
@@ -66,10 +82,12 @@ function planla(guild, sablonAdi = 'topluluk') {
 // Planı uygular. ilerleme(metin) varsa her kategoriden sonra çağrılır.
 async function kur(guild, plan, yapan, ilerleme = async () => {}) {
   const sablon = SABLONLAR[plan.sablon];
-  const sebep = `Voyager /sunucukur (${yapan})`;
+  const sebep = `${KURULUM_SEBEBI} (${yapan})`;
   const ben = guild.members.me;
   const sonuc = { olusturulan: 0, baglanan: [], acilan: [], uyarilar: [], hata: null };
   const roller = {};
+  const yeni = { roller: [], kanallar: [] }; // Bu kurulumda oluşturulanlar
+  const kaydet = (liste, oge) => (liste.push(oge.id), oge);
   // Bot yalnızca kendisinde olan izinleri verebilir ya da yasaklayabilir
   const suz = (izinler) => izinler.filter((izin) => ben.permissions.has(izin));
 
@@ -89,15 +107,18 @@ async function kur(guild, plan, yapan, ilerleme = async () => {}) {
     for (const rol of plan.roller) {
       roller[rol.k] =
         rol.mevcut ??
-        (await guild.roles.create({
-          name: rol.ad,
-          color: rol.renk,
-          hoist: Boolean(rol.ayri),
-          // Bildirim rolleri etiketlenebilir: bot ve yöneticiler duyurularda kullanır
-          mentionable: Boolean(rol.bildirim),
-          permissions: suz(rol.izinler ?? []),
-          reason: sebep,
-        }));
+        kaydet(
+          yeni.roller,
+          await guild.roles.create({
+            name: rol.ad,
+            color: rol.renk,
+            hoist: Boolean(rol.ayri),
+            // Bildirim rolleri etiketlenebilir: bot ve yöneticiler duyurularda kullanır
+            mentionable: Boolean(rol.bildirim),
+            permissions: suz(rol.izinler ?? []),
+            reason: sebep,
+          }),
+        );
       if (!rol.mevcut) sonuc.olusturulan++;
     }
 
@@ -115,28 +136,34 @@ async function kur(guild, plan, yapan, ilerleme = async () => {}) {
     for (const kategori of plan.kategoriler) {
       const ust =
         kategori.mevcut ??
-        (await guild.channels.create({
-          name: kategori.ad,
-          type: ChannelType.GuildCategory,
-          permissionOverwrites: izinListesi(POLITIKALAR[kategori.politika]),
-          reason: sebep,
-        }));
+        kaydet(
+          yeni.kanallar,
+          await guild.channels.create({
+            name: kategori.ad,
+            type: ChannelType.GuildCategory,
+            permissionOverwrites: izinListesi(POLITIKALAR[kategori.politika]),
+            reason: sebep,
+          }),
+        );
       if (!kategori.mevcut) sonuc.olusturulan++;
       if (kategori.anahtar) kategoriler[kategori.anahtar] = ust.id;
 
       for (const kanal of kategori.kanallar) {
         const olusan =
           kanal.mevcut ??
-          (await guild.channels.create({
-            name: kanal.ad,
-            type: turu(kanal),
-            parent: ust.id,
-            topic: kanal.ses ? undefined : kanal.konu,
-            rateLimitPerUser: kanal.ses ? undefined : kanal.yavas,
-            // İzin verilmezse kanal kategorisiyle eşitlenmiş (senkron) olarak oluşur
-            permissionOverwrites: kanal.erisim ? izinListesi(ERISIMLER[kanal.erisim]) : undefined,
-            reason: sebep,
-          }));
+          kaydet(
+            yeni.kanallar,
+            await guild.channels.create({
+              name: kanal.ad,
+              type: turu(kanal),
+              parent: ust.id,
+              topic: kanal.ses ? undefined : kanal.konu,
+              rateLimitPerUser: kanal.ses ? undefined : kanal.yavas,
+              // İzin verilmezse kanal kategorisiyle eşitlenmiş (senkron) olarak oluşur
+              permissionOverwrites: kanal.erisim ? izinListesi(ERISIMLER[kanal.erisim]) : undefined,
+              reason: sebep,
+            }),
+          );
         if (!kanal.mevcut) sonuc.olusturulan++;
         if (kanal.anahtar) kanallar[kanal.anahtar] = { id: olusan.id, yeni: !kanal.mevcut, kanal: olusan };
         if (kanal.ayar) {
@@ -183,11 +210,112 @@ async function kur(guild, plan, yapan, ilerleme = async () => {}) {
     }
   } catch (hata) {
     sonuc.hata = hata.message;
+  } finally {
+    // Kurulum yarıda kalsa da oluşturulanlar kaydedilir: /sunucusil onları da bulabilsin
+    kurulanlariEkle(guild.id, yeni);
+  }
+  return sonuc;
+}
+
+// Botun denetim kaydında /sunucukur gerekçesiyle oluşturduğu öğelerin kimlikleri. "kurulanlar"
+// kaydı tutulmadan önce yapılmış kurulumlar için. Discord kaydı 45 gün saklar.
+async function denetimKaydindan(guild, tur) {
+  const idler = new Set();
+  let before;
+  for (let sayfa = 0; sayfa < 10; sayfa++) {
+    const kayit = await guild.fetchAuditLogs({ type: tur, user: guild.members.me.id, limit: 100, before });
+    for (const girdi of kayit.entries.values()) if (girdi.reason?.startsWith(KURULUM_SEBEBI)) idler.add(girdi.targetId);
+    if (kayit.entries.size < 100) break;
+    before = kayit.entries.lastKey();
+  }
+  return idler;
+}
+
+// /sunucusil'in sileceği, kurulumun oluşturduğu ve hâlâ duran öğeler. Sunucunun kendi kanal ve rolleri
+// (kurulum adlarıyla eşleşip yalnızca kullanılanlar dahil) girmez.
+async function silmePlani(guild) {
+  const ayar = ayarlariGetir(guild.id);
+  const kanalIdleri = new Set(ayar.kurulanlar?.kanallar ?? []);
+  const rolIdleri = new Set(ayar.kurulanlar?.roller ?? []);
+  let denetimOkunamadi = false;
+  try {
+    for (const id of await denetimKaydindan(guild, AuditLogEvent.ChannelCreate)) kanalIdleri.add(id);
+    for (const id of await denetimKaydindan(guild, AuditLogEvent.RoleCreate)) rolIdleri.add(id);
+  } catch {
+    denetimOkunamadi = true; // Denetim Kaydını Görüntüle izni yok
+  }
+  // Kurulumun açtığı talepler kategorisindeki destek odalarını da bot açtı
+  const talepler = ayar.topluluk?.kategoriler?.talepler;
+  if (talepler && kanalIdleri.has(talepler)) {
+    for (const kanal of guild.channels.cache.values()) if (kanal.parentId === talepler && odaSahibi(kanal)) kanalIdleri.add(kanal.id);
+  }
+
+  const ben = guild.members.me;
+  const kanallar = [...kanalIdleri].map((id) => guild.channels.cache.get(id)).filter(Boolean);
+  const roller = [...rolIdleri].map((id) => guild.roles.cache.get(id)).filter((r) => r && r.id !== guild.id);
+  // Bot yalnızca kendi rolünün altındaki, bir uygulamaya ait olmayan rolleri silebilir
+  const silinebilir = (r) => !r.managed && r.position < ben.roles.highest.position;
+  const plan = {
+    kategoriler: kanallar.filter((k) => k.type === ChannelType.GuildCategory),
+    kanallar: kanallar.filter((k) => k.type !== ChannelType.GuildCategory),
+    roller: roller.filter(silinebilir),
+    dokunulamayan: roller.filter((r) => !silinebilir(r)),
+    denetimOkunamadi,
+  };
+  plan.toplam = plan.kategoriler.length + plan.kanallar.length + plan.roller.length;
+  return plan;
+}
+
+// Planı uygular: önce kanallar, sonra kategoriler, sonra roller. sonaBirak: komutun yazıldığı kanal;
+// silinirse cevap güncellenemez, o yüzden en son silinir. Silinen öğelere bağlı bot ayarları temizlenir.
+async function sil(guild, plan, yapan, { ilerleme = async () => {}, sonaBirak = null } = {}) {
+  const sebep = `Voyager /sunucusil (${yapan})`;
+  const sonuc = { silinen: 0, hatalar: [], temizlenen: [] };
+  const silinenler = new Set();
+  const kalanlar = { roller: plan.dokunulamayan.map((r) => r.id), kanallar: [] };
+  const sonda = plan.kanallar.filter((k) => k.id === sonaBirak);
+  const sira = [...plan.kanallar.filter((k) => k.id !== sonaBirak), ...plan.kategoriler, ...plan.roller, ...sonda];
+
+  islemde.add(guild.id);
+  try {
+    for (const [i, oge] of sira.entries()) {
+      const rol = plan.roller.includes(oge);
+      const ad = rol ? `@${oge.name}` : `#${oge.name}`;
+      if (oge === sonda[0]) {
+        // Son öğeden önce sonuç yazılır: kanal silinince cevap artık güncellenemez
+        const hatali = sonuc.hatalar.length ? `, ${sonuc.hatalar.length} öğe silinemedi` : '';
+        await ilerleme(`✅ ${sonuc.silinen} öğe silindi${hatali}. Son olarak bu kanal (${ad}) siliniyor…`).catch(() => {});
+      }
+      try {
+        await oge.delete(sebep);
+        sonuc.silinen++;
+        silinenler.add(oge.id);
+      } catch (hata) {
+        sonuc.hatalar.push(`${ad}: ${hata.message}`);
+        (rol ? kalanlar.roller : kalanlar.kanallar).push(oge.id);
+      }
+      if ((i + 1) % 10 === 0 && i + 1 < sira.length) await ilerleme(`⏳ Siliniyor… ${i + 1}/${sira.length}`).catch(() => {});
+    }
+  } finally {
+    // Silinen kanal ya da rolü gösteren ayarlar (günlük kanalı, oto rol, bildirim rolü…) kaldırılır;
+    // yoksa bot olmayan bir kanala yazmaya çalışır. Açılan özellikler (koruma, seviye) kalır.
+    for (const [anahtar, deger] of Object.entries(ayarlariGetir(guild.id))) {
+      if (typeof deger === 'string' && silinenler.has(deger)) {
+        ayarKaydet(guild.id, anahtar, undefined);
+        sonuc.temizlenen.push(AYAR_ADLARI[anahtar] ?? anahtar);
+      }
+    }
+    // Kurulum bilgisi silinir: onay, rol seçimi ve destek akışlarının kanalları artık yok.
+    // Silinemeyenler kayıtta kalır; komut yeniden çalıştırılınca yine bulunur.
+    ayarKaydet(guild.id, 'topluluk', undefined);
+    ayarKaydet(guild.id, 'kurulanlar', kalanlar.roller.length || kalanlar.kanallar.length ? kalanlar : undefined);
+    islemde.delete(guild.id);
   }
   return sonuc;
 }
 
 const AYAR_ADLARI = {
+  otoRol: 'otomatik rol',
   logKanali: 'sunucu günlüğü',
   hosgeldinKanali: 'hoş geldin mesajları',
   oyunKanali: 'oyun fırsatları',
@@ -512,4 +640,4 @@ async function etkilesim(interaction) {
   return islem(interaction, t);
 }
 
-module.exports = { SABLONLAR, planla, kur, etkilesim, kisaAd, ilgiRolleri };
+module.exports = { SABLONLAR, planla, kur, silmePlani, sil, islemde, etkilesim, kisaAd, ilgiRolleri };
