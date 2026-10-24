@@ -285,6 +285,19 @@ module.exports = {
       'Şablona göre spam koruması, zararlı bağlantı denetimi ve seviye sistemi gibi özellikler de açılır; daha önce elle ayarladıkların değişmez.',
       'Yeniden çalıştırılırsa yalnızca eksikler tamamlanır.',
       'Botta Kanalları Yönet ve Rolleri Yönet izinleri olmalı; kurulumdan sonra bot rolünü yeni rollerin üstüne taşı.',
+      'Kurulumu geri almak için `/sunucusil`.',
+    ],
+  },
+  sunucusil: {
+    anlatim:
+      '`/sunucukur` ile kurduğum kanalları, kategorileri ve rolleri siler. Önce silinecek her şeyi adıyla gösterir ve "Emin misin?" diye sorar; onaylamazsan hiçbir şey silinmez.',
+    ornekler: ['/sunucusil'],
+    notlar: [
+      'Yalnızca benim oluşturduklarım silinir. Sunucuda önceden olan ya da senin eklediğin kanal ve roller kalır; aynı adı taşısalar bile.',
+      'Silinen kanallardaki mesajlar da gider; geri alınamaz.',
+      'Silinen kanal ve rollere bağlı bot ayarları (günlük kanalı, hoş geldin, oto rol, bildirim rolleri) temizlenir. Açılan özellikler (koruma, seviye) kapanmaz.',
+      'Eski kurulumları denetim kaydından tanırım: bunun için Denetim Kaydını Görüntüle izni gerekir ve Discord kaydı 45 gün saklar.',
+      'Benim rolümün üstündeki roller silinemez; Voyager rolünü üstlerine taşıyıp yeniden çalıştır.',
     ],
   },
 

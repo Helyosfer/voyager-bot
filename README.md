@@ -90,6 +90,7 @@ diliyle gösterilir.
 | `/cekilis` | Düğmeyle katılınan çekiliş başlatır, erken bitirir, yeniden çeker ya da iptal eder | Sunucuyu Yönet |
 | `/rolmenu` | Üyelerin düğmeyle rol alıp bırakabildiği bir menü mesajı kurar (en fazla 10 rol) | Rolleri Yönet |
 | `/sunucukur` | Hazır şablonla sunucu kurar (topluluk, oyun, yayıncı, basit, eğitim, yazılım, ürün desteği): roller, kanallar, izinler ve bot ayarları | Yönetici |
+| `/sunucusil` | `/sunucukur`'un oluşturduğu kanal, kategori ve rolleri siler; önce listeyi gösterip onay ister | Yönetici |
 | `/kilit` | Acil durumda bütün kanalları kilitler (`kapat`) ve geri açar (`ac`) | Yönetici |
 | `/yayin` | Canlı yayın bildirimlerini ayarlar (Twitch, Kick, YouTube) | Sunucuyu Yönet |
 | `/haber` | Haber sitelerinin yeni haberlerini duyurur (RSS) | Sunucuyu Yönet |
@@ -167,6 +168,11 @@ komut yeniden çalıştırılırsa yalnızca eksikler tamamlanır.
   Kapatılan oda hemen silinmez; sahibi okuyabilir ama yazamaz. Kapalı odalar 30 gün sonra silinir; bir üyenin en fazla
   3 kapalı odası saklanır. Bir üye 10 dakikada bir talep açabilir; sunucuya yeni katılan ilk 10 dakika açamaz.
   Aynı anda en fazla 25 oda açık olabilir; sınıra gelince destek kayıt kanalına uyarı düşer.
+- **Geri alma (`/sunucusil`):** Kurulumun oluşturduğu kanal, kategori, rol ve destek odalarını siler. Önce hepsini
+  adıyla gösterir ve onay ister. Sunucuda önceden olan ya da sonradan elle eklenen kanal ve roller silinmez; aynı adı
+  taşısalar bile. Bot oluşturduklarını kendi kaydından, bu kayıttan önceki kurulumlarda denetim kaydındaki
+  `Voyager /sunucukur` gerekçesinden tanır (Denetim Kaydını Görüntüle izni gerekir, Discord kaydı 45 gün saklar).
+  Silinen kanal ve rollere bağlı bot ayarları temizlenir; açılan özellikler (koruma, seviye) kapanmaz.
 
 Topluluk şablonunda roller ve erişim (diğer şablonlarda bunların bir kısmı vardır):
 

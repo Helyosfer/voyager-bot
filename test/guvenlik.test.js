@@ -198,9 +198,9 @@ test('yönetim yetkisi taşıyan rol oto rol yapılamaz ve yeni gelene verilmez'
   assert.deepEqual(verilen, ['normal']);
 });
 
-test('kesinYetki: /kilit ve /sunucukur yetkiyi bot tarafında da ister', () => {
+test('kesinYetki: /kilit, /sunucukur ve /sunucusil yetkiyi bot tarafında da ister', () => {
   const { komutYetkisiVar } = yardimci;
-  const komutlar = ['kilit', 'sunucukur'].map((ad) => src(`commands/${ad}`));
+  const komutlar = ['kilit', 'sunucukur', 'sunucusil'].map((ad) => src(`commands/${ad}`));
   for (const komut of komutlar) {
     assert.equal(komut.kesinYetki, true, komut.data.name);
     assert.equal(komutYetkisiVar({ memberPermissions: izinli(P.ManageGuild, P.ManageChannels) }, komut), false);

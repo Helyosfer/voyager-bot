@@ -51,6 +51,11 @@ Her satırda beklenen sonuç yazıyor. Farklı bir şey görürsen terminaldeki 
 - [ ] Boş bir deneme sunucusunda `/sunucukur sablon:🎥 Yayıncı`: üyelik onayı yok, herkes kanalları görüyor;
       `rol-seçimi` menüsünden **Yayın Bildirimi** rolü alınabiliyor; `/yayin ayar` kanalı ve rolü bağlı gösteriyor.
 - [ ] Kurulumdan önce `/koruma filtre tur:Spam durum:Kapalı` yapılmış sunucuda kurulum spam korumasını açmıyor.
+- [ ] Kurulumdan önce elle `💬・genel-sohbet` adlı bir kanal açılmış deneme sunucusunda `/sunucukur` sonrası `/sunucusil`:
+      "Emin misin?" kartı kurulumun oluşturduklarını listeliyor, elle açılan kanal listede yok; **Vazgeç** hiçbir şey silmiyor.
+- [ ] **Evet, sil** ile kurulumun kanal, kategori ve rolleri siliniyor; elle açılan kanal duruyor; `/ayarla goster`
+      günlük ve hoş geldin kanalını artık göstermiyor. Komut silinen bir kanalda yazıldıysa o kanal en son siliniyor.
+- [ ] İkinci hesap `/sunucusil` komutunu göremiyor.
 
 ## Destek talepleri
 
