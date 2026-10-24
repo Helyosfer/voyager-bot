@@ -311,6 +311,16 @@
   .grup code { font-size: 0.86rem; }
   /* Komutun alt komutları: açıklamanın altında, soluk */
   .grup .alt { display: block; margin-top: 3px; font: 0.78rem var(--mono); color: #5f5f66; }
+  /* /yardim vitrini ve öne çıkan komutlar */
+  code.buyuk { font-size: 0.82em; letter-spacing: -0.02em; }
+  .yardim-vitrin { margin-top: 56px; }
+  .yardim-vitrin .ornek { order: 0 !important; } /* tek kart: yazı solda, örnek sağda */
+  .menu-ornek { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+  .menu-ornek span { padding: 4px 9px; border-radius: 6px; background: #2b2b31; font-size: 0.78rem; color: #dbdbe0; }
+  .one-cikan { margin-top: 56px; }
+  .one-cikan ul { display: grid; grid-template-columns: repeat(2, 1fr); column-gap: 56px; }
+  .hepsi { margin: 22px 0 0; font-size: 0.95rem; color: var(--muted); }
+  .hepsi b { color: var(--text); font-weight: 600; }
 
   .son { text-align: center; }
   .son h2 { background: var(--silver); -webkit-background-clip: text; background-clip: text; color: transparent; padding-bottom: 0.1em; }
@@ -343,7 +353,7 @@
     .nav-right .gizle { display: none; }
   }
   @media (max-width: 720px) {
-    .cards, .gruplar { grid-template-columns: 1fr; }
+    .cards, .gruplar, .one-cikan ul { grid-template-columns: 1fr; }
     .card { padding: 28px 24px 30px; }
     .ozellik { grid-template-columns: 1fr; padding: 28px 20px 22px; }
     .ozellik:nth-child(even) .ornek { order: 0; }
@@ -605,63 +615,52 @@
   <section id="komutlar">
     <div class="container">
       <p class="kicker reveal"><span class="num">05</span>Komutlar</p>
-      <h2 class="reveal">Öğrenmesi<br><span class="dim">beş dakika.</span></h2>
-      <p class="lead reveal">Discord'da <code>/</code> yazdığında bütün komutlar karşına çıkar. Yetki gerektiren komutları yalnızca o yetkiye sahip olanlar görür. Soluk yazılar komutun alt komutlarıdır; hepsini ve nasıl kullanılacağını <code>/yardim</code> anlatır.</p>
+      <h2 class="reveal">Ezberleme.<br><span class="dim"><code class="buyuk">/yardim</code> yaz.</span></h2>
+      <p class="lead reveal">Discord'da <code>/</code> yazdığında komutlar karşına çıkar; yetki gerektirenleri yalnızca o yetkiye sahip olanlar görür. Hangisini arayacağını bilmiyorsan <code>/yardim</code> neredeyse her şeye ulaştırır.</p>
 
-      <div class="gruplar">
-        <div class="grup reveal">
-          <h3>Genel</h3>
-          <ul>
-            <li><code>/sor</code><span>Yapay zekâya soru sorar; cevaba "Yanıtla" dersen konuşma sürer</span></li>
-            <li><code>/ozetle</code><span>Kanaldaki son mesajları yapay zekâyla özetler (yönetici <code>/ayarla ozet</code> ile açar)</span></li>
-            <li><code>/hatirlat</code><span>Verdiğin süre dolunca seni etiketler</span></li>
-            <li><code>/yardim</code><span>Komutları, adım adım rehberleri ve başlangıç adımlarını gösterir</span></li>
+      <article class="card ozellik yardim-vitrin reveal">
+        <div>
+          <p class="tag">/yardim</p>
+          <h3>Bütün komutlar tek menüde</h3>
+          <p>Bölümü seç, komutu seç; ne işe yaradığını, kimlerin kullanabileceğini ve örnek kullanımları gör.</p>
+          <ul class="maddeler">
+            <li><b>Bölüm bölüm.</b> Genel, moderasyon, güvenlik, bildirimler, topluluk ve sunucu ayarları.</li>
+            <li><b>{{REHBER_SAYISI}} adım adım rehber.</b> "Yayın bildirimi kur", "sunucuyu hazır şablonla kur" gibi işleri sırasıyla anlatır.</li>
+            <li><b>Doğrudan git.</b> <code>/yardim komut:oyun ayar</code> yazınca o alt komutun sayfası açılır.</li>
           </ul>
         </div>
-        <div class="grup reveal">
-          <h3>Moderasyon</h3>
-          <ul>
-            <li><code>/uyari</code><span>Kalıcı uyarı verir; uyarı sayısına göre otomatik susturur, atar ya da yasaklar<span class="alt">ver · liste · sil · kural</span></span></li>
-            <li><code>/sustur</code><span>Üyeyi belirlediğin süre kadar susturur</span></li>
-            <li><code>/kick</code><span>Üyeyi sunucudan atar (tekrar katılabilir)</span></li>
-            <li><code>/ban</code><span>Kullanıcıyı sunucudan yasaklar</span></li>
-            <li><code>/unban</code><span>Yasağı kaldırır</span></li>
-            <li><code>/temizle</code><span>Kanaldaki son mesajları topluca siler</span></li>
-          </ul>
+        <div class="ornek" aria-hidden="true">
+          <span class="etiket">ÖRNEK</span>
+          <p class="cagri"><code>/yardim</code></p>
+          <div class="mesaj">
+            <div class="avatar"></div>
+            <div>
+              <p class="ad">Voyager<small>UYGULAMA</small></p>
+              <div class="embed">
+                <p class="baslik">📖 Voyager yardım</p>
+                <div class="alan"><span>Aşağıdaki menüden bir bölüm seç. Bir komutun ayrıntısı için <code>/yardim komut:</code> yaz.</span></div>
+                <div class="menu-ornek">
+                  <span>🚀 Başlangıç</span><span>🧭 Genel</span><span>🛡️ Moderasyon</span><span>🚨 Güvenlik</span><span>📣 Bildirimler</span><span>🎉 Topluluk</span><span>⚙️ Sunucu ayarları</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="grup reveal">
-          <h3>Güvenlik</h3>
-          <ul>
-            <li><code>/koruma</code><span>Spam, küfür, zararlı bağlantı ve dolandırıcılık görseli denetimi<span class="alt">filtre · kelime · alan · goster</span></span></li>
-            <li><code>/kilit</code><span>Saldırı anında bütün kanalları kilitler, sonra eski izinleri geri getirir<span class="alt">kapat · ac</span></span></li>
-          </ul>
-        </div>
-        <div class="grup reveal">
-          <h3>Bildirimler</h3>
-          <ul>
-            <li><code>/oyun</code><span>Bedava oyunları ve indirimleri duyurur (Steam, Epic, GOG)<span class="alt">ayar · simdi</span></span></li>
-            <li><code>/yayin</code><span>{{YAYIN_LISTE}} yayınlarını duyurur<span class="alt">ayar · ekle · cikar</span></span></li>
-            <li><code>/haber</code><span>Haber sitelerindeki yeni haberleri duyurur; her konu kendi rolünü etiketleyebilir<span class="alt">ayar · ekle · cikar</span></span></li>
-            <!--instagram-->
-            <li><code>/instagram</code><span>Instagram hesaplarının yeni gönderilerini duyurur<span class="alt">ayar · ekle · cikar</span></span></li>
-            <!--/instagram-->
-          </ul>
-        </div>
-        <div class="grup reveal">
-          <h3>Topluluk</h3>
-          <ul>
-            <li><code>/seviye</code><span>Mesaj yazdıkça seviye atlatır; sıralamayı ve ödül rollerini gösterir<span class="alt">goster · siralama · ayar · odul · sifirla</span></span></li>
-            <li><code>/cekilis</code><span>Düğmeyle katılınan çekiliş başlatır, kazananı kendisi seçer<span class="alt">baslat · bitir · yeniden · iptal</span></span></li>
-            <li><code>/rolmenu</code><span>Üyelerin düğmeyle rol alıp bıraktığı menü kurar</span></li>
-          </ul>
-        </div>
-        <div class="grup reveal">
-          <h3>Sunucu ayarları</h3>
-          <ul>
-            <li><code>/sunucukur</code><span>{{SABLON_SAYISI}} hazır şablondan biriyle sunucuyu kurar: roller, kategoriler, kanallar ve izinler</span></li>
-            <li><code>/ayarla</code><span>Günlük kanalını, hoş geldin mesajını, otomatik rolü ve kanal özetlerini ayarlar<span class="alt">gunluk · hosgeldin · ozet · goster · sifirla</span></span></li>
-          </ul>
-        </div>
+      </article>
+
+      <div class="grup one-cikan reveal">
+        <h3>Öne çıkanlar</h3>
+        <ul>
+          <li><code>/sor</code><span>Yapay zekâya soru sorar; cevaba "Yanıtla" dersen konuşma sürer</span></li>
+          <li><code>/sunucukur</code><span>{{SABLON_SAYISI}} hazır şablondan biriyle sunucuyu kurar</span></li>
+          <li><code>/koruma</code><span>Spam, küfür, zararlı bağlantı ve dolandırıcılık görseli denetimi</span></li>
+          <li><code>/kilit</code><span>Saldırı anında bütün kanalları kilitler, sonra eski izinleri geri getirir</span></li>
+          <li><code>/uyari</code><span>Kalıcı uyarı verir; uyarı sayısına göre otomatik ceza uygular</span></li>
+          <li><code>/yayin</code><span>{{YAYIN_LISTE}} yayınlarını duyurur</span></li>
+          <li><code>/oyun</code><span>Bedava oyunları ve indirimleri duyurur (Steam, Epic, GOG)</span></li>
+          <li><code>/seviye</code><span>Mesaj yazdıkça seviye atlatır; sıralamayı ve ödül rollerini gösterir</span></li>
+        </ul>
+        <p class="hepsi">Toplam <b>{{KOMUT_SAYISI}}</b> komutun hepsi ve nasıl kullanılacakları: <code>/yardim</code></p>
       </div>
     </div>
   </section>

@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const instagram = require('./instagram');
 const { SABLONLAR } = require('./sablonlar');
+const { GOREVLER } = require('./yardim-gorevler');
 // yayin/index.js değil platform dosyaları: index.js bu dosyayı yüklediği için döngü olmasın
 const YAYIN_PLATFORMLARI = [
   { modul: require('./yayin/twitch'), ad: 'Twitch', anlik: true },
@@ -60,15 +61,28 @@ function yayinBilgileri() {
   };
 }
 
+// Sunucularda görünen komut sayısı: sahibe özel ve yüklenmeyen (ör. kurulmamış /instagram) komutlar sayılmaz
+function komutSayisi() {
+  const klasor = path.join(__dirname, 'commands');
+  return fs
+    .readdirSync(klasor)
+    .filter((d) => d.endsWith('.js'))
+    .map((d) => require(path.join(klasor, d)))
+    .filter((k) => !k.sahipKomutu && k.etkin?.() !== false).length;
+}
+
 function sayfaUret() {
   let sayfa = fs
     .readFileSync(path.join(__dirname, 'site', 'index.html'), 'utf8')
     .replace(INSTAGRAM_KISMI, (kisim) => (instagram.hazir() ? kisim : ''))
     .replaceAll('{{DAVET}}', DAVET.replaceAll('&', '&amp;'));
-  for (const [yer, deger] of Object.entries({ ...sablonBilgileri(), ...yayinBilgileri() })) sayfa = sayfa.replaceAll(yer, deger);
+  const yardim = { '{{REHBER_SAYISI}}': String(GOREVLER.length), '{{KOMUT_SAYISI}}': String(komutSayisi()) };
+  for (const [yer, deger] of Object.entries({ ...sablonBilgileri(), ...yayinBilgileri(), ...yardim })) sayfa = sayfa.replaceAll(yer, deger);
   return sayfa;
 }
-const SAYFA = sayfaUret();
+// İlk istekte üretilir: komut sayısı için komut dosyaları yüklenir, onlar da (ör. /yayin → yayin/index.js →
+// bu dosya) yükleme sırasında bu dosyaya döner; açılışta üretilseydi döngü yarım modül verirdi.
+let SAYFA = null;
 const FILM_BETIGI = fs.readFileSync(path.join(__dirname, 'site', 'film.js'), 'utf8');
 
 const BASLIKLAR = {
@@ -100,6 +114,7 @@ function sun(istek, yanit, yol) {
     yanit.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' }).end('Bulunamadı');
     return;
   }
+  SAYFA ??= sayfaUret();
   yanit.writeHead(200, BASLIKLAR).end(istek.method === 'HEAD' ? undefined : SAYFA);
 }
 
