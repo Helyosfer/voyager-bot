@@ -3,6 +3,13 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const instagram = require('./instagram');
+const { SABLONLAR } = require('./sablonlar');
+// yayin/index.js değil platform dosyaları: index.js bu dosyayı yüklediği için döngü olmasın
+const YAYIN_PLATFORMLARI = [
+  { modul: require('./yayin/twitch'), ad: 'Twitch', anlik: true },
+  { modul: require('./yayin/kick'), ad: 'Kick', anlik: true },
+  { modul: require('./yayin/youtube'), ad: 'YouTube', anlik: false },
+];
 
 // Davet bağlantısı izinleri ve "bot" kapsamını açıkça taşır. Yalnızca client_id içeren kısa
 // bağlantı Developer Portal'daki varsayılan kurulum ayarlarına bağlıdır; orada "bot"
@@ -21,10 +28,47 @@ const DAVET =
 // Sayfadaki <!--instagram--> ... <!--/instagram--> arası, bağlantısı kurulmamışsa çıkarılır:
 // /instagram o durumda yüklenmez; sayfa da olmayan bir komutu tanıtmasın.
 const INSTAGRAM_KISMI = /[ \t]*<!--instagram-->[\s\S]*?<!--\/instagram-->\r?\n?/g;
-const SAYFA = fs
-  .readFileSync(path.join(__dirname, 'site', 'index.html'), 'utf8')
-  .replace(INSTAGRAM_KISMI, (kisim) => (instagram.hazir() ? kisim : ''))
-  .replaceAll('{{DAVET}}', DAVET.replaceAll('&', '&amp;'));
+
+const html = (metin) => metin.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+// "A", "A ve B", "A, B ve C"
+const birlestir = (adlar) => (adlar.length < 2 ? adlar.join('') : `${adlar.slice(0, -1).join(', ')} ve ${adlar.at(-1)}`);
+
+// /sunucukur vitrini şablonlardan hesaplanır; şablon eklenince ya da değişince sayfa eskimez
+function sablonBilgileri() {
+  const sablonlar = Object.values(SABLONLAR);
+  return {
+    '{{SABLON_SAYISI}}': String(sablonlar.length),
+    '{{EN_COK_ROL}}': String(Math.max(...sablonlar.map((s) => s.roller.length))),
+    '{{EN_COK_KANAL}}': String(Math.max(...sablonlar.map((s) => s.kategoriler.reduce((t, k) => t + k.kanallar.length, 0)))),
+    '{{SABLON_ADLARI}}': sablonlar.map((s) => `          <li>${html(s.ad)}</li>`).join('\n'),
+  };
+}
+
+// Sayfa yalnızca bot sahibinin kurduğu yayın platformlarını anlatır (Twitch anahtarı yoksa Twitch geçmez).
+// Hiçbiri kurulu değilse hepsi anlatılır: /yayin komutu yine yüklenir.
+function yayinBilgileri() {
+  const kurulu = YAYIN_PLATFORMLARI.filter((p) => p.modul.hazir());
+  const platformlar = kurulu.length ? kurulu : YAYIN_PLATFORMLARI;
+  const anlik = platformlar.filter((p) => p.anlik).map((p) => p.ad);
+  const yavas = platformlar.filter((p) => !p.anlik).map((p) => p.ad);
+  // Bütün adlar sessiz harfle bitiyor ve sonu ince sesli: Twitch'te, Kick'te; YouTube'da
+  const hiz = [anlik.length ? `${birlestir(anlik)}'te anında` : null, yavas.length ? `${birlestir(yavas)}'da birkaç dakika içinde` : null];
+  return {
+    '{{YAYIN_ETIKET}}': platformlar.map((p) => p.ad).join(' · '),
+    '{{YAYIN_LISTE}}': birlestir(platformlar.map((p) => p.ad)),
+    '{{YAYIN_HIZ}}': hiz.filter(Boolean).join(', '),
+  };
+}
+
+function sayfaUret() {
+  let sayfa = fs
+    .readFileSync(path.join(__dirname, 'site', 'index.html'), 'utf8')
+    .replace(INSTAGRAM_KISMI, (kisim) => (instagram.hazir() ? kisim : ''))
+    .replaceAll('{{DAVET}}', DAVET.replaceAll('&', '&amp;'));
+  for (const [yer, deger] of Object.entries({ ...sablonBilgileri(), ...yayinBilgileri() })) sayfa = sayfa.replaceAll(yer, deger);
+  return sayfa;
+}
+const SAYFA = sayfaUret();
 const FILM_BETIGI = fs.readFileSync(path.join(__dirname, 'site', 'film.js'), 'utf8');
 
 const BASLIKLAR = {
@@ -59,4 +103,4 @@ function sun(istek, yanit, yol) {
   yanit.writeHead(200, BASLIKLAR).end(istek.method === 'HEAD' ? undefined : SAYFA);
 }
 
-module.exports = { sun };
+module.exports = { sun, sayfaUret };
