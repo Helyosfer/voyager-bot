@@ -1,6 +1,6 @@
 // Uyarı, rol menüsü, çekiliş, seviye ve kanal özeti özelliklerinin testleri. Çalıştırmak için: npm test
 //
-// guvenlik.test.js gibi: bot başlatılmaz, Discord'a bağlanılmaz. Komutlar sahte (elle yazılmış)
+// guvenlik.test.js'teki gibi: bot başlatılmaz, Discord'a bağlanılmaz. Komutlar sahte (elle yazılmış)
 // Discord nesneleriyle çalıştırılır. Veri geçici bir klasöre yazılır; fetch sahtesiyle değiştirilir,
 // hiçbir test ağa çıkmaz.
 const { test, after } = require('node:test');
@@ -336,7 +336,7 @@ function seviyeMesaji(sunucuId, kim, { roller = new Map(), bot = false } = {}) {
 }
 
 test('seviye: kapalı sunucuda ve botlara XP yok; dakikada en fazla bir kez kazanılır', async () => {
-  // Önbellek ilk kullanımda dosyadan yüklenir; bu dosyadaki ilk seviye çağrısı burası
+  // Önbellek ilk kullanımda dosyadan yüklenir; bu test dosyasındaki ilk seviye çağrısı burasıdır
   depo.yaz('seviyeler', { s2: { yakin: 99 } });
   await seviye.mesajGeldi(seviyeMesaji('s1', 'a').mesaj);
   assert.equal(seviye.xp('s1', 'a'), 0, 'kapalı');
@@ -391,7 +391,7 @@ function ozetEtkilesimi({ sunucu, uyeOkuyabilir = true, icerik = true, mesajlar 
     toString: () => '<#k>',
     isTextBased: () => true,
     permissionsFor: (kim) => (kim.id === 'mod' && !uyeOkuyabilir ? izinli(P.ViewChannel) : izinli(P.ViewChannel, P.ReadMessageHistory)),
-    // Discord yeniden eskiye verir
+    // Discord mesajları yeniden eskiye sıralı verir
     messages: { fetch: async () => new Map([...sozluk].reverse()) },
   };
   return e;
@@ -503,7 +503,7 @@ test('bağlantı: taklit ve yanıltıcı bağlantılar yakalanır', () => {
     'https://discord-nitro.ru/a',
     'https://discordgift.site',
     'https://discord.ru',
-    'https://steamcommunity.com.kotu.ru/id', // gerçek adres alt alan adında
+    'https://steamcommunity.com.kotu.ru/id', // gerçek adres alt alan adına gizlenmiş
     'https://free-nitro.xyz',
     '[discord.com](https://kotu.site)',
     '[https://discord.com/gifts](https://kotu.site)',
@@ -624,7 +624,7 @@ test('seviye: otomatik korumanın sildiği mesaj XP kazandırmaz (gerçek dinley
   const { EventEmitter } = require('node:events');
   const koruma = src('koruma');
   const istemci = new EventEmitter();
-  // Korumanın temizlik zamanlayıcısı test sürecini açık tutmasın
+  // Korumanın temizlik zamanlayıcısı test sürecinin kapanmasını engellemesin
   const asilAralik = global.setInterval;
   global.setInterval = (...a) => asilAralik(...a).unref();
   try {

@@ -12,7 +12,7 @@ module.exports = {
         .setDescription('Kaç dakika? 0 yazarsan susturma kalkar')
         .setRequired(true)
         .setMinValue(0)
-        .setMaxValue(40320), // Discord sınırı: 28 gün
+        .setMaxValue(40320), // Discord en fazla 28 güne izin verir
     )
     .addStringOption((o) => o.setName('sebep').setDescription('Susturma sebebi').setMaxLength(400))
     .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
@@ -31,7 +31,7 @@ module.exports = {
       return interaction.reply({ content: '❌ Bu üyeyi susturamıyorum (yönetici olabilir).', flags: MessageFlags.Ephemeral });
     }
 
-    // Discord 3 saniye içinde cevap bekler; işlem uzarsa "yanıt vermedi" demesin
+    // Discord yanıtı 3 saniye içinde bekler; işlem uzun sürerse "Uygulama yanıt vermedi" hatası çıkmasın
     await interaction.deferReply();
     await uye.timeout(dakika === 0 ? null : dakika * 60_000, `${interaction.user.tag}: ${sebep}`);
     await interaction.editReply(

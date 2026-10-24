@@ -99,7 +99,7 @@ function kelimeler(metin) {
   return sonuc;
 }
 
-// Uzatılmış harfleri teke indirir: "siiiktir" -> "siktir"
+// Uzatılmış harfleri teke indirir: "siiiktir" → "siktir"
 const sadelestir = (kelime) => kelime.replace(/(.)\1+/gu, '$1');
 
 // Metinde yakalanan ilk küfrü döndürür, yoksa null.
@@ -133,7 +133,7 @@ async function sustur(uye, dakika, sebep) {
 // { "sunucu:kullanici": [{ kanal, mesaj, zaman, imza }] }
 const sonMesajlar = new Map();
 
-// Aynı içeriğin tekrarını anlamak için: metin + eklerin boyutları
+// Aynı içeriğin tekrarlandığını anlamak için: metin ve eklerin boyutları
 function imza(mesaj) {
   const ekler = [...(mesaj.attachments?.values() ?? [])].map((e) => e.size).join(',');
   const metin = (mesaj.content ?? '').trim().toLocaleLowerCase('tr');
@@ -156,7 +156,7 @@ function spamSebebi(mesaj) {
     return `Aynı içerik ${PENCERE / 1000} saniye içinde ${TEKRAR_ESIGI} kez`;
   }
 
-  // Yetkisi olmadığı halde herkesi etiketlemeye çalışıp bağlantı ya da dosya gönderen
+  // Yetkisi olmadığı halde herkesi etiketlemeye çalışıp bağlantı ya da dosya gönderen kişi spam sayılır
   const icerik = mesaj.content ?? '';
   const topluEtiket = /@(everyone|here)\b/.test(icerik) && !mesaj.member.permissions.has(PermissionFlagsBits.MentionEveryone);
   if (topluEtiket && (/https?:\/\//i.test(icerik) || mesaj.attachments?.size)) return 'Toplu etiket ile bağlantı ya da dosya';
@@ -169,7 +169,7 @@ async function spamUygula(mesaj, sebep, ayar) {
   const kayitlar = sonMesajlar.get(anahtar) ?? [];
   sonMesajlar.delete(anahtar);
 
-  // Önce sustur ki silme sürerken yeni mesaj gelmesin
+  // Önce susturulur ki silme sürerken yeni mesaj gelmesin
   const susturuldu = await sustur(mesaj.member, ayar.spamDakika, `Otomatik koruma: ${sebep}`).catch(() => false);
 
   const kanallar = new Map();
@@ -177,7 +177,7 @@ async function spamUygula(mesaj, sebep, ayar) {
   let silinen = 0;
   for (const mesajlar of kanallar.values()) {
     const kanal = mesajlar[0].channel;
-    temizlemeBildir(kanal.id); // Günlükte ayrıca "toplu mesaj silindi" çıkmasın
+    temizlemeBildir(kanal.id); // Günlüğe ayrıca "toplu mesaj silindi" kaydı düşmesin
     await kanal
       .bulkDelete(mesajlar.map((m) => m.id))
       .then((s) => {
@@ -208,7 +208,7 @@ async function kufurUygula(mesaj, kelime, ayar) {
   await mesaj.delete().catch(() => {});
   const susturuldu = await sustur(mesaj.member, ayar.kufurDakika, 'Otomatik koruma: ağır küfür').catch(() => false);
 
-  // Kısa bir uyarı; kanalda kalıp kalabalık yapmasın diye kendiliğinden silinir
+  // Kısa bir uyarı; kanalda kalabalık etmesin diye bir süre sonra kendiliğinden silinir
   const uyari = await mesaj.channel
     .send({ content: `${mesaj.author}, mesajın ağır küfür içerdiği için silindi.`, allowedMentions: { users: [mesaj.author.id] } })
     .catch(() => null);
@@ -234,7 +234,7 @@ async function baglantiUygula(mesaj, bulgu, ayar) {
   await mesaj.delete().catch(() => {});
   const susturuldu = await sustur(mesaj.member, ayar.baglantiDakika, `Otomatik koruma: ${bulgu.sebep}`).catch(() => false);
 
-  // Kısa bir uyarı; kanalda kalıp kalabalık yapmasın diye kendiliğinden silinir
+  // Kısa bir uyarı; kanalda kalabalık etmesin diye bir süre sonra kendiliğinden silinir
   const uyari = await mesaj.channel
     .send({ content: `${mesaj.author}, mesajın zararlı olabilecek bir bağlantı içerdiği için silindi.`, allowedMentions: { users: [mesaj.author.id] } })
     .catch(() => null);
@@ -247,7 +247,7 @@ async function baglantiUygula(mesaj, bulgu, ayar) {
     .addFields(
       { name: 'Kullanıcı', value: `${mesaj.author} (${mesaj.author.tag})` },
       { name: 'Kanal', value: `${mesaj.channel}` },
-      // Kod biçiminde: günlükte tıklanabilir bağlantı olmasın
+      // Kod biçiminde yazılır: günlükte tıklanabilir bağlantı olmasın
       { name: 'Alan', value: `\`${bulgu.alan}\`` },
       { name: 'Sebep', value: bulgu.sebep },
       { name: 'Yapılanlar', value: susturuldu ? `Mesaj silindi, üye ${sureMetni(ayar.baglantiDakika)} susturuldu` : 'Mesaj silindi' },
@@ -257,7 +257,7 @@ async function baglantiUygula(mesaj, bulgu, ayar) {
 
 // Silinmek üzere yakalanan mesajlar. Seviye sistemi bunlara XP vermez (bkz. seviye.js).
 // Spam, küfür ve bağlantı kararı mesaj geldiği anda, ilk beklemeden önce verilip işaretlenir.
-// Görsel denetiminin kararı 30-60 saniye sürdüğü için o mesajlar işaretlenemez.
+// Görsel denetiminin kararı 30-60 saniye sürdüğü için o mesajlar önceden işaretlenemez.
 const yakalananlar = new WeakSet();
 const yakalandi = (mesaj) => yakalananlar.has(mesaj);
 
@@ -289,7 +289,7 @@ async function mesajGeldi(mesaj) {
   if (ayar.gorsel && mesaj.attachments?.size) return gorsel.denetle(mesaj, ayar);
 }
 
-// Düzenleyerek filtreyi atlatmaya karşı
+// Mesajı sonradan düzenleyerek filtreyi atlatmaya karşı
 async function mesajDuzenlendi(eski, yeni) {
   if (muaf(yeni) || !yeni.content || eski.content === yeni.content) return;
   const ayar = ayarCoz(ayarlariGetir(yeni.guild.id));
@@ -309,7 +309,7 @@ function baslat(client) {
   dinle(Events.MessageCreate, mesajGeldi);
   dinle(Events.MessageUpdate, mesajDuzenlendi);
 
-  // Bellek birikmesin: penceresi dolan kayıtları at
+  // Bellekte kayıt birikmesin: süresi dolan kayıtlar atılır
   setInterval(() => {
     const simdi = Date.now();
     for (const [anahtar, kayitlar] of sonMesajlar) {

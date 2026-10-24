@@ -4,7 +4,7 @@ const uyari = require('../uyari');
 
 const RENK = 0xfee75c;
 const LISTE_SINIRI = 15; // /uyari liste en son bu kadar uyarıyı gösterir
-const SEBEP_SINIRI = 200; // Listede sebebin gösterilen kısmı (tamamı günlükte)
+const SEBEP_SINIRI = 200; // Listede sebebin gösterilen en fazla uzunluğu (tamamı günlükte durur)
 
 const kullaniciSecenegi = (aciklama) => (o) => o.setName('kullanici').setDescription(aciklama).setRequired(true);
 
@@ -44,12 +44,12 @@ async function ver(interaction) {
   const engel = mudahaleEngeli(interaction, uye);
   if (engel) return interaction.reply({ content: `❌ ${engel}`, flags: MessageFlags.Ephemeral });
 
-  // Discord 3 saniye içinde cevap bekler; işlem uzarsa "yanıt vermedi" demesin
+  // Discord yanıtı 3 saniye içinde bekler; işlem uzun sürerse "Uygulama yanıt vermedi" hatası çıkmasın
   await interaction.deferReply();
   const liste = uyari.ekle(interaction.guildId, hedef.id, { id: interaction.id, sebep, yetkiliId: interaction.user.id, zaman: Date.now() });
   const sayi = liste.length;
 
-  // Atılmadan ya da yasaklanmadan önce haber verilir; sonra sunucuyla ortak kanalı kalmaz.
+  // Üyeye atılmadan ya da yasaklanmadan önce haber verilir; sonrasında botla ortak sunucusu kalmaz.
   // Üye özel mesajları kapatmışsa gönderilemez.
   const ulasti = await hedef
     .send({ content: `⚠️ **${interaction.guild.name}** sunucusunda uyarı aldın (toplam ${sayi}).\nSebep: ${sebep}`, allowedMentions: { parse: [] } })
@@ -82,7 +82,7 @@ function liste(interaction) {
   const kayitlar = uyari.uyarilar(interaction.guildId, hedef.id);
   if (!kayitlar.length) return interaction.reply({ content: `✅ **${hedef.tag}** hiç uyarı almamış.`, flags: MessageFlags.Ephemeral });
 
-  // En yeniden geriye: en fazla LISTE_SINIRI uyarı, Discord'un kutu açıklaması sınırına (4096) sığdığı kadar
+  // En yeniden geriye doğru: en fazla LISTE_SINIRI uyarı, kart açıklamasının sınırına (4096 karakter) sığdığı kadar
   const satirlar = [];
   let uzunluk = 0;
   for (let i = kayitlar.length - 1; i >= 0 && satirlar.length < LISTE_SINIRI; i--) {

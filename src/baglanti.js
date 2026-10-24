@@ -1,5 +1,5 @@
 // Zararlı bağlantı denetimi (/koruma filtre tur:bağlantı): mesajdaki bağlantıların alan adlarına bakar.
-// Hiçbir bağlantı açılmaz ve dışarı gönderilmez; karar yalnızca adresin kendisinden verilir.
+// Hiçbir bağlantı açılmaz, dışarıya da gönderilmez; karar yalnızca adresin kendisine bakılarak verilir.
 //
 // Yakalananlar:
 // - Bilinen sitelerin taklitleri: harf benzerliği (dlscord, steamcommunlty, Kiril "о"), tek harf
@@ -9,9 +9,9 @@
 // - Bedava Nitro / hediye alanları (free-nitro.xyz)
 // - İsteğe bağlı: kısaltılmış bağlantılar (bit.ly vb.) ve sunucunun kendi engellediği alanlar
 //
-// Meşru sitelere takılmamak için kurallar bilerek dardır: markanın adını taşıyan ama hediye
-// kelimesi içermeyen siteler (discordbotlist.com, discord.js.org) yakalanmaz. Yanlış alarmda
-// sunucu alanı /koruma alan ile izin listesine ekler.
+// Meşru siteler yakalanmasın diye kurallar bilerek dar tutuldu: markanın adını taşıyan ama hediye
+// kelimesi içermeyen siteler (discordbotlist.com, discord.js.org) yakalanmaz. Yanlış alarm olursa
+// sunucu o alanı /koruma alan ile izin listesine ekler.
 const { domainToUnicode } = require('node:url');
 
 // Resmî alanlar ve alt alan adları güvenlidir

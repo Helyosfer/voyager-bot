@@ -2,7 +2,7 @@
 //
 // İçerik internetten, sunucu yöneticilerinin verdiği adreslerden gelir; yani güvenilmez.
 // Buradaki düzenli ifadeler özel hazırlanmış bir sayfada çok uzun sürebilir (ör. hiç
-// kapanmayan binlerce <title>). Bot tek iş parçacığında çalıştığı için bu sırada
+// kapanmayan binlerce <title>). Bot tek iş parçacığında çalıştığı için o sırada
 // bütün sunuculara cevap veremez hale gelir. Bu yüzden haber.js bu dosyayı ayrı bir
 // iş parçacığında (worker) çalıştırır ve süre aşılırsa işi keser.
 const { isMainThread, parentPort, workerData } = require('node:worker_threads');
@@ -38,7 +38,7 @@ function ham(blok, ad) {
 
 const duzMetin = (hamMetin) => varliklariCoz(cdataAc(hamMetin)).replace(/\s+/g, ' ').trim();
 
-// Açıklamalar çoğunlukla HTML içerir (bazen bir kez daha kaçırılmış halde): etiketleri at
+// Açıklamalar çoğunlukla HTML içerir (bazen bir kez daha kodlanmış halde): etiketler atılır
 function ozet(hamMetin) {
   const html = varliklariCoz(cdataAc(hamMetin));
   return varliklariCoz(html.replace(/<(script|style)[\s\S]*?<\/\1>/gi, '').replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim();
@@ -96,7 +96,7 @@ function ayristir(xml, taban) {
   });
 
   let gecerli = haberler.filter((h) => h.kimlik && h.baslik && h.url);
-  // Çoğu besleme en yeniyi başa koyar; hepsinin tarihi varsa buna güvenmeyip sırala
+  // Çoğu besleme en yeniyi başa koyar; hepsinin tarihi varsa buna güvenilmez, tarihe göre sıralanır
   if (gecerli.length && gecerli.every((h) => h.zaman)) gecerli = gecerli.sort((a, b) => b.zaman - a.zaman);
   return {
     ad: duzMetin(ham(ust, 'title')) || new URL(taban).hostname.replace(/^www\./, ''),
@@ -115,7 +115,7 @@ function beslemeAdaylari(html, taban) {
     try {
       adaylar.push(new URL(varliklariCoz(href), taban).href);
     } catch {
-      // Geçersiz adres: atla
+      // Geçersiz adres: atlanır
     }
   }
   return adaylar;

@@ -19,7 +19,7 @@ process.env.YAYIN_PORT = String(PORT);
 process.env.CLIENT_ID = '0';
 process.env.GEMINI_API_KEY = 'test-anahtari';
 process.env.GEMINI_MODEL = 'test-modeli';
-// Bağlantı anahtarları boş: platformlar ve Instagram "kurulmamış" sayılır
+// Bağlantı anahtarları boş bırakılır: platformlar ve Instagram "kurulmamış" sayılır
 for (const ad of ['TWITCH_CLIENT_ID', 'KICK_CLIENT_ID', 'YOUTUBE_API_KEY', 'META_APP_ID', 'YAYIN_ADRESI']) delete process.env[ad];
 
 let fetchSayisi = 0;
@@ -61,7 +61,7 @@ const durum = (cevap) => Number(cevap.split(' ')[1]);
 test('ayrıştırılamayan istek adresi botu kapatmaz, 400 döner', async () => {
   assert.equal(durum(await hamIstek('GET', '//')), 400);
   assert.equal(durum(await hamIstek('GET', '/\\')), 400);
-  // Sunucu hâlâ ayakta
+  // Sunucu hâlâ çalışıyor
   assert.equal(durum(await hamIstek('GET', '/')), 200);
 });
 
@@ -150,7 +150,7 @@ test('haber ayrıştırma ayrı iş parçacığında çalışır ve uzun süren 
   const sayfa = await haber.incele('<html><head><link rel="alternate" type="application/rss+xml" href="/feed"></head></html>', 'https://ornek.com/');
   assert.deepEqual(sayfa, { besleme: null, adaylar: ['https://ornek.com/feed'] });
 
-  // Kapanışı olmayan yüz binlerce etiket: ana iş parçacığında dakikalarca sürer
+  // Kapanmayan yüz binlerce etiket: ana iş parçacığında dakikalarca sürerdi
   let tik = 0;
   const sayac = setInterval(() => tik++, 50);
   await assert.rejects(haber.incele(`<rss>${'<title>'.repeat(400_000)}`, 'https://ornek.com/'), /çok uzun sürdü/);
@@ -350,7 +350,7 @@ test('destek talebi: bekleme süresi uygulanır, eski kapalı odalar silinir', a
     { name: 'kapalı-b', topic: 'sahip=333; konu=b', lastMessageId: once(2) },
     { name: 'kapalı-c', topic: 'sahip=333; konu=c', lastMessageId: once(3) },
     { name: 'kapalı-d', topic: 'sahip=333; konu=d', lastMessageId: once(4) },
-    // Başkasının odaları: süresi dolan silinir, yenisi kalır; açık oda süresine bakılmadan kalır
+    // Başkasının odaları: süresi dolan silinir, yenisi kalır; açık oda süresine bakılmaksızın kalır
     { name: 'kapalı-eski', topic: 'sahip=444; konu=e', lastMessageId: once(31) },
     { name: 'kapalı-yeni', topic: 'sahip=444; konu=f', lastMessageId: once(29) },
     { name: 'talep-acik-0555', topic: 'sahip=555; konu=g', lastMessageId: once(90) },
@@ -470,7 +470,7 @@ test('/sor: anahtar başlıkta gider, cevap etiket ve gizli bağlantı içeremez
     console.error = () => {};
     assert.match((await yz.sor('s2', 'k2', 'soru')).hata, /kota/);
 
-    // Google yoğunken (503) istek yeniden denenir; düzelirse cevap gelir, düzelmezse açık bir mesaj
+    // Google yoğunken (503) istek yeniden denenir; düzelirse cevap gelir, düzelmezse açık bir mesaj gösterilir
     yz.ayar.yenidenDeneme = [1, 1];
     let deneme = 0;
     const yogun = { ok: false, status: 503, json: async () => ({ error: { status: 'UNAVAILABLE' } }) };
@@ -542,9 +542,9 @@ test('/sor: model sahte başlık ya da botun dipnot biçimini (-#) üretemez; ko
     const satirlar = temizle(`giriş\n${s}`).split('\n');
     assert.ok(!satirlar.some((l) => BICIM.test(l)), JSON.stringify(s));
   }
-  // Başlık değiller, değişmemeli
+  // Bunlar başlık değil, değişmemeli
   for (const s of ['#### dört diyez', '#etiket ve C# dili', '- madde bir\n- madde iki', '1. adım\n2. adım']) assert.equal(temizle(s), s);
-  // Kod bloğundaki yorum satırı olduğu gibi kalır, bloğun dışındaki başlık kaçırılır
+  // Kod bloğundaki yorum satırı olduğu gibi kalır, bloğun dışındaki başlık etkisizleştirilir
   assert.equal(temizle('```py\n# yorum\nprint(1)\n```\n# dışarıda'), '```py\n# yorum\nprint(1)\n```\n\\# dışarıda');
   // Kötü niyetli uzun ön ek dizisi hızlı işlenir (ReDoS yok)
   const bas = Date.now();
@@ -711,7 +711,7 @@ test('haber havuzu yayın bildirimleriyle aynı oranda: tek sunucu havuzu doldur
   assert.ok(haber.SAHIP_BASI_SINIR < haber.TOPLAM_SINIR / 10);
 });
 
-// --- Tanıtım sayfası: davet linkleri ---
+// --- Tanıtım sayfası: davet bağlantıları ---
 test('sayfada tek davet var: üç düğme de botu bütün özellikleri için gereken izinlerle ekler', async () => {
   const govde = await hamIstek('GET', '/');
   const davetler = [...govde.matchAll(/discord\.com\/oauth2\/authorize[^"]*/g)].map((e) => e[0]);
@@ -834,14 +834,14 @@ test('oyun fırsatları: önemliler anında (@everyone en fazla 6 saatte bir), d
     assert.ok(embedler(gonderilen[1])[0].description.includes('Oyun 4'), 'az bilinen oyun listede');
     assert.equal(gonderilen[1].content, '<@&rol>');
 
-    // Bir saat sonra: yeni popüler oyun anında ama @everyone olmadan; yeni az bilinen oyun bekler
+    // Bir saat sonra: yeni popüler oyun hemen ama @everyone olmadan gider; yeni az bilinen oyun bekler
     saat += 60 * 60_000;
     await firsatlar.sunucuyuIsle(guild, veri(1, 2, 3, 4, 5, 6));
     assert.equal(gonderilen.length, 3);
     assert.equal(gonderilen[2].content, '<@&rol>');
     assert.equal(embedler(gonderilen[2])[0].title, '🏷️ Oyun 5');
 
-    // Özet aralığı dolunca bekleyen gider, gönderilmiş olan yinelenmez
+    // Özet aralığı dolunca bekleyen gider, daha önce gönderilmiş olan yinelenmez
     saat += firsatlar.OZET_ARALIGI;
     await firsatlar.sunucuyuIsle(guild, veri(1, 2, 3, 4, 5, 6));
     assert.equal(gonderilen.length, 4);

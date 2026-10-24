@@ -1,4 +1,4 @@
-// Komutları Discord'a tanıtır. Yeni komut eklediğinde veya bir komutun
+// Komutları Discord'a tanıtır. Yeni komut eklediğinde ya da bir komutun
 // adını/seçeneklerini değiştirdiğinde bir kez çalıştır: npm run komutlar
 require('dotenv').config({ quiet: true });
 const fs = require('node:fs');
@@ -18,7 +18,7 @@ const hepsi = fs
   .map((d) => require(path.join(komutKlasoru, d)))
   // Gereken bağlantısı kurulmamış komutlar (ör. /instagram) yüklenmez
   .filter((k) => k.etkin?.() !== false);
-// Bot sahibine özel komutlar (ör. /sunucular) yalnızca GUILD_IDS sunucularına yüklenir
+// Bot sahibine özel komutlar (ör. /sunucular) yalnızca GUILD_IDS'teki sunuculara yüklenir
 // Komutlar yalnızca botun eklendiği sunucularda kullanılabilir (integration_types 0 = sunucuya
 // kurulum). Belirtilmezse, uygulamada "User Install" açıkken botu kendi hesabına kuran herkes
 // komutları botun bulunmadığı sunucularda da çalıştırabilir; komutlar buna göre yazılmadı.

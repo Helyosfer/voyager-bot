@@ -1,12 +1,12 @@
 // /sor: soruları Google'ın Gemini modeline sorar ve cevabı kanala yazar.
 //
 // Model yalnızca metin üretir; hiçbir komut çalıştıramaz ve cevabı kimseyi etiketleyemez.
-// Kullanıcı soruya "önceki talimatları unut" gibi şeyler yazabilir (prompt injection); bu
+// Kullanıcı soruya "önceki talimatları unut" gibi şeyler yazabilir (komut enjeksiyonu, prompt injection); bu
 // yüzden modelin çıktısına güvenilmez: etiketler kapalı gönderilir, gizli bağlantılar
 // etkisizleştirilir, uzunluk sınırlanır.
 //
 // Kota bütün sunucular arasında ortaktır (ücretsiz katmanda günlük istek sınırı vardır).
-// Tek kişi ya da tek sunucu bitiremesin diye sınırlar uygulanır; sınırlar kullanıma göre
+// Tek bir kişi ya da sunucu kotayı bitiremesin diye sınırlar uygulanır; sınırlar kullanıma göre
 // kendiliğinden ayarlanır (bkz. "Günlük sınırlar").
 const { baglantisiz } = require('./yardimci');
 const { oku, yaz } = require('./depo');
@@ -24,14 +24,14 @@ const SORU_SINIRI = 500; // karakter
 const GECMIS_SINIRI = 6000; // karakter; yanıtla sürdürülen konuşmada modele gönderilen önceki turlar
 const CEVAP_SINIRI = 1600; // karakter; Discord mesaj sınırı 2000 (sorunun alıntısı ve dipnot da sığmalı)
 const ZAMAN_ASIMI = 20_000;
-// Gemma modelleri cevaptan önce kendiliğinden düşünür (kapatılamıyor) ve 15-30 saniye sürebilir
+// Gemma modelleri cevaptan önce kendiliğinden düşünür (kapatılamıyor); bu 15-30 saniye sürebilir
 const GEMMA_ZAMAN_ASIMI = 60_000;
-// Kimse beklemeyen arka plan işleri (ör. oyun incelemeleri) için: uzun girdide Gemma daha çok düşünür
+// Kimsenin beklemediği arka plan işleri (ör. oyun incelemeleri) için: uzun girdide Gemma daha çok düşünür
 const GEMMA_UZUN_ZAMAN_ASIMI = 180_000;
-// Düşünen modellerde düşünme de bu sınırdan yer: dar tutulursa cevaba yer kalmaz ve cevap boş döner.
+// Düşünen modellerde düşünme de bu sınırdan pay alır: dar tutulursa cevaba yer kalmaz ve cevap boş döner.
 // Cevabın uzunluğunu talimat ve CEVAP_SINIRI belirler.
 const CIKTI_SINIRI = 4096; // token
-// Google model yoğunken 503 (ya da 500) döner; çoğu zaman birkaç saniye sonra geçer
+// Model yoğunken Google 503 (ya da 500) döndürür; bu çoğu zaman birkaç saniye içinde geçer
 // Yedek model tanımlıysa (GEMINI_YEDEK_MODEL) asıl model cevap veremediğinde soru hemen ona sorulur.
 // Model adları virgülle ayrılabilir: "asıl,yedek"
 const modelListesi = (...adlar) => adlar.flatMap((m) => (m ?? '').split(',')).map((m) => m.trim()).filter(Boolean);
@@ -39,27 +39,27 @@ const modelListesi = (...adlar) => adlar.flatMap((m) => (m ?? '').split(',')).ma
 const sayiAyari = (deger, varsayilan) => (Number.parseInt(deger, 10) > 0 ? Number.parseInt(deger, 10) : varsayilan);
 const ayar = {
   yenidenDeneme: [1500, 4000], // ms; turlar arasındaki beklemeler (testler kısaltır)
-  modeller: modelListesi(MODEL, YEDEK), // /sor
+  modeller: modelListesi(MODEL, YEDEK), // /sor için
   // Oyun incelemeleri: GEMINI_INCELEME_MODEL verilmişse o (virgülle ayrılmış birden fazla model: asıl, yedek),
   // yoksa /sor ile aynı modeller
   incelemeModelleri: modelListesi(INCELEME_MODEL).length ? modelListesi(INCELEME_MODEL) : modelListesi(MODEL, YEDEK),
   // Dolandırıcılık görseli denetimi (/koruma filtre tur:görsel): GEMINI_GORSEL_MODEL, yoksa inceleme modelleri
   gorselModelleri: modelListesi(GORSEL_MODEL).length ? modelListesi(GORSEL_MODEL) : null,
-  // /sor modelinin dakikalık istek sınırı (AI Studio > Rate limit > RPM). Payı kalsın diye %90'ı kullanılır.
+  // /sor modelinin dakikalık istek sınırı (AI Studio > Rate limit > RPM). Pay kalsın diye %90'ı kullanılır.
   dakikalik: Math.max(1, Math.floor(sayiAyari(process.env.GEMINI_DAKIKALIK, 15) * 0.9)),
 };
 // Gemma modelleri ayrı talimat alanını, JSON şemasını ve düşünme ayarını desteklemez:
 // talimat soruyla birlikte gönderilir, JSON biçimi talimatla istenir.
 const gemmaMi = (model) => /^(models\/)?gemma/i.test(model);
 // Kısa sorular için modelin uzun uzun düşünmesi gerekmez; düşünme cevabı belirgin biçimde yavaşlatır.
-// Model bu ayarı tanımazsa (HTTP 400) ayar bırakılır ve istek ayarsız yinelenir.
+// Model bu ayarı tanımazsa (HTTP 400) ayardan vazgeçilir ve istek ayarsız yinelenir.
 let dusunme = (process.env.GEMINI_DUSUNME ?? 'minimal').trim();
 const bekle = (ms) => new Promise((coz) => setTimeout(coz, ms));
 // Kanal boğulmasın: bir kişi PENCERE içinde en fazla PENCERE_SORU açık soru sorabilir.
 // Gizli sorular (yalnızca soranın gördüğü) kanalı kirletmediği için bu sınıra girmez.
 const PENCERE = 2 * 60_000;
 const PENCERE_SORU = 4;
-// /sor modelinin Google'daki günlük sınırı (AI Studio > Rate limit > RPD). Payı kalsın diye %90'ı kullanılır.
+// /sor modelinin Google'daki günlük sınırı (AI Studio > Rate limit > RPD). Pay kalsın diye %90'ı kullanılır.
 const TOPLAM_GUNLUK = Math.floor(sayiAyari(process.env.GEMINI_GUNLUK, 500) * 0.9);
 ayar.gorselModelleri ??= ayar.incelemeModelleri;
 // Botun kendi işleri ve günlük istek payları. Bir iş /sor ile aynı modeldeyse payı ortak kotadan düşülür;
@@ -76,7 +76,7 @@ const GOREVLER = {
 const ortakMi = (gorev) => GOREVLER[gorev].modeller.join() === ayar.modeller.join();
 const ORTAK_GOREVLER = Object.keys(GOREVLER).filter(ortakMi);
 const SORU_HAVUZU = Math.max(1, TOPLAM_GUNLUK - ORTAK_GOREVLER.reduce((t, g) => t + GOREVLER[g].gunluk, 0));
-// Payların alt ve üst sınırları (günlük soru sayısı). Havuz büyüdükçe (daha cömert bir model) genişler.
+// Payların alt ve üst sınırları (günlük soru sayısı). Havuz büyüdükçe (daha cömert kotalı bir model) genişler.
 const sinirla = (deger, enAz, enCok) => Math.min(enCok, Math.max(enAz, deger));
 const SUNUCU_EN_AZ = Math.max(10, Math.floor(SORU_HAVUZU / 400));
 const SUNUCU_EN_COK = Math.max(150, Math.floor(SORU_HAVUZU / 10));
@@ -122,13 +122,13 @@ const izinli = (sunucuId, liste = IZINLILER) => liste.size === 0 || liste.has(su
 // Sınırlar sabit değildir. Sorulara ayrılan günlük havuz, son ETKIN_GUN günde soru soran sunucular
 // arasında eşit paylaştırılır; sunucunun payı da orada soru soran kişilere göre ayarlanır. Az sunucu
 // varken her biri geniş pay alır; sunucu ve kişi sayısı arttıkça paylar kendiliğinden küçülür.
-// Hiç kullanmayan sunucular payı küçültmez. Paylar alt sınırla korunur; toplamın havuzu aşması
-// durumunda ortak sınır (TOPLAM_GUNLUK) devreye girer.
+// Hiç kullanmayan sunucular payları küçültmez. Paylar alt sınırla korunur; toplam havuzu aşarsa
+// ortak sınır (TOPLAM_GUNLUK) devreye girer.
 //
 // Sayaçlar ve etkinlik diske yazılır: bot yeniden başlayınca sıfırlanmaz.
-// Google günlük sınırı Pasifik saatiyle gece yarısı sıfırlar; sayaçlar da aynı güne göre tutulur.
+// Google günlük sınırı Pasifik saatiyle gece yarısı sıfırlar; sayaçlar da aynı gün tanımına göre tutulur.
 const bugun = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Los_Angeles' }).format(new Date());
-const acikSorular = new Map(); // "sunucu:kişi" -> son açık soruların zamanları (bellekte)
+const acikSorular = new Map(); // "sunucu:kişi" → son açık soruların zamanları (bellekte)
 // Kişinin PENCERE içindeki açık sorularının zamanları; eskiler atılır
 function penceredekiler(anahtar) {
   const zamanlar = (acikSorular.get(anahtar) ?? []).filter((t) => Date.now() - t < PENCERE);
@@ -159,7 +159,7 @@ function paylar(sunucuId, kisiId, veri = etkinlik()) {
   const sunucular = new Set([...Object.keys(veri), sunucuId]).size;
   const kisiler = new Set([...Object.keys(veri[sunucuId] ?? {}), kisiId]).size;
   const sunucu = sinirla(Math.floor(SORU_HAVUZU / sunucular), SUNUCU_EN_AZ, SUNUCU_EN_COK);
-  // Her gün herkes sormaz: kişi payı, sunucu payının etkin kişilere bölümünün iki katı
+  // Her gün herkes soru sormaz: kişi payı, sunucu payının etkin kişi sayısına bölümünün iki katıdır
   const kisi = sinirla(Math.floor((2 * sunucu) / kisiler), KISI_EN_AZ, KISI_EN_COK);
   return { sunucu, kisi, sunucular, kisiler };
 }
@@ -181,7 +181,7 @@ function sinirMesaji(sunucuId, kisiId, gizli = false) {
   return null;
 }
 
-// İstek atılmadan önce sayılır: başarısız istekler de kotadan düşer, art arda denenemez.
+// İstek atılmadan önce sayılır: başarısız istekler de kotadan düşer, böylece art arda denenemez.
 // Kişinin bugün kalan hakkını döndürür.
 function say(sunucuId, kisiId, gizli = false) {
   const s = sayaclar();
@@ -197,7 +197,7 @@ function say(sunucuId, kisiId, gizli = false) {
   return Math.max(0, paylar(sunucuId, kisiId, veri).kisi - s.kisi[kisiId]);
 }
 
-// Satır başındaki başlık (#, ##, ###) ve dipnot (-#) işaretleri kaçırılır: kandırılmış model
+// Satır başındaki başlık (#, ##, ###) ve dipnot (-#) işaretleri etkisizleştirilir: kandırılmış model
 // "# DUYURU" gibi büyük başlık ya da botun kendi dipnotuna benzeyen satır yazamasın. Discord
 // alıntı (>, >>>) ve liste (-, *, 1.) içindeki başlığı da gösterdiği için bu ön ekler atlanır.
 // Kod blokları (```) olduğu gibi kalır; içindeki "# yorum" satırları bozulmasın.
@@ -211,7 +211,7 @@ const basliklariKir = (metin) =>
 
 // Modelin yazdığı metni kanala gönderilebilir hale getirir
 function temizle(metin) {
-  // Önce bağlantılar ve başlıklar etkisizleştirilir (metni uzatır), sonra kısaltılır
+  // Önce bağlantılar ve başlıklar etkisizleştirilir (bu metni uzatır), sonra metin kısaltılır
   const guvenli = basliklariKir(baglantisiz(metin.trim()));
   return guvenli.length > CEVAP_SINIRI ? `${guvenli.slice(0, CEVAP_SINIRI - 1)}…` : guvenli;
 }
@@ -237,7 +237,7 @@ async function uret(metin, { talimat, sicaklik = 0.7, json = null, ad = '/sor', 
       ? `${talimat}${json ? `\n\nCevabı yalnızca bu şemaya uyan bir JSON nesnesi olarak yaz, başka hiçbir şey yazma: ${JSON.stringify(json)}` : ''}\n\n---\n\n${metin}`
       : metin;
     try {
-      // Anahtar adres satırında değil başlıkta gider: adresler kayıtlara ve hata mesajlarına düşebilir
+      // Anahtar adreste değil istek başlığında gönderilir: adresler kayıtlara ve hata mesajlarına düşebilir
       yanit = await fetch(`${API}/${encodeURIComponent(model)}:generateContent`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': ANAHTAR },
@@ -268,13 +268,13 @@ async function uret(metin, { talimat, sicaklik = 0.7, json = null, ad = '/sor', 
       continue;
     }
     // Yoğunluk (5xx) her zaman yeniden denenir. Kota (429) ya da bulunamayan model (404) yalnızca
-    // sırada başka bir model varsa: aynı modeli yeniden denemek sonucu değiştirmez.
+    // sırada başka bir model varsa yeniden denenir: aynı modeli yeniden denemek sonucu değiştirmez.
     const yedekVar = modeller.length > 1;
     if (yanit.status < 500 && !(yedekVar && [404, 429].includes(yanit.status))) break;
     const tur = Math.floor((deneme + 1) / modeller.length);
     if (tur > ayar.yenidenDeneme.length) break;
     if (yedekVar) console.error(`${ad}: ${model} cevap veremedi (HTTP ${yanit.status}); sıradaki deneniyor`);
-    // Modeller art arda denenir; bekleme yalnızca yeni tura geçerken
+    // Modeller art arda denenir; yalnızca yeni tura geçerken beklenir
     if ((deneme + 1) % modeller.length === 0) await bekle(ayar.yenidenDeneme[tur - 1]);
   }
   if (!yanit.ok) {
@@ -304,7 +304,7 @@ const SOR_HATALARI = {
   diger: 'Cevap alınamadı; biraz sonra yeniden dene.',
 };
 
-// Kişinin /sor hakkından bir istek düşüp modele sorar. /sor ve /ozetle aynı kotayı paylaşır.
+// Kişinin /sor hakkından bir istek düşer ve modele sorar. /sor ve /ozetle aynı kotayı paylaşır.
 // Başarılıysa { cevap, kalan }, değilse { hata } (kullanıcıya gösterilecek metin) döndürür.
 async function kotaliUret(sunucuId, kisiId, metin, { talimat, gizli, ad, gecmis }) {
   if (!hazir()) return { hata: 'Yapay zekâ bu botta kurulu değil.' };
@@ -318,9 +318,9 @@ async function kotaliUret(sunucuId, kisiId, metin, { talimat, gizli, ad, gecmis 
   return { cevap: temizle(sonuc.metin), kalan };
 }
 
-// Konuşma geçmişini modele gönderilebilir hale getirir: boşlar atılır, art arda gelen aynı rolün
-// mesajları birleşir, sınır aşılırsa en yeni turlar kalır. Model sırayla user/model ister ve
-// konuşma kullanıcıyla başlamalıdır; son tur da modelin olmalı (ardından yeni soru gelir).
+// Konuşma geçmişini modele gönderilebilir hale getirir: boş turlar atılır, art arda gelen aynı rolün
+// mesajları birleştirilir, sınır aşılırsa en yeni turlar kalır. Model sırayla user/model ister ve
+// konuşma kullanıcıyla başlamalıdır; son tur da modelin olmalıdır (ardından yeni soru gelir).
 function gecmisiHazirla(gecmis) {
   const turlar = [];
   for (const { rol, metin } of gecmis) {
@@ -362,7 +362,7 @@ async function ozetle(sunucuId, kisiId, satirlar, { gizli = true } = {}) {
   return sonuc.hata ? sonuc : { ...sonuc, adet: secilen.length };
 }
 
-// Botun kendi işleri (gorev: 'inceleme' | 'gorsel') için istek ayırır; işin günlük payı dolduysa false.
+// Botun kendi işleri (gorev: 'inceleme' | 'gorsel') için istek ayırır; işin günlük payı dolduysa false döndürür.
 // İş /sor ile aynı modeldeyse ortak kotadan da düşer.
 function botIstegiAyir(gorev = 'inceleme') {
   const s = sayaclar();

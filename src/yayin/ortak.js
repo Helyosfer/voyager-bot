@@ -1,5 +1,5 @@
 // Twitch ve Kick aynı giriş yöntemini kullanır: uygulama kimliği + gizli anahtar
-// ile kısa ömürlü bir jeton alınır, isteklere eklenir.
+// ile kısa ömürlü bir jeton alınır ve isteklere eklenir.
 function apiIstemcisi({ ad, taban, jetonAdresi, kimlik, gizli, ekBasliklar = {} }) {
   let jeton = null;
   let bitis = 0;
@@ -17,7 +17,7 @@ function apiIstemcisi({ ad, taban, jetonAdresi, kimlik, gizli, ekBasliklar = {} 
       throw new Error(`${ad} girişi başarısız (HTTP ${yanit.status}). .env içindeki kimlik ve gizli anahtar doğru mu?`);
     }
     jeton = govde.access_token;
-    // Süresi dolmadan 5 dakika önce yenile
+    // Süresi dolmadan 5 dakika önce yenilenir
     bitis = Date.now() + Math.max((govde.expires_in ?? 3600) - 300, 60) * 1000;
     return jeton;
   }
@@ -34,7 +34,7 @@ function apiIstemcisi({ ad, taban, jetonAdresi, kimlik, gizli, ekBasliklar = {} 
       signal: AbortSignal.timeout(15_000),
     });
     if (yanit.status === 401 && yenidenDene) {
-      jeton = null; // Jeton erken iptal edilmiş olabilir; bir kez yenisiyle dene
+      jeton = null; // Jeton vaktinden önce iptal edilmiş olabilir; bir kez yenisiyle denenir
       return iste(yol, secenek, false);
     }
     const govde = await yanit.json().catch(() => null);
@@ -43,7 +43,7 @@ function apiIstemcisi({ ad, taban, jetonAdresi, kimlik, gizli, ekBasliklar = {} 
   };
 }
 
-// "https://site.com/kanal/", "@kanal" veya "kanal" -> "kanal"
+// "https://site.com/kanal/", "@kanal" ya da "kanal" → "kanal"
 function adAyikla(girdi) {
   return girdi.trim().replace(/[?#].*$/, '').replace(/\/+$/, '').split('/').pop().replace(/^@/, '');
 }

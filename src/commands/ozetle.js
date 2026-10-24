@@ -5,7 +5,7 @@ const yapayzeka = require('../yapayzeka');
 
 const MESAJ_SINIRI = 400; // karakter; tek mesajın dökümde kapladığı en fazla yer
 
-// Mesajın modele giden hali: "Ad: içerik" tek satır. Etiketler adlara çevrilir (cleanContent).
+// Mesajın modele giden hali tek satırdır: "Ad: içerik". Etiketler adlara çevrilir (cleanContent).
 function satir(mesaj) {
   const ad = mesaj.member?.displayName ?? mesaj.author.username;
   const metin = mesaj.cleanContent.replace(/\s+/g, ' ').trim();
@@ -29,7 +29,7 @@ module.exports = {
     const { channel: kanal } = interaction;
     const paylas = interaction.options.getBoolean('paylas') ?? false;
 
-    // Başkalarının mesajları Google'a gönderildiği için sunucu bunu bilerek açmalı
+    // Başkalarının mesajları Google'a gönderildiği için bu özelliği sunucu bilerek açmalı
     if (!ayarlariGetir(interaction.guildId).ozetAcik) {
       return cevapla('Özetleme bu sunucuda kapalı. Yöneticiler `/ayarla ozet` ile açabilir.');
     }
@@ -37,7 +37,7 @@ module.exports = {
       return cevapla('❌ Özetleme mesajların metnini okuyabilmeli, ama botta "Message Content Intent" açık değil. Botun sahibi bunu açmalı.');
     }
     if (!kanal?.isTextBased()) return cevapla('❌ Bu kanal özetlenemez.');
-    // Kanalda geçmişi okuyamayan, göremediği mesajların özetini bu yoldan alamasın
+    // Kanalın geçmişini okuma izni olmayan biri, göremediği mesajların özetini bu yoldan alamasın
     const okuma = [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.ReadMessageHistory];
     if (!kanal.permissionsFor(interaction.member)?.has(okuma)) {
       return cevapla('❌ Bu kanalın mesaj geçmişini okuma yetkin yok.');
@@ -46,12 +46,12 @@ module.exports = {
       return cevapla('❌ Bu kanalın mesaj geçmişini okuyamıyorum. Bana Kanalı Gör ve Mesaj Geçmişini Oku izinlerini ver.');
     }
 
-    // Model birkaç saniyede cevap verir; Discord 3 saniye içinde yanıt bekler
+    // Modelin cevabı birkaç saniye sürer, Discord ise yanıtı 3 saniye içinde bekler: yanıt ertelenir
     await interaction.deferReply(paylas ? {} : { flags: MessageFlags.Ephemeral });
     const alinan = await kanal.messages.fetch({ limit: interaction.options.getInteger('adet') ?? 50 });
     const mesajlar = [...alinan.values()]
       .filter((m) => !m.author.bot && !m.system && (m.content.trim() || m.attachments.size))
-      .reverse(); // Discord yeniden eskiye verir
+      .reverse(); // Discord mesajları yeniden eskiye sıralı verir
     if (mesajlar.length < 3) return interaction.editReply('Özetlenecek kadar mesaj yok.');
 
     const sonuc = await yapayzeka.ozetle(interaction.guildId, interaction.user.id, mesajlar.map(satir), { gizli: !paylas });

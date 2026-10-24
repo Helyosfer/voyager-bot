@@ -12,7 +12,7 @@ const baglanti = require('../baglanti');
 const { sureMetni } = require('../yardimci');
 
 const KELIME_SINIRI = 100;
-const ALAN_SINIRI = 100; // Engel ve izin listelerinin her biri
+const ALAN_SINIRI = 100; // Engel ve izin listelerinin her birinin en fazla uzunluğu
 
 const DURUMLAR = [
   { name: 'Açık', value: 'acik' },
@@ -246,7 +246,7 @@ module.exports = {
       return cevapla(`✅ ||${kelime}|| çıkarıldı.`);
     }
 
-    // goster
+    // goster alt komutu
     return interaction.reply({ embeds: [ayarKarti(sunucuId)], flags: MessageFlags.Ephemeral });
   },
 };

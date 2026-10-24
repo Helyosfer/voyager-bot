@@ -45,7 +45,7 @@ async function abonelikler() {
   return hepsi.filter((a) => a.transport.callback === GERI_ARAMA);
 }
 
-// Twitch'teki abonelikleri takip listesiyle aynı hale getirir.
+// Twitch'teki abonelikleri takip listesine uygun hale getirir.
 async function esitle(idler) {
   const istenen = new Set(idler);
   const saglam = new Set();
@@ -70,7 +70,7 @@ async function esitle(idler) {
 }
 
 async function yayinBasladi(olay) {
-  if (olay.type !== 'live') return; // Tekrar yayını vb.
+  if (olay.type !== 'live') return; // Tekrar yayını (rerun) gibi canlı olmayan yayınlar atlanır
   const geldi = Date.now();
   // Başlık ve oyun; alınamazsa bildirim yine de gitsin
   const [kanal, kullanici] = await Promise.all([
@@ -98,10 +98,10 @@ function webhook(basliklar, govde) {
   if (!kimlik || !zaman || !imza) return { durum: 400 };
 
   const beklenen = `sha256=${crypto.createHmac('sha256', imzaAnahtari()).update(kimlik + zaman).update(govde).digest('hex')}`;
-  // Uzunluk bayt olarak karşılaştırılır: timingSafeEqual farklı uzunlukta hata fırlatır
+  // Uzunluk bayt olarak karşılaştırılır: timingSafeEqual uzunluklar farklıysa hata fırlatır
   const [gelen, olmasiGereken] = [Buffer.from(imza), Buffer.from(beklenen)];
   const gecerli = gelen.length === olmasiGereken.length && crypto.timingSafeEqual(gelen, olmasiGereken);
-  // Eski bir mesajın yeniden gönderilmesine karşı: 10 dakikadan eski olanları reddet
+  // Eski bir mesajın yeniden gönderilmesine karşı: 10 dakikadan eski mesajlar reddedilir
   if (!gecerli || Math.abs(Date.now() - Date.parse(zaman)) > 10 * 60_000) return { durum: 403 };
 
   const mesaj = JSON.parse(govde.toString('utf8'));

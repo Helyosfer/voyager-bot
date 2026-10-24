@@ -1,13 +1,13 @@
 // Rol menüsü: /rolmenu ile kanala düğmeli bir mesaj konur; üyeler düğmeye basarak rolü alır ya
 // da bırakır. Ayrıca bir kayıt tutulmaz: hangi rollerin menüde olduğu mesajın düğmelerinden okunur.
-// Düğme kimliği: "rm:<mod>:<rolId>" · mod "c" (çoklu seçim) ya da "t" (tek seçim: diğerleri bırakılır)
+// Düğme kimliği: "rm:<mod>:<rolId>"; mod "c" (çoklu seçim) ya da "t" (tek seçim: diğer roller bırakılır)
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder, MessageFlags } = require('discord.js');
 const { yonetimRolu, beklemeSayaci } = require('./yardimci');
 
 const ROL_SINIRI = 10;
 const SIRA_BASI = 5; // Discord: bir satırda en fazla 5 düğme
 
-// Aynı kişinin art arda basması Discord'a gereksiz istek göndermesin
+// Aynı kişi düğmeye art arda basınca Discord'a gereksiz istek gitmesin
 const tiklama = beklemeSayaci(1500);
 
 function mesajHazirla({ baslik, aciklama, roller, tek }) {
@@ -30,7 +30,7 @@ function mesajHazirla({ baslik, aciklama, roller, tek }) {
   return { embeds: [embed], components: satirlar, allowedMentions: { parse: [] } };
 }
 
-// Menüdeki bütün rol kimlikleri, mesajın düğmelerinden
+// Menüdeki bütün rol kimlikleri, mesajın düğmelerinden okunur
 const menuRolleri = (mesaj) =>
   mesaj.components
     .flatMap((satir) => satir.components)

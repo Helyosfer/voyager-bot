@@ -81,11 +81,11 @@ function secenekSatiri(o) {
   return `› \`${o.name}\`${o.required ? ' **(zorunlu)**' : ''}: ${o.description} *(${ek.join(' · ')})*`;
 }
 
-// Komut adından Discord kimliğine: tıklanabilir komut bağlantıları için
+// Komut adı → Discord'daki komut kimliği; tıklanabilir komut bağlantıları için
 async function kimlikler(client) {
   if (!client.komutKimlikleri) {
     const yuklu = await client.application.commands.fetch().catch(() => null);
-    if (!yuklu) return new Map(); // Alınamazsa düz yazıya dönülür, bir sonraki sefer yeniden denenir
+    if (!yuklu) return new Map(); // Alınamazsa düz yazı kullanılır, bir dahaki sefere yeniden denenir
     client.komutKimlikleri = new Map(yuklu.map((k) => [k.name, k.id]));
   }
   return client.komutKimlikleri;
@@ -307,7 +307,7 @@ const komutAdi = (metin) =>
     .map((p) => p.slice(0, 32));
 
 module.exports = {
-  // Test için
+  // Yalnızca testler kullanır
   BOLUMLER,
   bolumleriHazirla,
   gorevleriHazirla,
@@ -362,7 +362,7 @@ module.exports = {
       // content: null, varsa "böyle bir komut yok" uyarısını kaldırır
       secim.update({ ...sayfa(interaction, bolumler, kimlik, durum), content: null }).catch((hata) => console.error('Yardım sayfası gösterilemedi:', hata.message));
     });
-    // Süre dolunca menü kaldırılır; çalışmayan bir menü kalmasın
+    // Süre dolunca menü kaldırılır; ortada çalışmayan bir menü kalmasın
     toplayici.on('end', () => interaction.editReply({ components: [] }).catch(() => {}));
   },
 };
