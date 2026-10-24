@@ -1,7 +1,7 @@
 // Tanıtım sayfasındaki komut listesinin botun gerçek komutlarıyla uyumu. Çalıştırmak için: npm test
 //
-// Yeni bir komut eklenir ya da bir komutun alt komutları değişirse sayfadaki liste de güncellenmeli;
-// bu test unutulmasını yakalar. Bot başlatılmaz, hiçbir şey ağa çıkmaz.
+// Sayfa öne çıkan komutları listeler; listelenen her komut botta olmalı ve geri kalanlar için /yardim anılmalı.
+// Bir komut kaldırılır ya da adı değişirse bu test sayfanın unutulmasını yakalar. Bot başlatılmaz, hiçbir şey ağa çıkmaz.
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -30,14 +30,17 @@ const listelenenler = new Map(
   ]),
 );
 
-test('sayfadaki komutlar ile botun komutları aynı', () => {
-  const gercek = komutlar.map((k) => k.data.name).sort();
-  assert.deepEqual([...listelenenler.keys()].sort(), gercek);
+// Sayfa bütün komutları değil öne çıkanları listeler; geri kalanına /yardim ulaştırır
+test('sayfadaki her komut botta var', () => {
+  const gercek = new Set(komutlar.map((k) => k.data.name));
+  assert.ok(listelenenler.size >= 5, 'öne çıkan komutlar listelenmeli');
+  for (const ad of listelenenler.keys()) assert.ok(gercek.has(ad), `/${ad} botta yok`);
 });
 
-test('sayfadaki alt komutlar botunkilerle aynı sırada', () => {
+test('sayfada alt komut yazılmışsa botunkilerle aynı sırada', () => {
   for (const komut of komutlar) {
     const ad = komut.data.name;
+    if (!listelenenler.get(ad)?.length) continue;
     const gercek = komut.data.toJSON().options?.filter((o) => o.type === 1).map((o) => o.name) ?? [];
     assert.deepEqual(listelenenler.get(ad), gercek, `/${ad} alt komutları sayfada farklı`);
   }
@@ -46,4 +49,8 @@ test('sayfadaki alt komutlar botunkilerle aynı sırada', () => {
 test('her komut bir kez listelenir', () => {
   const tum = [...BOLUM.matchAll(/<li><code>\/([a-z]+)<\/code>/g)].map((m) => m[1]);
   assert.equal(new Set(tum).size, tum.length);
+});
+
+test('sayfa geri kalan komutlar için /yardim\'a yönlendirir', () => {
+  assert.ok(BOLUM.includes('<code>/yardim</code>'));
 });

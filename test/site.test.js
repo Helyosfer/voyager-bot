@@ -32,16 +32,23 @@ test('sayfa: /sunucukur vitrini şablonlardan hesaplanır', () => {
   for (const s of sablonlar) assert.ok(sayfa.includes(`<li>${s.ad}</li>`), s.ad);
 });
 
+test('sayfa: rehber ve komut sayıları bottan hesaplanır', () => {
+  const sayfa = site.sayfaUret();
+  const { GOREVLER } = require('../src/yardim-gorevler');
+  assert.ok(sayfa.includes(`<b>${GOREVLER.length} adım adım rehber.</b>`));
+  assert.match(sayfa, /Toplam <b>\d+<\/b> komutun hepsi/);
+});
+
 test('sayfa: yalnızca kurulu yayın platformları anlatılır', () => {
   platformlarla(['kick', 'youtube'], (sayfa) => {
     assert.ok(!/Twitch/.test(sayfa), 'Twitch kurulu değilken sayfada geçmemeli');
     assert.ok(sayfa.includes("Kick'te anında, YouTube'da birkaç dakika içinde."));
-    assert.ok(sayfa.includes('<span>Kick ve YouTube yayınlarını duyurur<span class="alt">'));
+    assert.ok(sayfa.includes('<span>Kick ve YouTube yayınlarını duyurur</span>'));
   });
   platformlarla(['twitch', 'kick', 'youtube'], (sayfa) => {
     assert.ok(sayfa.includes('/yayin · Twitch · Kick · YouTube'));
     assert.ok(sayfa.includes("Twitch ve Kick'te anında, YouTube'da birkaç dakika içinde."));
-    assert.ok(sayfa.includes('<span>Twitch, Kick ve YouTube yayınlarını duyurur<span class="alt">'));
+    assert.ok(sayfa.includes('<span>Twitch, Kick ve YouTube yayınlarını duyurur</span>'));
   });
   // Hiçbiri kurulu değilse /yayin yine yüklenir; sayfa hepsini anlatır
   platformlarla([], (sayfa) => assert.ok(sayfa.includes('/yayin · Twitch · Kick · YouTube')));
