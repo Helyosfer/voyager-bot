@@ -59,7 +59,8 @@ Yetki denetimleri `src/yardimci.js` içinde, tek yerde durur. Yeni bir komutta a
 2. **Geri alınması zor mu?** Discord'un yetki denetimini sunucu yöneticileri Entegrasyonlar bölümünden gevşetebilir.
    Komut sunucunun yapısını değiştiriyorsa (kanalları kilitlemek, toplu kanal ya da rol oluşturmak, toplu silmek)
    komuta `kesinYetki: true` ekle: `index.js` bildirilen yetkiyi `komutYetkisiVar` ile kendisi de denetler.
-   Şu an `/kitle`, `/kilidiac` ve `/sunucukur` böyle.
+   Şu an `/kilit` ve `/sunucukur` böyle. `/yardim` panelinden çalıştırılan **her** komutta bu denetim yapılır
+   (`src/komut-paneli.js` içindeki `calistirilabilir`); panelde Entegrasyonlar bölümündeki ek izinler geçmez.
 3. **Başka bir üyeye işlem yapıyor mu?** `mudahaleEngeli`'ni çağır: kendine, bota, sunucu sahibine ve eşit ya da
    yüksek roldeki üyeye işlem yapılmasını engeller.
 4. **Bot bir rol veriyor ya da bir rolü ayara bağlıyor mu?** Komutu kullanan kişi o rolü kendisi de verebiliyor
@@ -72,6 +73,8 @@ Yetki denetimleri `src/yardimci.js` içinde, tek yerde durur. Yeni bir komutta a
 7. **Düğme, menü ya da form mu?** `customId`'yi sabit bir tabloda karşıla (`src/topluluk.js` içindeki `ISLEMLER`).
    Düğmeye kimin bastığını her seferinde yeniden denetle: düğmeyi gören herkes basabilir. Menüden gelen değerleri
    kodda tanımlı listeyle eşle; gelen değeri doğrudan rol ya da kanal kimliği olarak kullanma.
+   Yeni komut `/yardim` panelinde kendiliğinden çıkar: `src/yardim-islemler.js`'e adını ekle (test eksikse uyarır).
+   Seçeneksiz ve geri alınması zor bir işlemse `tehlikeli: true` ver; panel çalıştırmadan önce onay ister.
 8. **Botun yetkisi yetiyor mu?** İşlemden önce botun iznini denetle ve eksikse açıkça söyle
    (`yazabilirMi`, `uye.moderatable`, `ben.permissions.has`).
 9. **Ayar cevabı mı?** `MessageFlags.Ephemeral` ile yalnızca komutu kullanana göster.

@@ -74,7 +74,7 @@ diliyle gösterilir.
 
 | Komut | Ne yapar | Gereken yetki |
 |---|---|---|
-| `/yardim` | Başlangıç adımları, "Nasıl yapılır?" rehberleri (yayın bildirimi kur, korumayı aç, haberleri konuya göre etiketle…), bölüm bölüm komutlar; her komutun ve alt komutun ayrıntılı sayfası (seçenekler, örnekler, bilmen gerekenler). `/yardim komut:ban` ya da `/yardim komut:oyun ayar` ile doğrudan açılır. Ana sayfanın altında botun gecikmesi yazar | Herkes |
+| `/yardim` | Komut paneli: bölümü seç, yapmak istediğin işi seç (ör. 🚨 Güvenlik → 🔒 Kilitle); komut yazmadan çalışır. Gereken bilgiler form olarak sorulur (kişi, rol ve kanal listeden seçilir), geri alınması zor ve seçeneksiz işler bir kez onay ister. Ayrıca başlangıç adımları, "Nasıl yapılır?" rehberleri (yayın bildirimi kur, korumayı aç, haberleri konuya göre etiketle…), bölüm bölüm komutlar; her komutun ve alt komutun ayrıntılı sayfası (seçenekler, örnekler, bilmen gerekenler). `/yardim komut:ban` ya da `/yardim komut:oyun ayar` ile doğrudan açılır. Ana sayfanın altında botun gecikmesi yazar | Herkes |
 | `/hatirlat` | Belirtilen süre sonra hatırlatma yapar (kişi başı en fazla 5) | Herkes |
 | `/seviye` | Seviyeni ve sunucu sıralamasını gösterir; yöneticiler sistemi açar, seviye ödülü rolleri belirler | Herkes (ayarlar için Sunucuyu Yönet) |
 | `/ozetle` | Kanaldaki son 10-100 mesajı yapay zekâyla özetler (sunucuda `/ayarla ozet` ile açılırsa; `/sor` hakkını kullanır) | Herkes (kanal geçmişini okuyabilen) |
@@ -742,6 +742,8 @@ src/
   yapayzeka.js        Gemini bağlantısı ve /sor
   yardim-rehberi.js   /yardim komut ve alt komut sayfalarının anlatımları, örnekleri ve notları
   yardim-gorevler.js  /yardim "Nasıl yapılır?" rehberleri ve başlangıç adımları
+  yardim-islemler.js  /yardim panelindeki işlemlerin adları (🔒 Kilitle, 🔨 Yasakla…)
+  komut-paneli.js     /yardim panelinden komut çalıştırma: komutun seçeneklerinden form kurar, komutu çalıştırır
   sohbet.js           /sor cevabına "Yanıtla" ile devam edilen konuşmalar
   inceleme.js         Oyun fırsatı kartlarındaki yapay zekâ incelemesi
   firsatlar.js        Oyun fırsatları
