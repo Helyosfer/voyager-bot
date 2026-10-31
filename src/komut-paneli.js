@@ -14,6 +14,7 @@ const {
   RoleSelectMenuBuilder,
   ChannelSelectMenuBuilder,
   MentionableSelectMenuBuilder,
+  ComponentType,
   MessageFlags,
 } = require('discord.js');
 const { komutYetkisiVar, hataMetni } = require('./yardimci');
@@ -167,6 +168,17 @@ async function formKur({ interaction, komut, hedef, alanlar, customId, baslik })
   return form;
 }
 
+// Formdaki bileşenin türü → formuOku'nun kullandığı ad. Form başka bir tıklamada kurulduysa
+// (ör. /ayarlar kartı, moderasyon kartı) hangi bileşenin kullanıldığı gönderilen formdan okunur.
+const BILESEN_TURLERI = {
+  [ComponentType.TextInput]: 'yazi',
+  [ComponentType.StringSelect]: 'liste',
+  [ComponentType.UserSelect]: 'kullanici',
+  [ComponentType.RoleSelect]: 'rol',
+  [ComponentType.MentionableSelect]: 'etiket',
+  [ComponentType.ChannelSelect]: 'kanal',
+};
+
 // Gönderilen formu okur. degerler: seçenek adı → komutun beklediği değer (User, Role, kanal, sayı…)
 function formuOku(gonderim, alanlar) {
   const degerler = new Map();
@@ -176,7 +188,8 @@ function formuOku(gonderim, alanlar) {
     const o = alan.secenekler[0];
     const alanVerisi = gonderim.fields.fields.get(id);
     if (!alanVerisi) continue;
-    if (alan.bilesen === 'yazi') {
+    const bilesen = alan.bilesen ?? BILESEN_TURLERI[alanVerisi.type];
+    if (bilesen === 'yazi') {
       const metin = (alanVerisi.value ?? '').trim();
       if (!metin) continue;
       if (o.type === T.Integer || o.type === T.Number) {
@@ -190,7 +203,7 @@ function formuOku(gonderim, alanlar) {
       } else {
         degerler.set(o.name, metin);
       }
-    } else if (alan.bilesen === 'liste') {
+    } else if (bilesen === 'liste') {
       const secilen = alanVerisi.values?.[0];
       if (secilen == null) continue;
       if (o.type === T.Boolean) degerler.set(o.name, secilen === 'evet');
@@ -198,9 +211,9 @@ function formuOku(gonderim, alanlar) {
       else degerler.set(o.name, secilen);
     } else {
       // Seçim sırası korunur (ör. rol menüsündeki rollerin sırası)
-      const kaynak = { kullanici: alanVerisi.users, rol: alanVerisi.roles, kanal: alanVerisi.channels }[alan.bilesen];
+      const kaynak = { kullanici: alanVerisi.users, rol: alanVerisi.roles, kanal: alanVerisi.channels }[bilesen];
       const secilenler = (alanVerisi.values ?? [])
-        .map((deger) => (alan.bilesen === 'etiket' ? (alanVerisi.users?.get(deger) ?? alanVerisi.roles?.get(deger)) : kaynak?.get(deger)))
+        .map((deger) => (bilesen === 'etiket' ? (alanVerisi.users?.get(deger) ?? alanVerisi.roles?.get(deger)) : kaynak?.get(deger)))
         .filter(Boolean);
       alan.secenekler.forEach((s, sira) => secilenler[sira] && degerler.set(s.name, secilenler[sira]));
     }
@@ -254,13 +267,48 @@ function komutEtkilesimi(asil, komutAdi, secenekler, ek = {}) {
   });
 }
 
+// Komutun cevabını yeni bir mesaj olarak değil, düğmenin bulunduğu kartın içinde gösterir (ör. /ayarlar).
+// ciz(): kartın güncel hali; komut ayarı değiştirdikten sonra çağrılır, böylece kart yeni durumu gösterir.
+// Komutun yazdığı metin kartın üstüne gelir. embedler: komutun kartları da gösterilsin mi (ör. kilit sonucu);
+// gösterilmezse yalnızca metin alınır (çoğu ayar komutu ayrıca ayar kartı da döndürür, kartta zaten görünür).
+function kartIcinde(asil, ciz, { embedler = false } = {}) {
+  let cevaplandi = false;
+  const icerik = (m) => {
+    const mesaj = typeof m === 'string' ? { content: m } : (m ?? {});
+    const kart = ciz();
+    return {
+      ...kart,
+      content: mesaj.content || kart.content || null,
+      embeds: [...(embedler ? (mesaj.embeds ?? []) : []), ...kart.embeds].slice(0, 10),
+      allowedMentions: { parse: [] },
+    };
+  };
+  const yaz = (m) => {
+    if (cevaplandi) return asil.editReply(icerik(m));
+    cevaplandi = true;
+    return asil.update(icerik(m));
+  };
+  return {
+    reply: yaz,
+    editReply: yaz,
+    deferReply: async () => {
+      if (cevaplandi) return;
+      cevaplandi = true;
+      await asil.deferUpdate();
+    },
+    // İkinci bir cevap (ör. uyarı notu) ayrı, yalnızca kullanana görünen mesaj olarak gelir
+    followUp: (m) => asil.followUp({ ...(typeof m === 'string' ? { content: m } : m), flags: MessageFlags.Ephemeral }),
+  };
+}
+
 // Komutu panelden çalıştırır. Yetki her seferinde, bu etkileşimdeki güncel izinlerle yeniden denetlenir.
-async function calistir(interaction, komut, hedef, degerler = new Map()) {
+// ek: etkileşimin yerine geçecek alanlar (ör. kartIcinde'nin cevaplama işlevleri)
+async function calistir(interaction, komut, hedef, degerler = new Map(), ek = {}) {
   if (!calistirilabilir(interaction, komut)) {
     return interaction.reply({ content: '❌ Bu komutu kullanmak için gereken yetkin yok.', flags: MessageFlags.Ephemeral }).catch(() => {});
   }
   try {
-    await komut.execute(komutEtkilesimi(interaction, komut.data.name, secenekCozucu(hedef, degerler)));
+    await komut.execute(komutEtkilesimi(interaction, komut.data.name, secenekCozucu(hedef, degerler), ek));
   } catch (hata) {
     console.error(`/${komut.data.name} hatası (panel):`, hataMetni(hata));
     const cevap = { content: 'Komut çalışırken bir hata oluştu.', flags: MessageFlags.Ephemeral };
@@ -269,4 +317,4 @@ async function calistir(interaction, komut, hedef, degerler = new Map()) {
   }
 }
 
-module.exports = { FORM_SINIRI, calistirilabilir, hedefBul, alanlariHazirla, formKur, formuOku, secenekCozucu, komutEtkilesimi, calistir };
+module.exports = { FORM_SINIRI, calistirilabilir, hedefBul, alanlariHazirla, formKur, formuOku, secenekCozucu, komutEtkilesimi, kartIcinde, calistir };

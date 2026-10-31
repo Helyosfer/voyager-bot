@@ -311,12 +311,22 @@
   .grup code { font-size: 0.86rem; }
   /* Komutun alt komutları: açıklamanın altında, soluk */
   .grup .alt { display: block; margin-top: 3px; font: 0.78rem var(--mono); color: #5f5f66; }
-  /* /yardim vitrini ve öne çıkan komutlar */
+  /* /yardim, /ayarlar ve sağ tık vitrinleri; öne çıkan komutlar */
   code.buyuk { font-size: 0.82em; letter-spacing: -0.02em; }
-  .yardim-vitrin { margin-top: 56px; }
-  .yardim-vitrin .ornek { order: 0 !important; } /* tek kart: yazı solda, örnek sağda */
   .menu-ornek { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
   .menu-ornek span { padding: 4px 9px; border-radius: 6px; background: #2b2b31; font-size: 0.78rem; color: #dbdbe0; }
+  .embed.pembe { border-left-color: #eb459e; }
+  /* Bağlantıyla gelinen kart sabit üst çubuğun altında kalmasın */
+  .ozellik[id] { scroll-margin-top: 84px; }
+  /* Örnek mesajdaki Discord düğmeleri ve seçim menüsü */
+  .dugmeler { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .dugmeler span { padding: 5px 10px; border-radius: 4px; background: #4e5058; font-size: 0.76rem; font-weight: 500; color: #fff; }
+  .dugmeler .yesil { background: #248046; }
+  .dugmeler .mavi { background: #5865f2; }
+  .dugmeler .kirmizi { background: #da373c; }
+  .secim { display: flex; justify-content: space-between; margin-top: 10px; padding: 7px 10px; border: 1px solid #2b2b31; border-radius: 4px; background: #1e1f22; font-size: 0.78rem; color: #b5bac1; }
+  .secim::after { content: "⌄"; color: #949ba4; }
+  .ornek .durum { margin: 0 0 4px; font-size: 0.84rem; color: #dbdbe0; }
   .one-cikan { margin-top: 56px; }
   .one-cikan ul { display: grid; grid-template-columns: repeat(2, 1fr); column-gap: 56px; }
   .hepsi { margin: 22px 0 0; font-size: 0.95rem; color: var(--muted); }
@@ -396,7 +406,7 @@
 
     <div class="hero-content">
       <h1>Voyager</h1>
-      <p class="role">Yapay zekâ destekli Discord botu. Sorularını cevaplar, dolandırıcılık görsellerini yakalar; sunucunu kurar, korur ve haberdar eder.</p>
+      <p class="role">Yapay zekâ destekli Discord botu. Sorularını cevaplar, dolandırıcılık görsellerini yakalar; sunucunu kurar, korur ve haberdar eder. Hepsini komut ezberlemeden, tıklayarak yönetirsin.</p>
       <div class="hero-actions">
         <a class="btn btn-primary" href="{{DAVET}}" rel="noopener">Sunucuna ekle</a>
         <a class="btn btn-ghost" href="#yz">Neler yapar</a>
@@ -540,9 +550,9 @@
           <p>Her talep için özel bir oda açılır. Odayı yalnızca talep sahibi ve destek ekibi görür; kapanan talepler 30 güne kadar kayıt olarak saklanır. Topluluk ve ürün-destek şablonlarında hazır gelir.</p>
         </article>
         <article class="card reveal">
-          <p class="tag">/ayarla hosgeldin</p>
+          <p class="tag">/ayarlar · karşılama</p>
           <h3>Karşılama</h3>
-          <p>Sunucun zaten kuruluysa sorun değil: hoş geldin mesajını ve otomatik rolü iki komutla açabilirsin.</p>
+          <p>Sunucun zaten kuruluysa sorun değil: <code>/ayarlar</code> kartında hoş geldin kanalını ve otomatik rolü menüden seçmen yeterli.</p>
         </article>
       </div>
     </div>
@@ -556,9 +566,9 @@
 
       <div class="cards">
         <article class="card reveal">
-          <p class="tag">/ban · /kick · /sustur · /uyari · /temizle</p>
+          <p class="tag">sağ tık · /ban · /kick · /sustur · /uyari · /temizle</p>
           <h3>Moderasyon</h3>
-          <p>Yasaklama, atma, susturma, uyarı ve toplu mesaj silme. Her biri tek komutla, saniyeler içinde. Belirlediğin uyarı sayısına ulaşan üyeye ceza kendiliğinden uygulanır.</p>
+          <p>Yasaklama, atma, susturma, uyarı ve toplu mesaj silme. Üyeye <a class="yan-link satir-ici" href="#sag-tik">sağ tıklayarak</a> ya da komutla, saniyeler içinde. Belirlediğin uyarı sayısına ulaşan üyeye ceza kendiliğinden uygulanır.</p>
         </article>
         <article class="card reveal">
           <p class="tag">/koruma filtre · kelime · alan</p>
@@ -571,7 +581,7 @@
           <p>Saldırı mı var? Tek komutla bütün sunucuyu kilitle. Ortalık durulunca yine tek komutla her kanal eski izinlerine döner.</p>
         </article>
         <article class="card reveal">
-          <p class="tag">/ayarla gunluk</p>
+          <p class="tag">/ayarlar · günlük</p>
           <h3>Sunucu günlüğü</h3>
           <p>Sunucunda olan hiçbir şey gözünden kaçmaz: kim girdi, kim çıktı, hangi mesaj silindi, kim neyi değiştirdi; hepsi kayıt altında.</p>
         </article>
@@ -616,15 +626,18 @@
     <div class="container">
       <p class="kicker reveal"><span class="num">05</span>Komutlar</p>
       <h2 class="reveal">Ezberleme.<br><span class="dim"><code class="buyuk">/yardim</code> yaz.</span></h2>
-      <p class="lead reveal">Komut aramana gerek yok: <code>/yardim</code> yaz, bölümü seç, yapmak istediğin işi seç. Gereken bilgiler (kim, kaç dakika, hangi kanal) form olarak sorulur. Yetki gerektiren işleri yalnızca o yetkiye sahip olanlar görür.</p>
+      <p class="lead reveal">Komut aramana gerek yok: <code>/yardim</code> yaz, bölümü seç, yapmak istediğin işi seç. Gereken bilgiler (kim, kaç dakika, hangi kanal) form olarak sorulur. Ayarlar <code>/ayarlar</code> kartında düğmeyle açılıp kapanır; moderasyon için üyeye sağ tıklaman yeter. Yetki gerektiren işleri yalnızca o yetkiye sahip olanlar görür.</p>
 
-      <article class="card ozellik yardim-vitrin reveal">
+      <div class="ozellikler">
+      <article class="card ozellik reveal">
         <div>
           <p class="tag">/yardim</p>
           <h3>Bütün komutlar tek panelde</h3>
           <p>Bölümü seç, yapmak istediğin işi seç; komut yazmadan çalıştır. Her komutun ne işe yaradığı, kimlerin kullanabileceği ve örnekleri de aynı yerde.</p>
           <ul class="maddeler">
             <li><b>Seç, çalıştır.</b> 🚨 Güvenlik → 🔒 Kilitle gibi. Kişi, rol ve kanal listeden seçilir; geri alınması zor işler bir kez onay ister.</li>
+            <li><b>Ayarlar tek kartta.</b> <code>/ayarlar</code>: koruma, günlük, karşılama, seviye ve bildirimler aç/kapat düğmeleri ve kanal menüleriyle.</li>
+            <li><b>Sağ tıkla moderasyon.</b> Üyeye ya da mesaja sağ tıkla → Uygulamalar → Moderasyon: uyar, sustur, at, yasakla, mesajı sil.</li>
             <li><b>Bölüm bölüm.</b> Genel, moderasyon, güvenlik, bildirimler, topluluk ve sunucu ayarları.</li>
             <li><b>{{REHBER_SAYISI}} adım adım rehber.</b> "Yayın bildirimi kur", "sunucuyu hazır şablonla kur" gibi işleri sırasıyla anlatır.</li>
             <li><b>Doğrudan git.</b> <code>/yardim komut:oyun ayar</code> yazınca o alt komutun sayfası açılır.</li>
@@ -649,9 +662,82 @@
         </div>
       </article>
 
+      <article class="card ozellik reveal">
+        <div>
+          <p class="tag">/ayarlar</p>
+          <h3>Ayarlar tek kartta</h3>
+          <p>Koruma, günlük, karşılama, seviye ve bildirimler aynı kartta. Düğmeye bas, açılsın; menüden kanalı seç, kaydedilsin. Kart yerinde güncellenir, ne değiştiğini hemen görürsün.</p>
+          <ul class="maddeler">
+            <li><b>Aç, kapat.</b> Spam, küfür, zararlı bağlantı ve dolandırıcılık görseli filtreleri, seviye sistemi ve kanal özetleri tek düğmeyle.</li>
+            <li><b>Listeden seç.</b> Günlük, hoş geldin ve seviye duyurusu kanalı, otomatik rol menüden seçilir; menüyü boşaltınca ayar kalkar.</li>
+            <li><b>Süresi dolmaz.</b> Kart açık kaldıkça düğmeler çalışır. Yalnızca Sunucuyu Yönet yetkisi olanlar açabilir.</li>
+          </ul>
+        </div>
+        <div class="ornek" aria-hidden="true">
+          <span class="etiket">ÖRNEK</span>
+          <p class="cagri"><code>/ayarlar</code> → 🛡️ Koruma</p>
+          <div class="mesaj">
+            <div class="avatar"></div>
+            <div>
+              <p class="ad">Voyager<small>UYGULAMA</small></p>
+              <p class="durum">✅ Spam koruması açık. Kısa sürede çok kanala yazan üyenin mesajları silinir ve üye 60 dakika susturulur.</p>
+              <div class="embed">
+                <p class="baslik">🛡️ Otomatik koruma</p>
+                <div class="alanlar">
+                  <div class="alan"><b>Spam koruması</b><span>🟢 Açık · 60 dakika susturma</span></div>
+                  <div class="alan"><b>Bağlantı denetimi</b><span>🟢 Açık · 60 dakika susturma</span></div>
+                </div>
+              </div>
+              <div class="secim">🛡️ Koruma</div>
+              <div class="dugmeler">
+                <span class="yesil">📨 Spam: Açık</span><span>🤬 Küfür: Kapalı</span><span class="yesil">🔗 Zararlı bağlantı: Açık</span>
+              </div>
+              <span class="alt-yazi">Bu kartı yalnızca sen görüyorsun</span>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="card ozellik reveal" id="sag-tik">
+        <div>
+          <p class="tag">sağ tık · Uygulamalar → Moderasyon</p>
+          <h3>Sağ tıkla, hallet</h3>
+          <p>Sorun çıkaran üyeye ya da mesajına sağ tıkla, Uygulamalar menüsünden Moderasyon'u seç. Üyenin özeti ve yapabileceğin her şey tek kartta açılır; kimin adını yazacağını aramazsın.</p>
+          <ul class="maddeler">
+            <li><b>Önce bak.</b> Hesabın ne zaman açıldığı, sunucuya ne zaman katıldığı, kaç uyarısı olduğu, susturulmuşsa ne zaman biteceği.</li>
+            <li><b>Sonra karar ver.</b> Uyar, sustur (süre listeden), at, yasakla; mesajdan açtıysan mesajı sil. Sebep form olarak sorulur, her işlem günlüğe yazılır.</li>
+            <li><b>Yetkine göre.</b> Her düğme yalnızca o işi yapabilene görünür; komutla yapmakla aynı rol sırası denetiminden geçer.</li>
+          </ul>
+        </div>
+        <div class="ornek" aria-hidden="true">
+          <span class="etiket">ÖRNEK</span>
+          <p class="cagri">@ornek_uye → sağ tık → Uygulamalar → <code>Moderasyon</code></p>
+          <div class="mesaj">
+            <div class="avatar"></div>
+            <div>
+              <p class="ad">Voyager<small>UYGULAMA</small></p>
+              <div class="embed pembe">
+                <p class="baslik">ornek_uye · Moderasyon</p>
+                <div class="alanlar">
+                  <div class="alan"><b>Hesap açılışı</b><span>3 gün önce</span></div>
+                  <div class="alan"><b>Sunucuya katılış</b><span>2 saat önce</span></div>
+                </div>
+                <div class="alan"><b>Uyarılar</b><span>2</span></div>
+              </div>
+              <div class="dugmeler">
+                <span class="mavi">⚠️ Uyar</span><span class="mavi">🔇 Sustur</span><span class="kirmizi">👢 At</span><span class="kirmizi">🔨 Yasakla</span>
+              </div>
+              <span class="alt-yazi">Bu kartı yalnızca sen görüyorsun</span>
+            </div>
+          </div>
+        </div>
+      </article>
+      </div>
+
       <div class="grup one-cikan reveal">
         <h3>Öne çıkanlar</h3>
         <ul>
+          <li><code>/ayarlar</code><span>Botun bütün ayarları tek kartta; düğme ve menülerle, komut yazmadan</span></li>
           <li><code>/sor</code><span>Yapay zekâya soru sorar; cevaba "Yanıtla" dersen konuşma sürer</span></li>
           <li><code>/sunucukur</code><span>{{SABLON_SAYISI}} hazır şablondan biriyle sunucuyu kurar</span></li>
           <li><code>/koruma</code><span>Spam, küfür, zararlı bağlantı ve dolandırıcılık görseli denetimi</span></li>
@@ -672,7 +758,7 @@
       <h2 class="reveal">Bir dakikada hazır.</h2>
       <ol class="adimlar reveal">
         <li><b>1</b><span>Sunucuna ekle</span></li>
-        <li><b>2</b><span>/sunucukur</span> ya da <span>/ayarla</span> ile kur</li>
+        <li><b>2</b><span>/sunucukur</span> ya da <span>/ayarlar</span> ile kur</li>
         <li><b>3</b>Gerisi için <span>/yardim</span></li>
       </ol>
       <a class="btn btn-primary btn-large reveal" href="{{DAVET}}" rel="noopener">Sunucuna ekle</a>

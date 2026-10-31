@@ -183,9 +183,9 @@ const BASLANGIC = {
   yonetici: [
     '**Voyager rolünü yukarı taşı.** Sunucu Ayarları → Roller: Voyager, yöneteceği rollerin üstünde olmalı.',
     '**Boş sunucu mu?** {sunucukur} ile amacına uyan şablonu kur; kanallar, roller, bildirimler ve temel koruma kendiliğinden ayarlanır.',
-    '**Hazır sunucu mu?** {ayarla gunluk} ile günlük kanalını, {ayarla hosgeldin} ile karşılamayı ayarla.',
-    '**Korumayı aç:** {koruma filtre} ile spam ve zararlı bağlantı filtrelerini aç.',
-    '**Bildirimler:** {oyun ayar}, {yayin ekle}, {haber ekle}. Her birinde yalnızca kanalı seçmen yeter, gerisi varsayılanla gelir.',
+    '**Ayarlar tek kartta:** {ayarlar} paneli açılır. 🛡️ Koruma\'dan spam ve zararlı bağlantı filtrelerini aç, 📜 Günlük\'ten bir kayıt kanalı seç, 👋 Karşılama\'dan hoş geldin kanalını seç. Hepsi düğme ve menüyle.',
+    '**Bildirimler:** yine {ayarlar} panelinde 🎮 Oyun fırsatları, 📺 Canlı yayınlar ve 📰 Haberler bölümleri. Her birinde yalnızca kanalı seçmen yeter, gerisi varsayılanla gelir.',
+    '**Tıklayarak moderasyon:** bir üyeye ya da mesaja sağ tıkla → **Uygulamalar → Moderasyon**. Uyar, sustur, at, yasakla düğmeleri çıkar.',
     'Takıldığın her şey için aşağıdaki **Nasıl yapılır?** rehberlerine bak.',
   ],
   uye: [

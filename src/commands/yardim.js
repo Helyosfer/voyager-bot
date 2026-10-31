@@ -23,11 +23,25 @@ const FORM_SURESI = 15 * 60 * 1000; // Açılan form bu süre içinde gönderile
 // Yardım bölümleri. Bir komut hiçbir bölümde yoksa "Diğer" bölümüne düşer.
 const BOLUMLER = [
   { id: 'genel', simge: '🧭', ad: 'Genel', ozet: 'Herkesin kullanabildiği komutlar', komutlar: ['sor', 'ozetle', 'hatirlat', 'yardim'] },
-  { id: 'moderasyon', simge: '🛡️', ad: 'Moderasyon', ozet: 'Uyarma, susturma, atma, yasaklama, mesaj temizleme', komutlar: ['uyari', 'sustur', 'kick', 'ban', 'unban', 'temizle'] },
+  {
+    id: 'moderasyon',
+    simge: '🛡️',
+    ad: 'Moderasyon',
+    ozet: 'Uyarma, susturma, atma, yasaklama, mesaj temizleme',
+    ipucu: '🖱️ **Daha hızlısı:** üyeye ya da mesaja sağ tıkla → **Uygulamalar → Moderasyon**. Uyar, sustur, at, yasakla ve mesajı sil düğmeleri çıkar; üyeyi seçmen gerekmez.',
+    komutlar: ['uyari', 'sustur', 'kick', 'ban', 'unban', 'temizle'],
+  },
   { id: 'guvenlik', simge: '🚨', ad: 'Güvenlik', ozet: 'Spam, küfür ve dolandırıcılık filtresi; acil durum kilidi', komutlar: ['koruma', 'kilit'] },
   { id: 'bildirim', simge: '📣', ad: 'Bildirimler', ozet: 'Oyun fırsatları, canlı yayınlar, haberler', komutlar: ['oyun', 'yayin', 'haber', 'instagram'] },
   { id: 'topluluk', simge: '🎉', ad: 'Topluluk', ozet: 'Seviyeler, çekilişler, rol menüleri', komutlar: ['seviye', 'cekilis', 'rolmenu'] },
-  { id: 'sunucu', simge: '⚙️', ad: 'Sunucu ayarları', ozet: 'Günlük, hoş geldin, otomatik rol, hazır kurulum', komutlar: ['ayarla', 'sunucukur', 'sunucusil'] },
+  {
+    id: 'sunucu',
+    simge: '⚙️',
+    ad: 'Sunucu ayarları',
+    ozet: 'Ayarlar paneli, günlük, hoş geldin, otomatik rol, hazır kurulum',
+    ipucu: '⚙️ **Bütün ayarlar tek kartta:** {ayarlar} paneli koruma, günlük, karşılama, seviye ve bildirimleri düğmelerle açıp kapatır.',
+    komutlar: ['ayarlar', 'ayarla', 'sunucukur', 'sunucusil'],
+  },
 ];
 const DIGER = { id: 'diger', simge: '📦', ad: 'Diğer', ozet: 'Diğer komutlar', komutlar: [] };
 // Bölüm menüsünün başındaki sayfalar
@@ -135,6 +149,7 @@ function gorevleriHazirla(bolumler, izinler) {
 }
 
 const yoneticiMi = (interaction) => Boolean(interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild));
+const moderatorMu = (interaction) => Boolean(interaction.memberPermissions?.has(PermissionFlagsBits.ModerateMembers));
 
 // Bölümdeki, üyenin panelden çalıştırabildiği işlemler: alt komutu olan komutta her alt komut bir işlem.
 // deger: "komut" ya da "komut alt"; menü ve düğmelerde bu değer taşınır.
@@ -168,6 +183,8 @@ function anaSayfa(interaction, bolumler, gorevler) {
           ? '**Komut yazmana gerek yok.** Aşağıdaki menüden bir bölüm seç, sonra yapmak istediğin işi seç (ör. 🚨 Güvenlik → 🔒 Kilitle). Gereken bilgiler form olarak sorulur.'
           : 'Aşağıdaki menüden seç:',
         '',
+        yoneticiMi(interaction) ? '⚙️ **Ayarlar paneli** · koruma, günlük, karşılama, seviye, bildirimler; aç/kapat düğmeleriyle (aşağıdaki düğme ya da `/ayarlar`)' : null,
+        moderatorMu(interaction) ? '🖱️ **Tıklayarak moderasyon** · üyeye ya da mesaja sağ tıkla → Uygulamalar → Moderasyon' : null,
         '🚀 **Başlangıç** · ilk adımlar',
         gorevler.length ? `📖 **Nasıl yapılır?** · ${gorevler.length} adım adım rehber` : null,
         ...bolumler.map((b) => `${b.simge} **${b.ad}** · ${b.ozet}`),
@@ -224,7 +241,7 @@ function bolumSayfasi(bolum, bag, isler = []) {
   return new EmbedBuilder()
     .setTitle(`${bolum.simge} ${bolum.ad}`)
     .setColor(RENK)
-    .setDescription(bolum.komutlar.map(satir).join('\n\n'))
+    .setDescription(kisalt([bolum.ipucu ? baglantila(bolum.ipucu, bag) : null, ...bolum.komutlar.map(satir)].filter(Boolean).join('\n\n'), 4096))
     .setFooter({
       text: isler.length
         ? '⚡ Bir işi hemen yapmak için "Ne yapmak istiyorsun?" menüsünden seç · Komutun ayrıntısı için alttaki menüden.'
@@ -376,6 +393,11 @@ function sayfa(interaction, bolumler, kimlik, durum) {
   const satirlar = [bolumMenusu(bolumler, gorevler, secili)];
   let content = null;
   if (secili === 'gorevler') satirlar.push(gorevMenusu(gorevler, gorev?.id));
+  // Ana sayfa ve başlangıçta ayarlar paneline kısa yol. "ay:" düğmesini bu panel değil ayarlar paneli işler
+  // (index.js); paneli yeni bir mesajda açar.
+  if (['ana', 'baslangic'].includes(secili) && interaction.guildId && yoneticiMi(interaction)) {
+    satirlar.push(new ActionRowBuilder().addComponents(dugme('ay:ac', 'Ayarlar paneli', ButtonStyle.Success, '⚙️')));
+  }
   if (bolum) {
     if (isler.length) satirlar.push(islemMenusu(isler, durum.surum ?? 0));
     satirlar.push(komutMenusu(bolum, komut?.name));
@@ -458,7 +480,8 @@ module.exports = {
     const { content, ...ilk } = ciz();
     await interaction.reply({ ...ilk, ...((uyari ?? content) && { content: uyari ?? content }), flags: MessageFlags.Ephemeral });
     const mesaj = await interaction.fetchReply();
-    const toplayici = mesaj.createMessageComponentCollector({ time: ACIK_KALMA });
+    // Yalnızca bu panelin düğmeleri; "ay:" gibi kalıcı düğmeleri kendi modülleri işler (index.js)
+    const toplayici = mesaj.createMessageComponentCollector({ time: ACIK_KALMA, filter: (i) => i.customId.startsWith('yardim-') });
     // Paneli yeniden çizer (ör. işlem çalıştıktan sonra onay düğmelerini kaldırmak, işlem menüsünü sıfırlamak için).
     // Süre dolduysa çizilmez; menüler kaldırılmış kalır.
     const yenile = () => (toplayici.ended ? null : interaction.editReply(ciz()).catch(() => {}));

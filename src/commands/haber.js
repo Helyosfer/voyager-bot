@@ -52,6 +52,9 @@ function kaynakRolu(interaction, kaynak) {
 }
 
 module.exports = {
+  // /ayarlar paneli de bu kartı gösterir
+  kart,
+
   data: new SlashCommandBuilder()
     .setName('haber')
     .setDescription('Haber sitelerinin yeni haberlerini bir kanala duyurur (RSS)')

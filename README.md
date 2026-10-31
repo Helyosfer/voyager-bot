@@ -13,6 +13,7 @@ Node.js ve [discord.js](https://discord.js.org) ile yazıldı. Kodu alıp kendi 
 ## İçindekiler
 
 - [Neler yapar](#neler-yapar)
+- [Komut yazmadan kullanım](#komut-yazmadan-kullanım)
 - [Komutlar](#komutlar)
 - [Özellikler](#özellikler)
   - [Yapay zekâ](#yapay-zekâ)
@@ -67,6 +68,27 @@ Node.js ve [discord.js](https://discord.js.org) ile yazıldı. Kodu alıp kendi 
 
 Her sunucunun ayarları ayrıdır ve bir özellik açılmadıkça kapalı kalır.
 
+## Komut yazmadan kullanım
+
+Her şey tıklayarak yapılabilir; komutla çalışmayı sevenler için bütün komutlar da yerinde durur.
+
+- **`/yardim`: komut paneli.** Bölümü seç, yapmak istediğin işi seç (ör. 🚨 Güvenlik → 🔒 Kilitle); gereken bilgiler
+  form olarak sorulur, kişi, rol ve kanal listeden seçilir.
+- **`/ayarlar`: ayarlar paneli.** Koruma filtreleri, günlük kanalı ve kategorileri, karşılama, seviye sistemi, uyarı
+  cezaları, oyun fırsatları, yayın ve haber bildirimleri, kanal özetleri, kurulum tek kartta. Açma/kapama düğmeleri ve
+  kanal/rol menüleriyle değiştirilir; değişiklik kartta hemen görünür. Kart kalıcıdır, süresi dolmaz.
+- **Sağ tıkla moderasyon.** Bir üyeye ya da mesaja sağ tıkla → **Uygulamalar → Moderasyon**. Açılan kartta üyenin
+  hesap yaşı, katılma tarihi, uyarı sayısı ve susturma durumu; altında uyar, sustur (süre listeden seçilir), susturmayı
+  kaldır, at, yasakla, uyarılarına bak ve mesajdan açıldıysa mesajı sil düğmeleri. Düğme yalnızca o işi yapabilene görünür.
+- **İlk mesaj.** Bot bir sunucuya eklenince sistem kanalına (yoksa herkese açık "genel" gibi bir kanala) kendini
+  tanıtan bir mesaj atar: nereden başlanacağı ve yöneticiler için ilk üç adım. Altındaki **Komut paneli** ve
+  **Ayarlar** düğmeleri herkes için çalışır; açtığı paneli yalnızca basan kişi görür. `YAYIN_ADRESI` https ise
+  tanıtım sayfasına giden bir **Site** düğmesi de olur.
+
+Paneller ve kartlar işi kendileri yapmaz, ilgili komutu çalıştırır (ör. ayarlar panelindeki spam düğmesi
+`/koruma filtre tur:Spam durum:Açık`, moderasyon kartındaki At düğmesi `/kick`). Böylece tıklayarak ve yazarak yapmak
+aynı yetki ve rol sırası denetimlerinden geçer, aynı günlüğe yazılır.
+
 Bekleme süresi bildiren mesajlardaki sayaçlar (ör. "5 dakika içinde") Discord tarafından, okuyan kişinin uygulama
 diliyle gösterilir.
 
@@ -75,6 +97,8 @@ diliyle gösterilir.
 | Komut | Ne yapar | Gereken yetki |
 |---|---|---|
 | `/yardim` | Komut paneli: bölümü seç, yapmak istediğin işi seç (ör. 🚨 Güvenlik → 🔒 Kilitle); komut yazmadan çalışır. Gereken bilgiler form olarak sorulur (kişi, rol ve kanal listeden seçilir), geri alınması zor ve seçeneksiz işler bir kez onay ister. Ayrıca başlangıç adımları, "Nasıl yapılır?" rehberleri (yayın bildirimi kur, korumayı aç, haberleri konuya göre etiketle…), bölüm bölüm komutlar; her komutun ve alt komutun ayrıntılı sayfası (seçenekler, örnekler, bilmen gerekenler). `/yardim komut:ban` ya da `/yardim komut:oyun ayar` ile doğrudan açılır. Ana sayfanın altında botun gecikmesi yazar | Herkes |
+| `/ayarlar` | Ayarlar paneli: koruma, günlük, karşılama, seviye, uyarı cezaları, bildirimler, kurulum; düğme ve menülerle, komut yazmadan | Sunucuyu Yönet |
+| Sağ tık → **Moderasyon** | Üyeye ya da mesaja sağ tıklayınca moderasyon kartı: uyar, sustur, at, yasakla, mesajı sil | Üyelere Zaman Aşımı Uygula (mesajdan: Mesajları Yönet) |
 | `/hatirlat` | Belirtilen süre sonra hatırlatma yapar (kişi başı en fazla 5) | Herkes |
 | `/seviye` | Seviyeni ve sunucu sıralamasını gösterir; yöneticiler sistemi açar, seviye ödülü rolleri belirler | Herkes (ayarlar için Sunucuyu Yönet) |
 | `/ozetle` | Kanaldaki son 10-100 mesajı yapay zekâyla özetler (sunucuda `/ayarla ozet` ile açılırsa; `/sor` hakkını kullanır) | Herkes (kanal geçmişini okuyabilen) |
@@ -487,16 +511,21 @@ kanala yazılır.
 
 ## Sunucuna ekledikten sonra
 
+Bot eklenince sunucuya kendini tanıtan bir mesaj atar; altındaki düğmelerle komut paneli ve ayarlar açılır.
+
 Boş bir sunucuyu baştan kurmak istiyorsan `/sunucukur` ile başla ve amacına uyan şablonu seç (oyun, yayıncı, basit...);
 günlük, hoş geldin ve bildirim kanallarını, bildirim rollerini ve temel korumayı kendisi ayarlar. Hazır bir sunucuda:
 
 1. Sunucu Ayarları → Roller: **Voyager rolünü**, yöneteceği rollerin üstüne sürükle. Bot kendi rolünden yüksek
    kişilere işlem yapamaz ve yüksek rolleri veremez.
-2. `/ayarla gunluk kanal:` ile günlük kanalını seç.
-3. İstersen `/ayarla hosgeldin kanal: oto-rol:` ile karşılamayı aç.
-4. `/koruma filtre tur:Spam durum:Açık` ile otomatik korumayı aç. Ele geçirilmiş hesapların attığı dolandırıcılık
-   resimlerine karşı `tur:Dolandırıcılık görseli` ile görsel denetimini de açabilirsin.
+2. `/ayarlar` yaz. **📜 Günlük** bölümünden günlük kanalını seç.
+3. İstersen **👋 Karşılama** bölümünden hoş geldin kanalını ve oto rolü seç.
+4. **🛡️ Koruma** bölümünden spam ve zararlı bağlantı filtrelerini aç. Ele geçirilmiş hesapların attığı dolandırıcılık
+   resimlerine karşı **Dolandırıcılık görseli** düğmesiyle görsel denetimini de açabilirsin.
 5. Gerisi için `/yardim`.
+
+Aynı işler komutla da yapılır: `/ayarla gunluk kanal:`, `/ayarla hosgeldin kanal: oto-rol:`,
+`/koruma filtre tur:Spam durum:Açık`.
 
 Oto rolü, ancak o rolü kendisi de verebilen biri ayarlayabilir (Rolleri Yönet yetkisi ve rol sırası). Yönetim
 yetkisi taşıyan bir rol (üye atma, mesaj ya da rol yönetme gibi) oto rol yapılamaz.
@@ -542,7 +571,8 @@ npm start
 Terminalde `Bot hazır: ...` yazısını görünce bot çalışıyor demektir.
 
 `npm run komutlar` yalnızca komut eklediğinde ya da bir komutun adını/seçeneklerini değiştirdiğinde gerekir.
-Komutlar genel yüklenir: bot hangi sunucuya eklenirse orada kendiliğinden görünür.
+Komutlar genel yüklenir: bot hangi sunucuya eklenirse orada kendiliğinden görünür. Sağ tık menüsündeki **Moderasyon**
+komutları da bununla yüklenir.
 
 ### 5. Botu sunucuna ekle
 
@@ -748,8 +778,11 @@ src/
   yapayzeka.js        Gemini bağlantısı ve /sor
   yardim-rehberi.js   /yardim komut ve alt komut sayfalarının anlatımları, örnekleri ve notları
   yardim-gorevler.js  /yardim "Nasıl yapılır?" rehberleri ve başlangıç adımları
-  yardim-islemler.js  /yardim panelindeki işlemlerin adları (🔒 Kilitle, 🔨 Yasakla…)
-  komut-paneli.js     /yardim panelinden komut çalıştırma: komutun seçeneklerinden form kurar, komutu çalıştırır
+  yardim-islemler.js  /yardim ve /ayarlar panellerindeki işlemlerin adları (🔒 Kilitle, 🔨 Yasakla…)
+  komut-paneli.js     Panellerden komut çalıştırma: komutun seçeneklerinden form kurar, komutu çalıştırır
+  ayarlar-paneli.js   /ayarlar paneli: bölümler, aç/kapat düğmeleri, kanal ve rol menüleri
+  moderasyon-karti.js Sağ tık → Moderasyon kartı: uyar, sustur, at, yasakla, mesajı sil
+  ilk-mesaj.js        Bot sunucuya eklenince atılan tanışma mesajı
   sohbet.js           /sor cevabına "Yanıtla" ile devam edilen konuşmalar
   inceleme.js         Oyun fırsatı kartlarındaki yapay zekâ incelemesi
   firsatlar.js        Oyun fırsatları

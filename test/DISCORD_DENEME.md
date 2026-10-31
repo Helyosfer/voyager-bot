@@ -39,6 +39,28 @@ Her satırda beklenen sonuç yazıyor. Farklı bir şey görürsen terminaldeki 
 - [ ] `/hatirlat dakika:1` bir dakika sonra seni etiketliyor. Mesaja `@everyone` yazarsan kimse etiketlenmiyor.
 - [ ] Altıncı hatırlatıcı reddediliyor.
 
+## Tıklayarak kullanım
+
+- [ ] Botu deneme sunucusuna ekleyince sistem kanalına (yoksa "genel" gibi herkese açık bir kanala) **Merhaba, ben
+      Voyager!** mesajı geliyor; komut adlarına dokununca yazı kutusuna geliyor.
+- [ ] O mesajda **Komut paneli** düğmesi yetkisiz ikinci hesapta da `/yardim` panelini açıyor, panel yalnızca ona görünüyor.
+      **Ayarlar** düğmesi ikinci hesaba "Sunucuyu Yönet yetkin olmalı" diyor, sende ayarlar kartını açıyor.
+- [ ] `/yardim` ana sayfasının altında **Ayarlar paneli** düğmesi var (ikinci hesapta yok); basınca ayarlar ayrı bir
+      mesajda açılıyor, `/yardim` paneli bozulmadan kalıyor.
+- [ ] `/ayarlar` → **🛡️ Koruma** → **Spam: Kapalı** düğmesi: kart yerinde güncelleniyor, düğme yeşil **Spam: Açık** oluyor,
+      üstte açıklama yazıyor. Yeniden basınca kapanıyor. `/koruma goster` aynı durumu gösteriyor.
+- [ ] **📜 Günlük** → kanal menüsünden bir kanal seç: kart kanalı gösteriyor. Kategori menüsünden yalnızca iki tanesini
+      işaretle: diğerleri ⚫ oluyor. Kanal menüsünü boşaltınca günlük kanalı kalkıyor.
+- [ ] **👋 Karşılama** → oto rol menüsünden yönetim yetkili bir rol seçmek reddediliyor; yetkisiz rol kaydediliyor.
+- [ ] **🛡️ Koruma** → **Yasaklı kelime ekle / çıkar**: form açılıyor, gönderince kart güncelleniyor.
+      **Kilitle**: önce "Emin misin?" soruyor; **Evet** ile kilit sonucu kartta görünüyor; **Kilidi aç** geri açıyor.
+- [ ] **🎮 Oyun fırsatları** → **Oyun fırsatı ayarları**: önce hangi seçeneklerin değişeceği soruluyor, sonra form açılıyor.
+- [ ] Bot yeniden başlatıldıktan sonra eski ayarlar kartındaki düğmeler hâlâ çalışıyor.
+- [ ] Bir üyeye sağ tıkla → **Uygulamalar → Moderasyon**: kartta hesap yaşı, katılma, uyarı sayısı; **Uyar** sebep
+      soruyor ve uyarı veriyor; **Sustur** süreyi listeden seçtiriyor; susturulmuş üyenin kartında **Susturmayı kaldır** var.
+- [ ] Bir mesaja sağ tıkla → **Uygulamalar → Moderasyon**: mesaj kartta görünüyor; **Mesajı sil** siliyor ve günlüğe yazıyor.
+- [ ] İkinci hesap (yetkisiz) sağ tık menüsünde **Moderasyon**'u görmüyor.
+
 ## Sunucu kurulumu
 
 - [ ] `/sunucukur` (şablonsuz) şablonları açıklamalarıyla listeliyor; menüden **Oyun topluluğu** seçince ne kurulacağını

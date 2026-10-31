@@ -57,6 +57,7 @@ module.exports = {
   rolmenu: { simge: '🎭', ad: 'Rol menüsü kur' },
 
   // --- Sunucu ayarları ---
+  ayarlar: { simge: '⚙️', ad: 'Ayarlar panelini aç' },
   'ayarla gunluk': { simge: '📜', ad: 'Günlük (log) kanalı' },
   'ayarla hosgeldin': { simge: '👋', ad: 'Hoş geldin mesajı ve oto rol' },
   'ayarla ozet': { simge: '📝', ad: 'Kanal özetini aç / kapat' },

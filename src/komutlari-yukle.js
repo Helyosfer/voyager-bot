@@ -23,7 +23,9 @@ const hepsi = fs
 // kurulum). Belirtilmezse, uygulamada "User Install" açıkken botu kendi hesabına kuran herkes
 // komutları botun bulunmadığı sunucularda da çalıştırabilir; komutlar buna göre yazılmadı.
 const kayit = (k) => ({ ...k.data.toJSON(), integration_types: [0] });
-const genel = hepsi.filter((k) => !k.sahipKomutu).map(kayit);
+// Sağ tık menüsündeki komutlar (üyeye ya da mesaja sağ tıkla → Uygulamalar → Moderasyon)
+const sagTik = require('./moderasyon-karti').KOMUTLAR.map((data) => kayit({ data }));
+const genel = [...hepsi.filter((k) => !k.sahipKomutu).map(kayit), ...sagTik];
 const sahibeOzel = hepsi.filter((k) => k.sahipKomutu).map(kayit);
 
 const rest = new REST().setToken(DISCORD_TOKEN);

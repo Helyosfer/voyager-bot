@@ -125,6 +125,9 @@ function sifirla(interaction) {
 const ALT_KOMUTLAR = { gunluk, hosgeldin, ozet, sifirla, goster: () => null };
 
 module.exports = {
+  // /ayarlar paneli de bu kartı gösterir
+  ayarKarti,
+
   data: new SlashCommandBuilder()
     .setName('ayarla')
     .setDescription('Sunucu ayarları: günlük kanalı, hoş geldin, otomatik rol, kanal özetleri')

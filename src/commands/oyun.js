@@ -90,6 +90,9 @@ function firsatAyarlari(interaction) {
 }
 
 module.exports = {
+  // /ayarlar paneli de bu kartı gösterir
+  kart,
+
   data: new SlashCommandBuilder()
     .setName('oyun')
     .setDescription('Bedava oyun ve indirim bildirimlerini ayarlar (Steam, Epic, GOG)')
