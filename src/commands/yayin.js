@@ -94,6 +94,9 @@ async function deneme(interaction) {
 }
 
 module.exports = {
+  // /ayarlar paneli de bu kartı gösterir
+  kart,
+
   data: new SlashCommandBuilder()
     .setName('yayin')
     .setDescription('Canlı yayın bildirimlerini ayarlar (Twitch, Kick, YouTube)')

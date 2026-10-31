@@ -19,6 +19,9 @@ const rolmenu = require('./rolmenu');
 const cekilis = require('./cekilis');
 const seviye = require('./seviye');
 const sohbet = require('./sohbet');
+const ayarlarPaneli = require('./ayarlar-paneli');
+const moderasyonKarti = require('./moderasyon-karti');
+const ilkMesaj = require('./ilk-mesaj');
 const { otoRolVer, komutYetkisiVar, hataMetni } = require('./yardimci');
 
 // Yakalanmamış bir hata botu kapatır; systemd birkaç saniyede yeniden başlatır. Bu davranış
@@ -88,17 +91,25 @@ client.once(Events.ClientReady, (c) => {
 });
 
 // Botun eklendiği ve çıkarıldığı sunucular kayıtlarda görünsün
-client.on(Events.GuildCreate, (sunucu) => console.log(`Sunucuya eklendi: ${sunucu.name} (${sunucu.id}) · ${sunucu.memberCount} üye`));
+// Yeni eklendiği sunucuya kendini tanıtan bir mesaj atar (nereden başlanacağı: /yardim, /ayarlar)
+client.on(Events.GuildCreate, (sunucu) => {
+  console.log(`Sunucuya eklendi: ${sunucu.name} (${sunucu.id}) · ${sunucu.memberCount} üye`);
+  ilkMesaj.gonder(sunucu);
+});
 client.on(Events.GuildDelete, (sunucu) => console.log(`Sunucudan çıkarıldı: ${sunucu.name} (${sunucu.id})`));
 
 // Bu dinleyici olmazsa bir bağlantı hatası botu çökertir
 client.on(Events.Error, (hata) => console.error('Discord bağlantı hatası:', hata));
 
-// Kalıcı düğmelerin önekleri. /sunucukur akışları (üyelik onayı, ilgi rolleri, destek), rol menüleri, çekilişler
+// Kalıcı düğmelerin önekleri. /sunucukur akışları (üyelik onayı, ilgi rolleri, destek), rol menüleri, çekilişler,
+// /ayarlar paneli, sağ tıkla açılan moderasyon kartı, botun sunucuya eklenince attığı ilk mesaj
 const KALICI = new Map([
   ['tp:', topluluk.etkilesim],
   ['rm:', rolmenu.etkilesim],
   ['ck:', cekilis.etkilesim],
+  ['ay:', ayarlarPaneli.etkilesim],
+  ['md:', moderasyonKarti.etkilesim],
+  ['bs:', ilkMesaj.etkilesim],
 ]);
 
 client.on(Events.InteractionCreate, async (interaction) => {
@@ -128,6 +139,16 @@ client.on(Events.InteractionCreate, async (interaction) => {
   if (interaction.isAutocomplete()) {
     const komut = client.komutlar.get(interaction.commandName);
     await komut?.autocomplete?.(interaction).catch((hata) => console.error(`/${interaction.commandName} önerileri:`, hataMetni(hata)));
+    return;
+  }
+  // Sağ tık menüsü: üyeye ya da mesaja sağ tıklayınca Uygulamalar → Moderasyon
+  if (interaction.isContextMenuCommand()) {
+    try {
+      await moderasyonKarti.ac(interaction);
+    } catch (hata) {
+      console.error(`${interaction.commandName} (sağ tık) hatası:`, hataMetni(hata));
+      if (!interaction.replied && !interaction.deferred) await interaction.reply({ content: 'Bir hata oluştu.', flags: MessageFlags.Ephemeral }).catch(() => {});
+    }
     return;
   }
   if (!interaction.isChatInputCommand()) return;

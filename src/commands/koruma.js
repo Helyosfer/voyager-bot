@@ -28,6 +28,9 @@ const TURLER = [
 ];
 
 module.exports = {
+  // /ayarlar paneli de bu kartı gösterir
+  ayarKarti,
+
   data: new SlashCommandBuilder()
     .setName('koruma')
     .setDescription('Otomatik spam koruması, küfür filtresi, zararlı bağlantı ve dolandırıcılık görseli denetimi')

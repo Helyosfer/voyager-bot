@@ -70,6 +70,9 @@ async function deneme(interaction) {
 }
 
 module.exports = {
+  // /ayarlar paneli de bu kartı gösterir
+  kart,
+
   // Instagram bağlantısı kurulmamışsa komut Discord'a hiç yüklenmez
   etkin: () => instagram.hazir(),
 

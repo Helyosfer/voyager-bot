@@ -69,6 +69,7 @@ module.exports = {
       '`/uyari kural` seçeneksiz yazılırsa kuralları listeler; `islem:Kuralı kaldır` o eşikteki kuralı siler.',
       'Kural yetki aşmaya yaramaz: uyarıyı veren kişi kuralın işlemini kendisi yapamıyorsa işlem uygulanmaz.',
       'Kendinle aynı ya da daha yüksek roldeki birine uyarı veremezsin. Bütün işlemler günlüğe yazılır.',
+      'Komut yazmadan da yapılır: üyeye ya da mesajına sağ tıkla → **Uygulamalar → Moderasyon**.',
     ],
   },
   sustur: {
@@ -78,6 +79,7 @@ module.exports = {
       '`dakika:0` susturmayı hemen kaldırır. En uzun süre 28 gündür (40320 dakika).',
       'Kendinle aynı ya da daha yüksek roldeki birini, sunucu sahibini ve yöneticileri susturamazsın.',
       'Botun rolü, susturulacak üyenin rolünden yukarıda olmalı.',
+      'Komut yazmadan da yapılır: üyeye ya da mesajına sağ tıkla → **Uygulamalar → Moderasyon**; süre listeden seçilir.',
     ],
   },
   kick: {
@@ -86,6 +88,7 @@ module.exports = {
     notlar: [
       'Sebep, sunucunun denetim kaydına seninle birlikte yazılır ve günlük kanalına düşer.',
       'Kendinle aynı ya da daha yüksek roldeki birini atamazsın; botun rolü de üyenin rolünden yukarıda olmalı.',
+      'Komut yazmadan da yapılır: üyeye ya da mesajına sağ tıkla → **Uygulamalar → Moderasyon**.',
     ],
   },
   ban: {
@@ -95,6 +98,7 @@ module.exports = {
       'Yasağı kaldırmak için `/unban`.',
       'Kendinle aynı ya da daha yüksek roldeki birini yasaklayamazsın. Sebep denetim kaydına ve günlüğe yazılır.',
       'Kimlik almak için: Discord ayarlarında Geliştirici Modu\'nu aç, kişiye sağ tıkla → Kullanıcı ID\'sini Kopyala.',
+      'Komut yazmadan da yapılır: üyeye ya da mesajına sağ tıkla → **Uygulamalar → Moderasyon**.',
     ],
   },
   unban: {
@@ -259,6 +263,17 @@ module.exports = {
   },
 
   // --- Sunucu ayarları ---
+  ayarlar: {
+    anlatim:
+      'Botun bütün sunucu ayarlarını tek kartta açar: koruma filtreleri, günlük kanalı, karşılama, seviye sistemi, uyarı cezaları, oyun fırsatları, canlı yayın ve haber bildirimleri, kurulum. Komut yazmazsın: menüden bölümü seçer, düğmelerle açıp kapatır, kanal ve rolleri menüden seçersin.',
+    ornekler: ['/ayarlar'],
+    notlar: [
+      'Kartı yalnızca sen görürsün; düğmeleri süre dolmadan, istediğin zaman kullanabilirsin.',
+      'Her düğme ilgili komutu çalıştırır (ör. spam düğmesi `/koruma filtre`); yazarak yapmakla aynı denetimlerden geçer. Komutla yapmayı seviyorsan `/koruma`, `/ayarla`, `/seviye` gibi komutlar da yerinde.',
+      'Bir menüyü boşaltırsan o ayar kalkar (ör. günlük kanalını boşaltınca kayıt tutulmaz).',
+      'Yalnızca senin yetkinin yettiği düğmeler görünür; ör. acil durum kilidi yalnızca Yöneticilere.',
+    ],
+  },
   ayarla: {
     anlatim: 'Botun sunucundaki temel ayarlarını yapar: olayların yazılacağı günlük (log) kanalı, hoş geldin kanalı, yeni gelenlere verilecek otomatik rol ve kanal özetleri.',
     ornekler: [
